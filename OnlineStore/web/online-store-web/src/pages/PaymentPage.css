@@ -1,0 +1,357 @@
+/* PaymentPage Premium Overhaul */
+
+.payment-page-container {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.payment-appbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 24px;
+}
+
+.icon-btn-round {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.icon-btn-round:hover {
+    background: var(--surface);
+}
+
+.payment-appbar h2 {
+    font-size: 20px;
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.payment-body {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: 24px;
+}
+
+.payment-box {
+    width: 100%;
+    max-width: 450px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px 24px;
+    box-sizing: border-box;
+}
+
+.payment-order-top {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.order-total-label {
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.order-total-value {
+    font-size: 44px;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.payment-method-row, .payment-deliver-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.row-label {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.method-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 16px;
+}
+
+.chip-icon {
+    font-size: 14px;
+}
+
+.chip-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.deliver-address {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    text-align: right;
+    gap: 6px;
+    margin-left: 16px;
+}
+
+.address-text {
+    font-size: 14px;
+    color: var(--text-primary);
+    opacity: 0.9;
+}
+
+.divider-line {
+    height: 1px;
+    background: var(--border);
+    margin: 24px 0;
+}
+
+.section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    color: var(--text-primary);
+}
+
+/* Spline 3D Card Integration */
+.spline-mockup-wrapper {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    background: transparent;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spline-mockup-wrapper canvas {
+    /* Zoom in the 3D scene to appear closer */
+    transform: scale(1.65);
+    transform-origin: center center;
+    
+    /* Clean, premium warm color adjustment (no muddy overlays) */
+    filter: sepia(0.2) saturate(1.1) brightness(1.05) contrast(1.1) hue-rotate(-5deg);
+    transition: transform 0.3s ease, filter 0.3s ease;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.spline-tint-overlay {
+    display: none; /* Removing the overlay since it was making the lighting muddy */
+}
+
+/* Form Styles */
+.form-group-custom {
+    margin-bottom: 16px;
+}
+
+.custom-label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.stripe-input-wrapper {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+.custom-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 15px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.custom-input:focus {
+    border-color: var(--primary);
+}
+
+.form-actions-horizontal {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.btn-cancel, .btn-save {
+    flex: 1;
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    transition: background 0.2s;
+}
+
+.btn-save:hover:not(:disabled), .btn-cancel:hover:not(:disabled) {
+    background: var(--bg);
+}
+
+.error-message {
+    color: #e74c3c;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+/* Saved Cards */
+.saved-cards-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.btn-text {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.card-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid var(--border);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.card-item.selected {
+    border: 2px solid var(--primary);
+    background: var(--bg);
+}
+
+.card-item-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.c-brand {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.c-exp {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.btn-icon-delete {
+    background: transparent;
+    border: none;
+    color: #e74c3c;
+    cursor: pointer;
+    opacity: 0.8;
+}
+.btn-icon-delete:hover {
+    opacity: 1;
+}
+
+/* Footer Pay */
+.payment-footer {
+    display: flex;
+    flex-direction: column;
+}
+
+.btn-pay-now {
+    width: 100%;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-pay-now:hover:not(:disabled) {
+    background: var(--bg);
+}
+
+.ssl-secured {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 16px;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.spinner-small {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--text-muted);
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.cod-message {
+    background: var(--bg);
+    padding: 24px;
+    border-radius: 8px;
+    text-align: center;
+    color: var(--text-primary);
+}

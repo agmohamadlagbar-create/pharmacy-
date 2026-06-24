@@ -1,0 +1,344 @@
+/* CheckoutPage Premium Overhaul */
+.checkout-page {
+    background: var(--bg);
+    min-height: 100vh;
+}
+
+.checkout-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.checkout-header h1 {
+    font-size: 24px;
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.checkout-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px;
+}
+
+.checkout-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 48px;
+    align-items: start;
+}
+
+.checkout-left {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Address List */
+.address-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.address-item {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+}
+
+.address-item:hover {
+    border-color: var(--primary-light);
+}
+
+.address-item.active {
+    border-color: var(--primary);
+    background: var(--surface);
+}
+
+.address-item input {
+    display: none;
+}
+
+.address-details {
+    flex: 1;
+}
+
+.address-line-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.address-line-top strong {
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.default-pill {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: var(--primary);
+    color: var(--bg);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.address-text, .address-text-sub {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.check-mark {
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    color: var(--primary);
+}
+
+.address-item.active .check-mark {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.add-link-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 14px;
+    margin-top: 16px;
+    cursor: pointer;
+    text-align: left;
+    width: fit-content;
+}
+
+/* Payment Grid */
+.payment-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.method-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 32px 20px;
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.method-card:hover {
+    border-color: var(--primary-light);
+}
+
+.method-card.active {
+    border-color: var(--primary);
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+}
+
+.method-card input {
+    display: none;
+}
+
+.method-icon-bg {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.method-card.active .method-icon-bg {
+    background: var(--primary);
+    color: var(--bg);
+    border-color: var(--primary);
+}
+
+.method-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Offer Input */
+.offer-input-wrapper {
+    display: flex;
+    padding: 8px;
+    gap: 8px;
+}
+
+.offer-input {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+}
+
+.offer-apply-btn {
+    padding: 0 24px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.offer-apply-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Cart Summary Helpers */
+.security-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 24px;
+    font-weight: 500;
+}
+
+.warning-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #e74c3c;
+    margin-top: 12px;
+    font-weight: 500;
+}
+
+.free-tag {
+    color: #27ae60;
+    font-weight: 700;
+}
+
+@media (max-width: 1024px) {
+    .checkout-grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+    .checkout-right .summary-card {
+        position: static;
+    }
+}
+
+/* City Mismatch Modal */
+.city-mismatch-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: fadeIn 0.3s ease;
+}
+
+.city-mismatch-modal {
+    background: var(--bg);
+    border-radius: 24px;
+    padding: 40px;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.city-mismatch-icon {
+    margin-bottom: 24px;
+    background: #fff9db;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.city-mismatch-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.city-mismatch-text {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.city-mismatch-text strong {
+    color: var(--text-primary);
+}
+
+.city-mismatch-subtext {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+}
+
+.city-mismatch-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}

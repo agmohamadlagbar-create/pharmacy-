@@ -1,0 +1,118 @@
+.premium-avatar-container {
+    position: relative;
+    width: var(--size);
+    height: var(--size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 40px auto;
+}
+
+.avatar-main-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    border-radius: 50%;
+    padding: 4px;
+    background: linear-gradient(135deg, var(--glow-color), #fff);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.avatar-inner-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    background: var(--glow-color);
+    filter: blur(20px);
+    opacity: 0.4;
+    z-index: -1;
+    animation: pulse-glow 3s infinite alternate ease-in-out;
+}
+
+.avatar-frame {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--card);
+    position: relative;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--glow-color);
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+/* Orbital Rings Animation */
+.orbital-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--glow-color);
+    opacity: 0;
+}
+
+.ring-1 {
+    width: 110%;
+    height: 110%;
+    animation: orbit-pulse 4s infinite linear;
+}
+
+.ring-2 {
+    width: 130%;
+    height: 130%;
+    border-style: dashed;
+    animation: orbit-pulse 6s infinite reverse linear;
+}
+
+.ring-3 {
+    width: 150%;
+    height: 150%;
+    border-width: 2px;
+    opacity: 0.2;
+    filter: blur(2px);
+    animation: orbit-pulse 8s infinite linear;
+}
+
+@keyframes orbit-pulse {
+    0% {
+        transform: scale(0.8) rotate(0deg);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(1.4) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes pulse-glow {
+    from {
+        transform: scale(0.9);
+        opacity: 0.3;
+    }
+
+    to {
+        transform: scale(1.1);
+        opacity: 0.6;
+    }
+}

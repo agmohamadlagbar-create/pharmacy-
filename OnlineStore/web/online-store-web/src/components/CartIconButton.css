@@ -1,0 +1,56 @@
+.cart-icon-btn {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.cart-icon-btn:hover {
+    transform: scale(1.05);
+}
+
+.cart-icon-btn:active {
+    transform: scale(0.95);
+}
+
+.cart-icon-container {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    color: var(--primary); /* Using the terracotta primary color */
+}
+
+/* For dark mode consistency as seen in the image */
+[data-theme='dark'] .cart-icon-container {
+    background: #2C1A10; /* Dark brown background from surface */
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.cart-badge-new {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--primary);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2px solid #1A0A00; /* Dark background color to make it pop */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}

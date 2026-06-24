@@ -1,0 +1,34 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <title>LAGBAR SHOP App Icon</title>
+  <desc>Modern dark rounded square app icon with bold geometric L mark in gold</desc>
+
+  <defs>
+    <clipPath id="ic">
+      <rect x="0" y="0" width="1024" height="1024" rx="224"/>
+    </clipPath>
+  </defs>
+
+  <!-- Base background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="#141414"/>
+
+  <!-- Subtle diagonal texture -->
+  <g clip-path="url(#ic)" opacity="0.07">
+    <line x1="0"    y1="512" x2="1024" y2="0"    stroke="#C8922A" stroke-width="110"/>
+    <line x1="0"    y1="768" x2="1024" y2="256"  stroke="#C8922A" stroke-width="110"/>
+    <line x1="0"    y1="1024" x2="1024" y2="512" stroke="#C8922A" stroke-width="110"/>
+    <line x1="0"    y1="256" x2="1024" y2="-256" stroke="#C8922A" stroke-width="110"/>
+  </g>
+
+  <!-- Gold top edge accent -->
+  <rect x="0" y="0" width="1024" height="18" rx="0" fill="#C8922A" clip-path="url(#ic)"/>
+
+  <!-- L vertical bar -->
+  <rect x="204" y="184" width="188" height="656" rx="38" fill="#C8922A"/>
+
+  <!-- L horizontal bar -->
+  <rect x="204" y="652" width="534" height="188" rx="38" fill="#C8922A"/>
+
+  <!-- Gold dot accent top right -->
+  <circle cx="738" cy="238" r="72" fill="#C8922A"/>
+
+</svg>

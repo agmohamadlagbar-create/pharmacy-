@@ -1,0 +1,12 @@
+{
+  "name": "onlinestore-load-tests",
+  "version": "1.0.0",
+  "description": "k6 load testing scripts for OnlineStore",
+  "scripts": {
+    "test:local": "k6 run scenarios/browse_and_checkout.js",
+    "test:docker": "docker run --rm -i grafana/k6 run - < scenarios/browse_and_checkout.js"
+  },
+  "devDependencies": {
+    "@types/k6": "^0.46.0"
+  }
+}

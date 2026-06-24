@@ -1,0 +1,57 @@
+.animation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    transition: opacity 0.3s ease-in-out;
+}
+
+.animation-overlay.fade-in {
+    opacity: 1;
+}
+
+.animation-overlay.fade-out {
+    opacity: 0;
+}
+
+.animation-container {
+    background: var(--bg-secondary, #ffffff);
+    padding: 2rem;
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transform: scale(0.9);
+    animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+[data-theme='dark'] .animation-container {
+    background: rgba(30, 30, 30, 0.8);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes pop-in {
+    to {
+        transform: scale(1);
+    }
+}
+
+.animation-overlay.fade-out .animation-container {
+    animation: pop-out 0.3s ease-in forwards;
+}
+
+@keyframes pop-out {
+    to {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+}
