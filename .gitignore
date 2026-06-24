@@ -83,6 +83,7 @@ android/local.properties
 .env
 .env.*
 *.env
+*.local.ps1
 appsettings.Development.json
 appsettings.Local.json
 secrets.json
