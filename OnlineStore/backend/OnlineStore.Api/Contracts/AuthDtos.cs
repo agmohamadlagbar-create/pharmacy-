@@ -82,7 +82,7 @@ public record UpdateCategoryRequest(string Name, string? Code, string? ImageUrl,
 //  Products
 // ════════════════════════════════════════════
 
-public record ProductDto(int Id, string Name, string? Description, decimal Price, string? ImageUrl, List<string> AdditionalImageUrls, int StockQuantity, int OriginalQuantity, int CategoryId, string? CategoryName, string Status, string? RejectionReason, string StoreUserId, string? StoreName, string? StoreCountry, string? StoreCity, DateTime CreatedAtUtc, double AverageRating = 0, int ReviewCount = 0);
+public record ProductDto(int Id, string Name, string? Description, decimal Price, string? ImageUrl, List<string> AdditionalImageUrls, int StockQuantity, int OriginalQuantity, int CategoryId, string? CategoryName, string Status, string? RejectionReason, string StoreUserId, string? StoreName, string? StoreCountry, string? StoreCity, DateTime CreatedAtUtc, double AverageRating = 0, int ReviewCount = 0, string? CurrencyCode = "USD");
 public record CreateProductRequest(string Name, string? Description, decimal Price, string? ImageUrl, List<string>? AdditionalImageUrls, int StockQuantity, int CategoryId);
 public record UpdateProductRequest(string? Name, string? Description, decimal? Price, string? ImageUrl, List<string>? AdditionalImageUrls, int? StockQuantity, int? CategoryId);
 public record AdminRejectRequest(string Reason);
@@ -111,7 +111,7 @@ public record ProductDetailsDto(
 //  Cart
 // ════════════════════════════════════════════
 
-public record CartItemDto(int ProductId, string ProductName, string? ImageUrl, decimal Price, int Quantity, string StoreUserId, string? StoreName, string? StoreCity);
+public record CartItemDto(int ProductId, string ProductName, string? ImageUrl, decimal Price, int Quantity, string StoreUserId, string? StoreName, string? StoreCity, string? CurrencyCode = "USD");
 public record CartDto(List<CartItemDto> Items, decimal TotalAmount);
 
 // ════════════════════════════════════════════
@@ -123,9 +123,9 @@ public record CreateOrderRequest(string StoreUserId, List<OrderItemRequest> Item
 public record CheckoutCartRequest([Required] string DeliveryAddress, string? DeliveryCity, string? PaymentMethod, string? OfferCode, string? PaymentToken);
 public record UpdateOrderStatusRequest(string Status);
 
-public record OrderItemDto(int Id, int? ProductId, string ProductName, int Quantity, decimal UnitPrice, string StoreUserId);
-public record OrderDto(int Id, string UserId, string StoreUserId, string? StoreName, string Status, decimal TotalAmount, string DeliveryAddress, string? PaymentMethod, string? OfferCode, List<OrderItemDto> Items, DateTime CreatedAtUtc, DateTime UpdatedAtUtc, string? OrderGroupId = null, double? CustomerLat = null, double? CustomerLng = null, double? StoreLat = null, double? StoreLng = null);
-public record GroupedOrderStoreDto(int OrderId, string StoreUserId, string? StoreName, string? StoreLocation, string Status, decimal TotalAmount, double? StoreLat, double? StoreLng, List<OrderItemDto> Items);
+public record OrderItemDto(int Id, int? ProductId, string ProductName, int Quantity, decimal UnitPrice, string StoreUserId, string? CurrencyCode = "USD");
+public record OrderDto(int Id, string UserId, string StoreUserId, string? StoreName, string Status, decimal TotalAmount, string DeliveryAddress, string? PaymentMethod, string? OfferCode, List<OrderItemDto> Items, DateTime CreatedAtUtc, DateTime UpdatedAtUtc, string? OrderGroupId = null, double? CustomerLat = null, double? CustomerLng = null, double? StoreLat = null, double? StoreLng = null, string? CurrencyCode = "USD");
+public record GroupedOrderStoreDto(int OrderId, string StoreUserId, string? StoreName, string? StoreLocation, string Status, decimal TotalAmount, double? StoreLat, double? StoreLng, List<OrderItemDto> Items, string? CurrencyCode = "USD");
 public record GroupedOrderDto(string OrderGroupId, int RepresentativeOrderId, string UserId, string Status, decimal TotalAmount, string DeliveryAddress, string? PaymentMethod, string? OfferCode, List<GroupedOrderStoreDto> Stores, DateTime CreatedAtUtc, DateTime UpdatedAtUtc, double? CustomerLat = null, double? CustomerLng = null, int? DeliveryJobId = null, string? DeliveryStatus = null);
 
 // ════════════════════════════════════════════

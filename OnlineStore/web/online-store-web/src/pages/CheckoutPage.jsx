@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../apiClient';
+import { formatPrice } from '../utils/formatPrice.js';
 import './CheckoutPage.css';
 
 export default function CheckoutPage({ cart, onBack, onProceed, userLocation, onChangeLocation }) {
@@ -325,7 +326,7 @@ export default function CheckoutPage({ cart, onBack, onProceed, userLocation, on
                             <div className="summary-list">
                                 <div className="summary-row">
                                     <span>{t('Items ({{count}})', { count: cart.items.length })}</span>
-                                    <span>${cart.totalAmount.toFixed(2)}</span>
+                                    <span>{formatPrice(cart.totalAmount, cart.items[0]?.currencyCode || 'USD')}</span>
                                 </div>
                                 <div className="summary-row">
                                     <span>{t('Delivery')}</span>
@@ -335,7 +336,7 @@ export default function CheckoutPage({ cart, onBack, onProceed, userLocation, on
 
                             <div className="summary-row total">
                                 <span>{t('Total')}</span>
-                                <span>${cart.totalAmount.toFixed(2)}</span>
+                                <span>{formatPrice(cart.totalAmount, cart.items[0]?.currencyCode || 'USD')}</span>
                             </div>
 
                             <button

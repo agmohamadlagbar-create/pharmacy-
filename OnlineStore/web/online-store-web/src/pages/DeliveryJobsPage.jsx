@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../apiClient.js'
+import { formatPrice } from '../utils/formatPrice.js'
 import * as signalR from '@microsoft/signalr'
 import DeliverySimulationMap from '../components/DeliverySimulationMap.jsx'
 
@@ -224,7 +225,7 @@ export default function DeliveryJobsPage({ onBack }) {
                                     <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '12px', display: 'grid', gap: 6 }}>
                                         <div>{t('{{count}} pickup stops', { count: stores.length })}</div>
                                         <div>{t('Stores:')} {storeNames}</div>
-                                        <div>{t('Total:')} ${Number(group.totalAmount || 0).toFixed(2)}</div>
+                                        <div>{t('Total:')} {formatPrice(group.totalAmount || 0, stores[0]?.currencyCode || 'USD')}</div>
                                         {group.deliveryAddress && <div>{t('Customer:')} {group.deliveryAddress}</div>}
                                     </div>
                                 )}

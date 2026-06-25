@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import './OrderTrackingCard.css'
 import { api } from '../apiClient'
+import { formatPrice } from '../utils/formatPrice.js'
 import { countReadyStores, countTotalItems, getTrackingInfo } from '../utils/orderTracking'
 
 const customerIcon = L.divIcon({
@@ -248,7 +249,7 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                     <strong style={{ color: 'var(--text-primary)' }}>{stores.length} stores, {totalItems} items</strong>
-                    <strong style={{ color: 'var(--text-primary)' }}>${Number(order.totalAmount || 0).toFixed(2)}</strong>
+                    <strong style={{ color: 'var(--text-primary)' }}>{formatPrice(order.totalAmount || 0, stores[0]?.currencyCode || 'USD')}</strong>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--muted)' }}>{order.deliveryAddress}</div>
                 <div style={{ display: 'grid', gap: 8 }}>

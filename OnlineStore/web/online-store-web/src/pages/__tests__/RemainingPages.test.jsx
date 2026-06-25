@@ -452,7 +452,11 @@ describe('Remaining Untested Pages', () => {
   })
 
   it('renders StoreProductsPage', async () => {
-    render(<StoreProductsPage onBack={vi.fn()} />)
+    render(
+      <MemoryRouter>
+        <StoreProductsPage onBack={vi.fn()} />
+      </MemoryRouter>
+    )
     expect(await screen.findByText('My Products')).toBeInTheDocument()
   })
 })

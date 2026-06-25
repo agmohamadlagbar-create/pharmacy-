@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../apiClient';
+import { formatPrice } from '../utils/formatPrice.js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripeAddCard from '../components/StripeAddCard';
@@ -91,7 +92,7 @@ export default function PaymentPage({ cart, checkoutData, onBack, onSuccess, sto
         }
     }
 
-    const tAmount = cart.totalAmount.toFixed(2);
+    const formattedAmount = formatPrice(cart.totalAmount, cart.items[0]?.currencyCode || 'USD');
 
     return (
         <div className="payment-page-container fade-in">
@@ -108,7 +109,7 @@ export default function PaymentPage({ cart, checkoutData, onBack, onSuccess, sto
                 <div className="payment-box">
                     <div className="payment-order-top">
                         <div className="order-total-label">{t('ORDER TOTAL')}</div>
-                        <div className="order-total-value">${tAmount}</div>
+                        <div className="order-total-value">{formattedAmount}</div>
                     </div>
 
                     <div className="payment-method-row">
@@ -199,7 +200,7 @@ export default function PaymentPage({ cart, checkoutData, onBack, onSuccess, sto
                                {isProcessing ? <div className="spinner-small" style={{borderColor: 'var(--text-primary)', borderTopColor: 'transparent'}}></div> : (
                                    <>
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '8px'}}><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                                        <span>{checkoutData.paymentMethod === 'Credit Card' ? t('Pay now - ${{amount}}', { amount: tAmount }) : t('Confirm Order')}</span>
+                                        <span>{checkoutData.paymentMethod === 'Credit Card' ? t('Pay now - {{amount}}', { amount: formattedAmount }) : t('Confirm Order')}</span>
                                    </>
                                )}
                            </button>

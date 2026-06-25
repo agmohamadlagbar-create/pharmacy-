@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../apiClient.js';
+import { formatPrice } from '../utils/formatPrice.js';
 import Skeleton from '../components/Skeleton.jsx';
 import './ProductInfoPage.css';
 import CartIconButton from '../components/CartIconButton';
@@ -175,7 +176,7 @@ const ProductInfoPage = ({
 
                 <div className="product-titles">
                     <h2>{product.name}</h2>
-                    <p className="price">${product.price.toFixed(2)}</p>
+                    <p className="price">{formatPrice(product.price, product.currencyCode)}</p>
                     {product.storeName && (
                         <p 
                             style={{ fontSize: '14px', color: 'var(--muted)', margin: '6px 0', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../apiClient.js'
+import { formatPrice } from '../utils/formatPrice.js'
 import Skeleton from '../components/Skeleton.jsx'
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js'
 
@@ -562,7 +563,7 @@ export default function AdminPage({ onBack }) {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div>
                                             <div style={{ fontWeight: '600', color: 'var(--text)' }}>{p.name}</div>
-                                            <div style={{ fontSize: '13px', color: 'var(--muted)' }}>${p.price.toFixed(2)} • {p.categoryName} • {t('by')} {p.storeName || p.storeUserId}</div>
+                                            <div style={{ fontSize: '13px', color: 'var(--muted)' }}>{formatPrice(p.price, p.currencyCode)} • {p.categoryName} • {t('by')} {p.storeName || p.storeUserId}</div>
                                             <span style={{ fontSize: '11px', fontWeight: '600', color: statusColor(p.status), background: `${statusColor(p.status)}15`, padding: '2px 8px', borderRadius: '12px' }}>{t(p.status)}</span>
                                         </div>
                                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -642,7 +643,7 @@ export default function AdminPage({ onBack }) {
                                         <span style={{ fontSize: '12px', fontWeight: '600', color: '#888' }}>{t(o.status)}</span>
                                     </div>
                                     <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px' }}>
-                                        {t('User:')} {o.userId} • {t('Store:')} {o.storeName || o.storeUserId} • {t('Total:')} ${o.totalAmount.toFixed(2)}
+                                        {t('User:')} {o.userId} • {t('Store:')} {o.storeName || o.storeUserId} • {t('Total:')} {formatPrice(o.totalAmount, o.currencyCode)}
                                     </div>
                                 </div>
                             ))}

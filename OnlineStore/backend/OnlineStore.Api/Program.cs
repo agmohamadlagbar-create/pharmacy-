@@ -356,6 +356,10 @@ using (var scope = app.Services.CreateScope())
 
     // Seed default categories if none exist
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (db.Database.ProviderName != "Microsoft.EntityFrameworkCore.Sqlite")
+    {
+        db.Database.Migrate();
+    }
     if (!db.Categories.Any())
     {
         var defaultCategories = new[]

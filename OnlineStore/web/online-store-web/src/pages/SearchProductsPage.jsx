@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../apiClient.js';
+import { formatPrice } from '../utils/formatPrice.js';
 import Skeleton from '../components/Skeleton.jsx';
 import CartIconButton from '../components/CartIconButton';
 import './CategoryProductsPage.css';
@@ -204,7 +205,7 @@ const SearchProductsPage = ({
                     products.map(product => (
                         <div key={product.id} className="product-card-web" onClick={() => onSelectProduct && onSelectProduct(product)}>
                             <div className="product-img-wrapper">
-                                <span className="product-price-tag">${(product.price || 0).toFixed(2)}</span>
+                                <span className="product-price-tag">{formatPrice(product.price, product.currencyCode)}</span>
                                 <button
                                     className={`fav-btn ${isFavorited(product.id) ? 'active' : ''}`}
                                     onClick={(e) => {

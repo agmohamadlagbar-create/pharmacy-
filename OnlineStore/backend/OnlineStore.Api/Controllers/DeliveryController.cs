@@ -227,7 +227,7 @@ public class DeliveryController : ControllerBase
         var coordinatesByUserId = usersList
             .ToDictionary(
                 user => user.Id,
-                user => (user.Latitude, user.Longitude)
+                user => (user.Latitude, user.Longitude, user.Country)
             );
 
         var groupedOrdersById = groupedOrders

@@ -75,11 +75,11 @@ public class OrderGroupHelperTests
             ["store-b"] = new("Bakery House", "East Avenue")
         };
 
-        var coords = new Dictionary<string, (double? Latitude, double? Longitude)>
+        var coords = new Dictionary<string, (double? Latitude, double? Longitude, string? Country)>
         {
-            ["user-1"] = (41.0, 29.0),
-            ["store-a"] = (41.1, 29.1),
-            ["store-b"] = (41.2, 29.2)
+            ["user-1"] = (41.0, 29.0, "Turkey"),
+            ["store-a"] = (41.1, 29.1, "Turkey"),
+            ["store-b"] = (41.2, 29.2, "Turkey")
         };
 
         var deliveryJob = new DeliveryJob

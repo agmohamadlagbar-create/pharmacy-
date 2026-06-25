@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../apiClient.js'
+import { formatPrice } from '../utils/formatPrice.js'
 import Skeleton from '../components/Skeleton.jsx'
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js'
 import './StoreProductsPage.css'
 
 export default function StoreProductsPage({ onBack }) {
     const { t } = useTranslation()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const editProductId = searchParams.get('editProductId')
     const [showForm, setShowForm] = useState(false)
     const [categories, setCategories] = useState([])
     const [subcategories, setSubcategories] = useState([])
@@ -156,6 +160,27 @@ export default function StoreProductsPage({ onBack }) {
         fetchSubcategories(p.categoryId)
     }
 
+    // Handle editProductId parameter from URL
+    useEffect(() => {
+        if (editProductId) {
+            (async () => {
+                try {
+                    const { data } = await api.get(`/api/products/mine?productId=${editProductId}`)
+                    if (data && data.items && data.items.length > 0) {
+                        const prod = data.items[0]
+                        startEdit(prod)
+                    }
+                    // Clear the parameter so it doesn't open again on subsequent renders
+                    const newParams = new URLSearchParams(searchParams)
+                    newParams.delete('editProductId')
+                    setSearchParams(newParams, { replace: true })
+                } catch (err) {
+                    console.error('Failed to fetch product for editing:', err)
+                }
+            })()
+        }
+    }, [editProductId, setSearchParams, searchParams])
+
     async function handleDelete(id) {
         if (!confirm(t('Delete this product?'))) return
         try {
@@ -220,7 +245,7 @@ export default function StoreProductsPage({ onBack }) {
                                 <input className="sp-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
                             </div>
                             <div className="field">
-                                <label>{t('Price ($)')}</label>
+                                <label>{t('Price')}</label>
                                 <input className="sp-input" type="number" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} required />
                             </div>
                             <div className="field">
@@ -338,7 +363,7 @@ export default function StoreProductsPage({ onBack }) {
                                         </span>
                                     </div>
                                     <div className="sp-product-meta">
-                                        <span className="sp-product-price">${(p.price || 0).toFixed(2)}</span>
+                                        <span className="sp-product-price">{formatPrice(p.price, p.currencyCode)}</span>
                                         <span className="sp-product-dot">•</span>
                                         <span className="sp-product-category">{p.categoryName || t('No category')}</span>
                                     </div>

@@ -401,34 +401,63 @@ public class OrdersController : ControllerBase
         var total = await query.CountAsync();
 
         // Project only the exact columns needed for the DTO — avoids loading full Product entities
-        var dtos = await query
+        var rawOrders = await query
             .OrderByDescending(o => o.CreatedAtUtc)
             .Skip((page - 1) * limit)
             .Take(limit)
-            .Select(o => new OrderDto(
+            .Select(o => new {
                 o.Id,
                 o.UserId,
                 o.StoreUserId,
-                _db.ShopProfiles.Where(s => s.UserId == o.StoreUserId).Select(s => s.ShopName).FirstOrDefault(),
-                o.Status.ToString(),
+                StoreName = _db.ShopProfiles.Where(s => s.UserId == o.StoreUserId).Select(s => s.ShopName).FirstOrDefault(),
+                Status = o.Status.ToString(),
                 o.TotalAmount,
-                o.DeliveryAddress ?? "",
+                DeliveryAddress = o.DeliveryAddress ?? "",
+                o.PaymentMethod,
+                o.OfferCode,
+                Items = o.Items.Select(i => new {
+                    i.Id,
+                    i.ProductId,
+                    ProductName = i.Product != null ? i.Product.Name : "",
+                    i.Quantity,
+                    i.UnitPrice,
+                    StoreUserId = i.Product != null ? i.Product.StoreUserId : o.StoreUserId
+                }).ToList(),
+                o.CreatedAtUtc,
+                o.UpdatedAtUtc,
+                o.OrderGroupId,
+                StoreCountry = _db.Users.Where(u => u.Id == o.StoreUserId).Select(u => u.Country).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var dtos = rawOrders.Select(o => {
+            var currencyCode = Helpers.CurrencyHelper.GetCurrencyCode(o.StoreCountry);
+            return new OrderDto(
+                o.Id,
+                o.UserId,
+                o.StoreUserId,
+                o.StoreName,
+                o.Status,
+                o.TotalAmount,
+                o.DeliveryAddress,
                 o.PaymentMethod,
                 o.OfferCode,
                 o.Items.Select(i => new OrderItemDto(
                     i.Id,
                     i.ProductId,
-                    i.Product != null ? i.Product.Name : "",
+                    i.ProductName,
                     i.Quantity,
                     i.UnitPrice,
-                    i.Product != null ? i.Product.StoreUserId : o.StoreUserId
+                    i.StoreUserId,
+                    currencyCode
                 )).ToList(),
                 o.CreatedAtUtc,
                 o.UpdatedAtUtc,
                 o.OrderGroupId,
-                null, null, null, null
-            ))
-            .ToListAsync();
+                null, null, null, null,
+                currencyCode
+            );
+        }).ToList();
 
         var result = PaginatedResponse<OrderDto>.Create(dtos, page, limit, total);
         if (!bypassCache)
@@ -811,7 +840,7 @@ public class OrdersController : ControllerBase
         var coordinatesByUserId = usersList
             .ToDictionary(
                 user => user.Id,
-                user => (user.Latitude, user.Longitude)
+                user => (user.Latitude, user.Longitude, user.Country)
             );
 
         return orders
@@ -863,14 +892,19 @@ public class OrdersController : ControllerBase
         users.TryGetValue(order.UserId, out var user);
         users.TryGetValue(order.StoreUserId, out var storeUser);
 
-        return MapOrderDto(order, shop?.ShopName, user?.Latitude, user?.Longitude, storeUser?.Latitude, storeUser?.Longitude);
+        return MapOrderDto(order, shop?.ShopName, user?.Latitude, user?.Longitude, storeUser?.Latitude, storeUser?.Longitude, storeUser?.Country);
     }
 
-    private static OrderDto MapOrderDto(Order o, string? storeName, double? custLat = null, double? custLng = null, double? storeLat = null, double? storeLng = null) => new(
-        o.Id, o.UserId, o.StoreUserId, storeName,
-        o.Status.ToString(), o.TotalAmount, o.DeliveryAddress ?? "", o.PaymentMethod, o.OfferCode,
-        o.Items.Select(i => new OrderItemDto(i.Id, i.ProductId, i.Product?.Name ?? "", i.Quantity, i.UnitPrice, i.Product?.StoreUserId ?? o.StoreUserId)).ToList(),
-        o.CreatedAtUtc, o.UpdatedAtUtc, o.OrderGroupId,
-        custLat, custLng, storeLat, storeLng
-    );
+    private static OrderDto MapOrderDto(Order o, string? storeName, double? custLat = null, double? custLng = null, double? storeLat = null, double? storeLng = null, string? storeCountry = null)
+    {
+        var currencyCode = Helpers.CurrencyHelper.GetCurrencyCode(storeCountry);
+        return new(
+            o.Id, o.UserId, o.StoreUserId, storeName,
+            o.Status.ToString(), o.TotalAmount, o.DeliveryAddress ?? "", o.PaymentMethod, o.OfferCode,
+            o.Items.Select(i => new OrderItemDto(i.Id, i.ProductId, i.Product?.Name ?? "", i.Quantity, i.UnitPrice, i.Product?.StoreUserId ?? o.StoreUserId, currencyCode)).ToList(),
+            o.CreatedAtUtc, o.UpdatedAtUtc, o.OrderGroupId,
+            custLat, custLng, storeLat, storeLng,
+            currencyCode
+        );
+    }
 }

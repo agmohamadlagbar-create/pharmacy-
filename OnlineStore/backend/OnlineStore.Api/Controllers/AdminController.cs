@@ -75,7 +75,8 @@ public class AdminController : ControllerBase
                 p.Status.ToString(), p.RejectionReason,
                 p.StoreUserId, storeNames.GetValueOrDefault(p.StoreUserId),
                 loc?.Country, loc?.City,
-                p.CreatedAtUtc
+                p.CreatedAtUtc,
+                CurrencyCode: Helpers.CurrencyHelper.GetCurrencyCode(loc?.Country)
             );
         }).ToList();
 
@@ -203,7 +204,8 @@ public class AdminController : ControllerBase
         var storeUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == storeUserId);
         
         return Ok(new ProductDto(product.Id, product.Name, product.Description, product.Price, product.ImageUrl, product.AdditionalImageUrls ?? new List<string>(), product.StockQuantity, product.OriginalQuantity,
-            product.CategoryId, category.Name, product.Status.ToString(), null, product.StoreUserId, storeProfile?.ShopName, storeUser?.Country, storeUser?.City, product.CreatedAtUtc));
+            product.CategoryId, category.Name, product.Status.ToString(), null, product.StoreUserId, storeProfile?.ShopName, storeUser?.Country, storeUser?.City, product.CreatedAtUtc,
+            CurrencyCode: Helpers.CurrencyHelper.GetCurrencyCode(storeUser?.Country)));
     }
 
     /// <summary>List all stores for admin autocomplete.</summary>
@@ -258,7 +260,8 @@ public class AdminController : ControllerBase
         
         return Ok(new ProductDto(product.Id, product.Name, product.Description, product.Price, product.ImageUrl, product.AdditionalImageUrls ?? new List<string>(), product.StockQuantity, product.OriginalQuantity,
             product.CategoryId, product.Category?.Name, product.Status.ToString(), product.RejectionReason,
-            product.StoreUserId, shop?.ShopName, storeUser?.Country, storeUser?.City, product.CreatedAtUtc));
+            product.StoreUserId, shop?.ShopName, storeUser?.Country, storeUser?.City, product.CreatedAtUtc,
+            CurrencyCode: Helpers.CurrencyHelper.GetCurrencyCode(storeUser?.Country)));
     }
 
     /// <summary>Admin – upload product image.</summary>
@@ -356,12 +359,22 @@ public class AdminController : ControllerBase
             .Where(s => storeUserIds.Contains(s.UserId))
             .ToDictionaryAsync(s => s.UserId, s => s.ShopName);
 
-        var dtos = orders.Select(o => new OrderDto(
-            o.Id, o.UserId, o.StoreUserId, storeNames.GetValueOrDefault(o.StoreUserId),
-            o.Status.ToString(), o.TotalAmount, o.DeliveryAddress ?? "", o.PaymentMethod, o.OfferCode,
-            o.Items.Select(i => new OrderItemDto(i.Id, i.ProductId, i.Product?.Name ?? "", i.Quantity, i.UnitPrice, i.Product?.StoreUserId ?? o.StoreUserId)).ToList(),
-            o.CreatedAtUtc, o.UpdatedAtUtc, o.OrderGroupId
-        )).ToList();
+        var storeUsers = await _db.Users
+            .AsNoTracking()
+            .Where(u => storeUserIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Country);
+
+        var dtos = orders.Select(o => {
+            var country = storeUsers.GetValueOrDefault(o.StoreUserId);
+            var currencyCode = Helpers.CurrencyHelper.GetCurrencyCode(country);
+            return new OrderDto(
+                o.Id, o.UserId, o.StoreUserId, storeNames.GetValueOrDefault(o.StoreUserId),
+                o.Status.ToString(), o.TotalAmount, o.DeliveryAddress ?? "", o.PaymentMethod, o.OfferCode,
+                o.Items.Select(i => new OrderItemDto(i.Id, i.ProductId, i.Product?.Name ?? "", i.Quantity, i.UnitPrice, i.Product?.StoreUserId ?? o.StoreUserId, currencyCode)).ToList(),
+                o.CreatedAtUtc, o.UpdatedAtUtc, o.OrderGroupId,
+                CurrencyCode: currencyCode
+            );
+        }).ToList();
 
         return Ok(PaginatedResponse<OrderDto>.Create(dtos, page, limit, total));
     }

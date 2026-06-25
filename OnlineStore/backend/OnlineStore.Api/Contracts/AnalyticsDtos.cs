@@ -7,9 +7,9 @@ namespace OnlineStore.Api.Contracts;
 /// <summary>Section 1: Summary cards.</summary>
 public record AnalyticsSummaryDto(
     decimal TotalRevenue,
-    decimal TodayRevenue,
-    decimal MonthlyRevenue,
-    decimal YearlyRevenue,
+    decimal AverageDailyRevenue,
+    decimal AverageMonthlyRevenue,
+    decimal PeakDayRevenue,
     int TotalOrders,
     decimal AverageOrderValue,
     string CurrencySymbol

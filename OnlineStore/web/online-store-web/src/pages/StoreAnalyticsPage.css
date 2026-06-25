@@ -714,6 +714,24 @@
   animation: pulse-icon 2s ease-in-out infinite;
 }
 
+.low-stock-edit-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.low-stock-edit-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
 @keyframes pulse-icon {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }

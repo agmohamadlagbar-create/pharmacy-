@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './CartPage.css';
 import { api } from '../apiClient';
+import { formatPrice } from '../utils/formatPrice.js';
 
 const CartPage = ({ cart, onBack, onUpdateQuantity, onRemoveItem, onCheckout, onNavigateStore }) => {
     const { t } = useTranslation();
@@ -89,7 +90,7 @@ const CartPage = ({ cart, onBack, onUpdateQuantity, onRemoveItem, onCheckout, on
                                                         from {item.storeName}
                                                     </span>
                                                 )}
-                                                <p className="item-price">${item.price.toFixed(2)}</p>
+                                                <p className="item-price">{formatPrice(item.price, item.currencyCode)}</p>
                                             </div>
                                             <div className="item-actions">
                                                 <div className="quantity-controls glass-controls">
@@ -127,7 +128,7 @@ const CartPage = ({ cart, onBack, onUpdateQuantity, onRemoveItem, onCheckout, on
                                 <div className="summary-details">
                                     <div className="summary-row">
                                         <span>{t('Subtotal')} ({cart.items.length} {cart.items.length === 1 ? t('item') : t('items')})</span>
-                                        <span>${cart.totalAmount.toFixed(2)}</span>
+                                        <span>{formatPrice(cart.totalAmount, cart.items[0]?.currencyCode || 'USD')}</span>
                                     </div>
                                     <div className="summary-row">
                                         <span>{t('Delivery')}</span>
@@ -135,13 +136,13 @@ const CartPage = ({ cart, onBack, onUpdateQuantity, onRemoveItem, onCheckout, on
                                     </div>
                                     <div className="summary-row">
                                         <span>{t('Taxes')}</span>
-                                        <span>$0.00</span>
+                                        <span>{formatPrice(0, cart.items[0]?.currencyCode || 'USD')}</span>
                                     </div>
                                 </div>
                                 <div className="summary-divider"></div>
                                 <div className="summary-row total-row">
                                     <span>{t('Total')}</span>
-                                    <span className="total-amount">${cart.totalAmount.toFixed(2)}</span>
+                                    <span className="total-amount">{formatPrice(cart.totalAmount, cart.items[0]?.currencyCode || 'USD')}</span>
                                 </div>
                                 <button className="primary-gradient checkout-btn" onClick={onCheckout}>
                                     <span>{t('Proceed to Checkout')}</span>

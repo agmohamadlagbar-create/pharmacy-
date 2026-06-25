@@ -329,18 +329,18 @@ export default function StoreAnalyticsPage({ onBack }) {
           </div>
           <div className="summary-card">
             <div className="summary-card-icon"><CalendarIcon /></div>
-            <div className="summary-card-label">{t("Today's Revenue")}</div>
-            <div className="summary-card-value">{currency}{Number(summary.todayRevenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+            <div className="summary-card-label">{t('Avg Daily Revenue')}</div>
+            <div className="summary-card-value">{currency}{Number(summary.averageDailyRevenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           </div>
           <div className="summary-card">
             <div className="summary-card-icon"><CalendarIcon /></div>
-            <div className="summary-card-label">{t('Monthly Revenue')}</div>
-            <div className="summary-card-value">{currency}{Number(summary.monthlyRevenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+            <div className="summary-card-label">{t('Avg Monthly Revenue')}</div>
+            <div className="summary-card-value">{currency}{Number(summary.averageMonthlyRevenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           </div>
           <div className="summary-card">
             <div className="summary-card-icon"><CalendarIcon /></div>
-            <div className="summary-card-label">{t('Yearly Revenue')}</div>
-            <div className="summary-card-value">{currency}{Number(summary.yearlyRevenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+            <div className="summary-card-label">{t('Peak Day Revenue')}</div>
+            <div className="summary-card-value">{currency}{Number(summary.peakDayRevenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
           </div>
           <div className="summary-card">
             <div className="summary-card-icon"><ShoppingBagIcon /></div>

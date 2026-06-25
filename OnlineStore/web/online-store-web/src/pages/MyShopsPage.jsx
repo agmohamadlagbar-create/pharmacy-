@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { api } from '../apiClient.js';
+import { formatPrice } from '../utils/formatPrice.js';
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js';
 import Skeleton from '../components/Skeleton.jsx';
 import { useTranslation } from 'react-i18next';
@@ -75,7 +76,7 @@ export default function MyShopsPage({ onBack, onNavigateStore, onAddToCart, onNa
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                                         <span style={{ fontSize: '12px', fontWeight: '600', color: statusColor(g.status), background: `${statusColor(g.status)}15`, padding: '4px 10px', borderRadius: '12px' }}>{g.status}</span>
-                                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>${g.total.toFixed(2)}</span>
+                                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{formatPrice(g.total, g.subOrders[0]?.currencyCode || 'USD')}</span>
                                     </div>
                                 </div>
                                 
@@ -92,7 +93,7 @@ export default function MyShopsPage({ onBack, onNavigateStore, onAddToCart, onNa
                                                 {so.items.map(item => (
                                                     <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--muted)', marginBottom: '4px' }}>
                                                         <span>{item.productName} × {item.quantity}</span>
-                                                        <span>${(item.unitPrice * item.quantity).toFixed(2)}</span>
+                                                        <span>{formatPrice(item.unitPrice * item.quantity, item.currencyCode)}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -100,7 +101,7 @@ export default function MyShopsPage({ onBack, onNavigateStore, onAddToCart, onNa
                                         
                                         <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '600', color: 'var(--text-primary)', fontSize: '14px' }}>
                                             <span>{t('Total Paid')}</span>
-                                            <span>${g.total.toFixed(2)}</span>
+                                            <span>{formatPrice(g.total, g.subOrders[0]?.currencyCode || 'USD')}</span>
                                         </div>
                                         
                                         <button

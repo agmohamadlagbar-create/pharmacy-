@@ -65,6 +65,7 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> GetMyProducts(
         [FromQuery] string? status = null,
         [FromQuery] string? search = null,
+        [FromQuery] int? productId = null,
         [FromQuery] int page = 1,
         [FromQuery] int limit = 9)
     {
@@ -75,6 +76,11 @@ public class ProductsController : ControllerBase
             .AsNoTracking()
             .Include(p => p.Category)
             .Where(p => p.StoreUserId == userId);
+
+        if (productId.HasValue)
+        {
+            query = query.Where(p => p.Id == productId.Value);
+        }
 
         // Filter by status if provided (skip for "All")
         if (!string.IsNullOrEmpty(status) && !status.Equals("All", StringComparison.OrdinalIgnoreCase)
@@ -100,7 +106,8 @@ public class ProductsController : ControllerBase
             .ToListAsync();
 
         var shop = await _db.ShopProfiles.AsNoTracking().FirstOrDefaultAsync(s2 => s2.UserId == userId);
-        var pageDtos = products.Select(p => ToDto(p, shop?.ShopName)).ToList();
+        var storeUser = await _userManager.FindByIdAsync(userId);
+        var pageDtos = products.Select(p => ToDto(p, shop?.ShopName, storeUser?.Country, storeUser?.City)).ToList();
 
         return Ok(PaginatedResponse<ProductDto>.Create(pageDtos, page, limit, total));
     }
@@ -137,8 +144,10 @@ public class ProductsController : ControllerBase
         await _cache.InvalidateProductsCacheAsync(); // Invalidate cache
         await _memCache.RemoveAsync($"product_details_{product.Id}");
 
+        var shop = await _db.ShopProfiles.AsNoTracking().FirstOrDefaultAsync(s2 => s2.UserId == userId);
+        var storeUser = await _userManager.FindByIdAsync(userId);
         product.Category = category;
-        return CreatedAtAction(nameof(GetApproved), null, ToDto(product, null));
+        return CreatedAtAction(nameof(GetApproved), null, ToDto(product, shop?.ShopName, storeUser?.Country, storeUser?.City));
     }
 
     /// <summary>Store only – upload a product image. Returns the storage key.</summary>
@@ -211,7 +220,9 @@ public class ProductsController : ControllerBase
         await _cache.InvalidateProductsCacheAsync(); // Invalidate cache
         await _memCache.RemoveAsync($"product_details_{id}");
         
-        return Ok(ToDto(product, null));
+        var shop = await _db.ShopProfiles.AsNoTracking().FirstOrDefaultAsync(s2 => s2.UserId == userId);
+        var storeUser = await _userManager.FindByIdAsync(userId);
+        return Ok(ToDto(product, shop?.ShopName, storeUser?.Country, storeUser?.City));
     }
 
     /// <summary>Store (own) or Admin – delete product.</summary>
@@ -269,7 +280,8 @@ public class ProductsController : ControllerBase
 
         // Combine product + shop profile lookup: reuse the already-loaded StoreUserId
         var shop = await _db.ShopProfiles.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == product.StoreUserId);
-        var productDto = ToDto(product, shop?.ShopName);
+        var storeUser = await _userManager.FindByIdAsync(product.StoreUserId);
+        var productDto = ToDto(product, shop?.ShopName, storeUser?.Country, storeUser?.City);
 
         // Review stats via single aggregation query instead of loading all reviews
         var reviewStats = await _db.Reviews
@@ -343,8 +355,14 @@ public class ProductsController : ControllerBase
             .Where(s => relatedStoreIds.Contains(s.UserId))
             .ToDictionaryAsync(s => s.UserId, s => s.ShopName);
 
+        // Also fetch countries to resolve currency codes
+        var relatedStoreUsers = await _userManager.Users
+            .AsNoTracking()
+            .Where(u => relatedStoreIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Country);
+
         var relatedDtos = related
-            .Select(p => ToDto(p, relatedStoreNames.GetValueOrDefault(p.StoreUserId)))
+            .Select(p => ToDto(p, relatedStoreNames.GetValueOrDefault(p.StoreUserId), relatedStoreUsers.GetValueOrDefault(p.StoreUserId), null))
             .ToList();
 
         var detailsDto = new ProductDetailsDto(
@@ -399,13 +417,14 @@ public class ProductsController : ControllerBase
         return Ok(new ReviewDto(review.Id, review.UserName, review.Rating, review.Comment, review.CreatedAtUtc));
     }
 
-    private static ProductDto ToDto(Product p, string? storeName, double avgRating = 0, int reviewCount = 0) => new(
+    private static ProductDto ToDto(Product p, string? storeName, string? storeCountry = null, string? storeCity = null, double avgRating = 0, int reviewCount = 0) => new(
         p.Id, p.Name, p.Description, p.Price, p.ImageUrl, p.AdditionalImageUrls ?? new List<string>(), p.StockQuantity, p.OriginalQuantity,
         p.CategoryId, p.Category?.Name,
         p.Status.ToString(), p.RejectionReason,
-        p.StoreUserId, storeName, null, null,
+        p.StoreUserId, storeName, storeCountry, storeCity,
         p.CreatedAtUtc,
         avgRating,
-        reviewCount
+        reviewCount,
+        Helpers.CurrencyHelper.GetCurrencyCode(storeCountry)
     );
 }

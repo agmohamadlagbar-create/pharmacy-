@@ -333,6 +333,7 @@ public class StoreCacheService : IStoreCacheService
         p.StoreUserId, storeName, storeCountry, storeCity,
         p.CreatedAtUtc,
         avgRating,
-        reviewCount
+        reviewCount,
+        OnlineStore.Api.Helpers.CurrencyHelper.GetCurrencyCode(storeCountry)
     );
 }

@@ -37,6 +37,7 @@ public class AnalyticsService : IAnalyticsService
         ["Saudi Arabia"] = "﷼", ["SA"] = "﷼",
         ["UAE"] = "د.إ", ["United Arab Emirates"] = "د.إ",
         ["Egypt"] = "£", ["EG"] = "E£",
+
         ["Iraq"] = "ع.د", ["IQ"] = "ع.د",
         ["Syria"] = "£", ["SY"] = "S£",
         ["Lebanon"] = "ل.ل", ["LB"] = "ل.ل",
@@ -69,7 +70,7 @@ public class AnalyticsService : IAnalyticsService
         ["Argentina"] = "AR$", ["AR"] = "AR$",
         ["Colombia"] = "COL$", ["CO"] = "COL$",
         ["Chile"] = "CLP$", ["CL"] = "CLP$",
-        ["Peru"] = "S/", ["PE"] = "S/",
+        ["Peru"] = "S/", ["PE"] = "S/"
     };
 
     private static string GetCurrencySymbol(string? country)
@@ -85,8 +86,20 @@ public class AnalyticsService : IAnalyticsService
     public async Task<FullAnalyticsDto> GetFullAnalyticsAsync(string storeUserId, DateTime? startDate, DateTime? endDate)
     {
         var now = DateTime.UtcNow;
-        var rangeStart = startDate ?? now.AddYears(-1);
-        var rangeEnd = endDate ?? now;
+        var rangeStart = (startDate ?? now.AddYears(-1)).Date;
+        var selectedEnd = endDate ?? now;
+        var rangeEndExclusive = selectedEnd.TimeOfDay == TimeSpan.Zero
+            ? selectedEnd.Date.AddDays(1)
+            : selectedEnd;
+
+        if (rangeEndExclusive <= rangeStart)
+        {
+            rangeEndExclusive = rangeStart.AddDays(1);
+        }
+
+        var rangeEndDateExclusive = rangeEndExclusive.TimeOfDay == TimeSpan.Zero
+            ? rangeEndExclusive.Date
+            : rangeEndExclusive.Date.AddDays(1);
 
         // Load store profile (for currency, threshold)
         var shopProfile = await _db.ShopProfiles
@@ -149,31 +162,48 @@ public class AnalyticsService : IAnalyticsService
             .ToListAsync();
 
         // ═══ Section 1: Summary Cards ═══
-        var todayStart = now.Date;
-        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var yearStart = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        var rangeOrders = allOrders.Where(o => o.CreatedAtUtc >= rangeStart && o.CreatedAtUtc <= rangeEnd).ToList();
+        var rangeOrders = allOrders.Where(o => o.CreatedAtUtc >= rangeStart && o.CreatedAtUtc < rangeEndExclusive).ToList();
 
         var totalRevenue = rangeOrders.Sum(o => o.TotalAmount);
-        var todayRevenue = allOrders.Where(o => o.CreatedAtUtc >= todayStart).Sum(o => o.TotalAmount);
-        var monthlyRevenue = allOrders.Where(o => o.CreatedAtUtc >= monthStart).Sum(o => o.TotalAmount);
-        var yearlyRevenue = allOrders.Where(o => o.CreatedAtUtc >= yearStart).Sum(o => o.TotalAmount);
         var totalOrders = rangeOrders.Count;
         var avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0m;
 
+        var daysInPeriod = Math.Max(1, (rangeEndDateExclusive - rangeStart.Date).Days);
+        var averageDailyRevenue = totalRevenue / daysInPeriod;
+
+        var monthsInPeriod = Math.Max(1, ((rangeEndDateExclusive.Year - rangeStart.Year) * 12) + rangeEndDateExclusive.Month - rangeStart.Month);
+        var averageMonthlyRevenue = totalRevenue / monthsInPeriod;
+
+        var peakDayRevenue = rangeOrders
+            .GroupBy(o => o.CreatedAtUtc.Date)
+            .Select(g => g.Sum(o => o.TotalAmount))
+            .DefaultIfEmpty(0m)
+            .Max();
+
         var summary = new AnalyticsSummaryDto(
-            totalRevenue, todayRevenue, monthlyRevenue, yearlyRevenue,
-            totalOrders, Math.Round(avgOrderValue, 2), currencySymbol
+            totalRevenue,
+            Math.Round(averageDailyRevenue, 2),
+            Math.Round(averageMonthlyRevenue, 2),
+            Math.Round(peakDayRevenue, 2),
+            totalOrders,
+            Math.Round(avgOrderValue, 2),
+            currencySymbol
         );
 
         // ═══ Section 2: Sales Charts ═══
         // Daily — last 7 days
-        var dailySales = Enumerable.Range(0, 7)
-            .Select(i => now.Date.AddDays(-6 + i))
+        var selectedDayCount = Math.Max(1, (rangeEndDateExclusive - rangeStart.Date).Days);
+        var dailyStart = selectedDayCount <= 31
+            ? rangeStart.Date
+            : rangeEndDateExclusive.AddDays(-31);
+        var dailyDayCount = Math.Max(1, (rangeEndDateExclusive - dailyStart).Days);
+
+        var dailySales = Enumerable.Range(0, dailyDayCount)
+            .Select(i => dailyStart.AddDays(i))
             .Select(day =>
             {
-                var dayOrders = allOrders.Where(o => o.CreatedAtUtc.Date == day).ToList();
+                var dayEnd = day.AddDays(1);
+                var dayOrders = rangeOrders.Where(o => o.CreatedAtUtc >= day && o.CreatedAtUtc < dayEnd).ToList();
                 return new DailySalesPointDto(
                     day.ToString("MMM dd"),
                     dayOrders.Sum(o => o.TotalAmount),
@@ -183,13 +213,22 @@ public class AnalyticsService : IAnalyticsService
             .ToList();
 
         // Monthly — last 12 months
-        var monthlySales = Enumerable.Range(0, 12)
+        var monthChartStart = new DateTime(rangeStart.Year, rangeStart.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var lastSelectedDay = rangeEndDateExclusive.AddDays(-1);
+        var monthChartEnd = new DateTime(lastSelectedDay.Year, lastSelectedDay.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
+        var monthCount = Math.Max(1, ((monthChartEnd.Year - monthChartStart.Year) * 12) + monthChartEnd.Month - monthChartStart.Month);
+        if (monthCount > 12)
+        {
+            monthChartStart = monthChartEnd.AddMonths(-12);
+            monthCount = 12;
+        }
+
+        var monthlySales = Enumerable.Range(0, monthCount)
             .Select(i =>
             {
-                var month = now.AddMonths(-11 + i);
-                var mStart = new DateTime(month.Year, month.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var mStart = monthChartStart.AddMonths(i);
                 var mEnd = mStart.AddMonths(1);
-                var mOrders = allOrders.Where(o => o.CreatedAtUtc >= mStart && o.CreatedAtUtc < mEnd).ToList();
+                var mOrders = rangeOrders.Where(o => o.CreatedAtUtc >= mStart && o.CreatedAtUtc < mEnd).ToList();
                 return new MonthlySalesPointDto(
                     mStart.ToString("MMM yyyy"),
                     mOrders.Sum(o => o.TotalAmount),
@@ -219,7 +258,7 @@ public class AnalyticsService : IAnalyticsService
             .ToList();
 
         // ═══ Section 4: Product Previews ═══
-        var allItemsSold = allOrders
+        var allItemsSold = rangeOrders
             .SelectMany(o => o.Items)
             .Where(i => i.ProductId.HasValue)
             .GroupBy(i => i.ProductId!.Value)
@@ -240,11 +279,16 @@ public class AnalyticsService : IAnalyticsService
             .ToList();
 
         // ═══ Section 5: Growth Percentage ═══
-        var prevMonthStart = monthStart.AddMonths(-1);
-        var prevMonthEnd = monthStart;
+        var periodLength = rangeEndExclusive - rangeStart;
+        if (periodLength <= TimeSpan.Zero)
+        {
+            periodLength = TimeSpan.FromDays(1);
+        }
+        var prevPeriodStart = rangeStart - periodLength;
+        var prevPeriodEnd = rangeStart;
 
-        var prevMonthOrders = allOrders.Where(o => o.CreatedAtUtc >= prevMonthStart && o.CreatedAtUtc < prevMonthEnd).ToList();
-        var currMonthOrders = allOrders.Where(o => o.CreatedAtUtc >= monthStart && o.CreatedAtUtc < monthStart.AddMonths(1)).ToList();
+        var prevMonthOrders = allOrders.Where(o => o.CreatedAtUtc >= prevPeriodStart && o.CreatedAtUtc < prevPeriodEnd).ToList();
+        var currMonthOrders = rangeOrders;
 
         var prevRevenue = prevMonthOrders.Sum(o => o.TotalAmount);
         var currRevenue = currMonthOrders.Sum(o => o.TotalAmount);
@@ -266,27 +310,22 @@ public class AnalyticsService : IAnalyticsService
         );
 
         // ═══ Section 6: Trending Products ═══
-        var last7Start = now.AddDays(-7);
-        var prev7Start = now.AddDays(-14);
-
-        var last7Items = allOrders
-            .Where(o => o.CreatedAtUtc >= last7Start)
+        var selectedPeriodItems = rangeOrders
             .SelectMany(o => o.Items)
             .Where(i => i.ProductId.HasValue)
             .GroupBy(i => i.ProductId!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
 
-        var prev7Items = allOrders
-            .Where(o => o.CreatedAtUtc >= prev7Start && o.CreatedAtUtc < last7Start)
+        var previousPeriodItems = prevMonthOrders
             .SelectMany(o => o.Items)
             .Where(i => i.ProductId.HasValue)
             .GroupBy(i => i.ProductId!.Value)
             .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
 
-        var trendingProducts = last7Items
+        var trendingProducts = selectedPeriodItems
             .Select(kvp =>
             {
-                var prevQty = prev7Items.GetValueOrDefault(kvp.Key, 0);
+                var prevQty = previousPeriodItems.GetValueOrDefault(kvp.Key, 0);
                 var currentQty = kvp.Value;
                 var growthPct = prevQty > 0
                     ? Math.Round(((decimal)(currentQty - prevQty) / prevQty) * 100, 2)
@@ -308,7 +347,7 @@ public class AnalyticsService : IAnalyticsService
             .ToList();
 
         // ═══ Section 7: Returning Customers ═══
-        var customerOrderCounts = allOrders
+        var customerOrderCounts = rangeOrders
             .GroupBy(o => o.UserId)
             .ToDictionary(g => g.Key, g => g.Count());
 
@@ -377,7 +416,7 @@ public class AnalyticsService : IAnalyticsService
         var recommendations = GenerateRecommendations(
             trendingProducts, lowStockProducts, ratingStats,
             productSales, currencySymbol,
-            monthlyRevenue, prevRevenue
+            currRevenue, prevRevenue
         );
 
         return new FullAnalyticsDto(
@@ -460,7 +499,7 @@ public class AnalyticsService : IAnalyticsService
             {
                 recs.Add(new AiRecommendationDto(
                     "sales_down",
-                    $"Monthly revenue decreased by {Math.Abs(revChange):F0}% compared to last month. Consider running promotions.",
+                    $"Revenue decreased by {Math.Abs(revChange):F0}% compared to the previous period. Consider running promotions.",
                     null,
                     revChange
                 ));

@@ -30,7 +30,7 @@ public static class OrderGroupHelper
     public static GroupedOrderDto CreateGroupedOrderDto(
         IReadOnlyCollection<Order> orders,
         IReadOnlyDictionary<string, ShopSummary> shopsByUserId,
-        IReadOnlyDictionary<string, (double? Latitude, double? Longitude)> coordinatesByUserId,
+        IReadOnlyDictionary<string, (double? Latitude, double? Longitude, string? Country)> coordinatesByUserId,
         DeliveryJob? deliveryJob = null)
     {
         var orderedOrders = orders
@@ -46,6 +46,7 @@ public static class OrderGroupHelper
         {
             var storeCoords = coordinatesByUserId.GetValueOrDefault(order.StoreUserId);
             var shop = shopsByUserId.GetValueOrDefault(order.StoreUserId);
+            var currencyCode = CurrencyHelper.GetCurrencyCode(storeCoords.Country);
 
             return new GroupedOrderStoreDto(
                 order.Id,
@@ -62,8 +63,10 @@ public static class OrderGroupHelper
                     item.Product?.Name ?? string.Empty,
                     item.Quantity,
                     item.UnitPrice,
-                    item.Product?.StoreUserId ?? order.StoreUserId
-                )).ToList()
+                    item.Product?.StoreUserId ?? order.StoreUserId,
+                    currencyCode
+                )).ToList(),
+                currencyCode
             );
         }).ToList();
 

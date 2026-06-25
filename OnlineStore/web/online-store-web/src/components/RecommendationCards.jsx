@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { formatPrice as formatPriceUtil } from '../utils/formatPrice.js';
 import './RecommendationCards.css';
 
 /**
@@ -56,12 +57,10 @@ function deduplicateProducts(products, seenIds) {
 }
 
 /**
- * Formats price with dollar sign and 2 decimal places.
+ * Formats price with currency-specific formatting.
  */
-function formatPrice(price) {
-  const num = typeof price === 'string' ? parseFloat(price) : price;
-  if (isNaN(num)) return '$0.00';
-  return `$${num.toFixed(2)}`;
+function formatPrice(price, currencyCode) {
+  return formatPriceUtil(price, currencyCode);
 }
 
 /**
@@ -165,7 +164,7 @@ function ProductCard({ product, onAddToCart, onNavigateProduct, showTrendingBadg
         <p className="rec-card-name">{name}</p>
         {categoryName && <p className="rec-card-category">{categoryName}</p>}
         <div className="rec-card-price-row">
-          <span className="rec-card-price">{formatPrice(price)}</span>
+          <span className="rec-card-price">{formatPrice(price, product.CurrencyCode || product.currencyCode)}</span>
           <span className={`rec-card-stock ${stockStatus.className}`}>{stockStatus.label}</span>
         </div>
 

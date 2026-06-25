@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../apiClient.js'
+import { formatPrice } from '../utils/formatPrice.js'
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js'
 import Skeleton from '../components/Skeleton.jsx'
 
@@ -66,10 +67,10 @@ export default function StoreOrdersPage({ onBack }) {
                                 <span style={{ fontSize: '12px', fontWeight: '600', color: statusColor(o.status), background: `${statusColor(o.status)}15`, padding: '4px 10px', borderRadius: '12px' }}>{t(o.status)}</span>
                             </div>
                             <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                                {o.items.map(i => <div key={i.id}>{i.productName} × {i.quantity} @ ${i.unitPrice.toFixed(2)}</div>)}
+                                {o.items.map(i => <div key={i.id}>{i.productName} × {i.quantity} @ {formatPrice(i.unitPrice, i.currencyCode)}</div>)}
                             </div>
                             <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{t('Total:')} ${o.totalAmount.toFixed(2)}</span>
+                                <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{t('Total:')} {formatPrice(o.totalAmount, o.currencyCode)}</span>
                                 {nextAction(o.status) && (
                                     <button onClick={() => updateStatus(o.id, nextAction(o.status))}
                                         className="primary">

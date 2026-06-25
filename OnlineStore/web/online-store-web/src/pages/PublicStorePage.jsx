@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../apiClient.js'
+import { formatPrice } from '../utils/formatPrice.js'
 import './PublicStorePage.css'
 
 const MapPinIcon = () => (
@@ -152,7 +153,7 @@ export default function PublicStorePage({ storeUserId, onBack, onSelectProduct, 
                                 <h3 className="p-name">{product.name}</h3>
                                 {product.description && <p className="p-desc">{product.description}</p>}
                                 <div className="p-price">
-                                    ${(product.price || 0).toFixed(2)}
+                                    {formatPrice(product.price, product.currencyCode)}
                                 </div>
                             </div>
                         ))}

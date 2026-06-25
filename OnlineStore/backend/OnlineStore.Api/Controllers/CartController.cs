@@ -31,8 +31,8 @@ public class CartController : ControllerBase
         if (userId == null) return Unauthorized();
 
         var cart = await GetOrCreateCart(userId);
-        var (storeNames, storeCities) = await GetStoreInfo(cart);
-        return Ok(MapCartDto(cart, storeNames, storeCities));
+        var (storeNames, storeCities, storeCountries) = await GetStoreInfo(cart);
+        return Ok(MapCartDto(cart, storeNames, storeCities, storeCountries));
     }
 
     [HttpPost("items")]
@@ -51,8 +51,8 @@ public class CartController : ControllerBase
 
         // Reload cart to reflect changes
         var cart = await GetOrCreateCart(userId);
-        var (storeNames, storeCities) = await GetStoreInfo(cart);
-        return Ok(MapCartDto(cart, storeNames, storeCities));
+        var (storeNames, storeCities, storeCountries) = await GetStoreInfo(cart);
+        return Ok(MapCartDto(cart, storeNames, storeCities, storeCountries));
     }
 
     [HttpPut("items/{productId:int}")]
@@ -70,8 +70,8 @@ public class CartController : ControllerBase
 
         // Reload cart to get updated state with product data
         var cart = await GetOrCreateCart(userId);
-        var (storeNames, storeCities) = await GetStoreInfo(cart);
-        return Ok(MapCartDto(cart, storeNames, storeCities));
+        var (storeNames, storeCities, storeCountries) = await GetStoreInfo(cart);
+        return Ok(MapCartDto(cart, storeNames, storeCities, storeCountries));
     }
 
     [HttpDelete("items/{productId:int}")]
@@ -90,8 +90,8 @@ public class CartController : ControllerBase
             await _db.SaveChangesAsync();
         }
 
-        var (storeNames, storeCities) = await GetStoreInfo(cart);
-        return Ok(MapCartDto(cart, storeNames, storeCities));
+        var (storeNames, storeCities, storeCountries) = await GetStoreInfo(cart);
+        return Ok(MapCartDto(cart, storeNames, storeCities, storeCountries));
     }
 
     [HttpDelete]
@@ -132,27 +132,37 @@ public class CartController : ControllerBase
         return cart;
     }
 
-    private CartDto MapCartDto(Cart cart, Dictionary<string, string>? storeNames = null, Dictionary<string, string?>? storeCities = null)
+    private CartDto MapCartDto(
+        Cart cart,
+        Dictionary<string, string>? storeNames = null,
+        Dictionary<string, string?>? storeCities = null,
+        Dictionary<string, string?>? storeCountries = null)
     {
-        var items = cart.Items.Select(i => new CartItemDto(
-            i.ProductId,
-            i.Product?.Name ?? "Unknown Product",
-            i.Product?.ImageUrl,
-            i.Product?.Price ?? 0,
-            i.Quantity,
-            i.Product?.StoreUserId ?? "",
-            i.Product?.StoreUserId != null && storeNames != null
-                ? storeNames.GetValueOrDefault(i.Product.StoreUserId)
-                : null,
-            i.Product?.StoreUserId != null && storeCities != null
-                ? storeCities.GetValueOrDefault(i.Product.StoreUserId)
-                : null
-        )).ToList();
+        var items = cart.Items.Select(i => {
+            var storeUserId = i.Product?.StoreUserId ?? "";
+            var country = storeCountries?.GetValueOrDefault(storeUserId);
+            var currencyCode = Helpers.CurrencyHelper.GetCurrencyCode(country);
+            return new CartItemDto(
+                i.ProductId,
+                i.Product?.Name ?? "Unknown Product",
+                i.Product?.ImageUrl,
+                i.Product?.Price ?? 0,
+                i.Quantity,
+                storeUserId,
+                i.Product?.StoreUserId != null && storeNames != null
+                    ? storeNames.GetValueOrDefault(i.Product.StoreUserId)
+                    : null,
+                i.Product?.StoreUserId != null && storeCities != null
+                    ? storeCities.GetValueOrDefault(i.Product.StoreUserId)
+                    : null,
+                currencyCode
+            );
+        }).ToList();
 
         return new CartDto(items, items.Sum(i => i.Price * i.Quantity));
     }
 
-    private async Task<(Dictionary<string, string> Names, Dictionary<string, string?> Cities)> GetStoreInfo(Cart cart)
+    private async Task<(Dictionary<string, string> Names, Dictionary<string, string?> Cities, Dictionary<string, string?> Countries)> GetStoreInfo(Cart cart)
     {
         var storeUserIds = cart.Items
             .Where(i => i.Product?.StoreUserId != null)
@@ -161,18 +171,22 @@ public class CartController : ControllerBase
             .ToList();
 
         if (!storeUserIds.Any())
-            return (new Dictionary<string, string>(), new Dictionary<string, string?>());
+            return (new Dictionary<string, string>(), new Dictionary<string, string?>(), new Dictionary<string, string?>());
 
         var names = await _db.ShopProfiles
             .AsNoTracking()
             .Where(s => storeUserIds.Contains(s.UserId))
             .ToDictionaryAsync(s => s.UserId, s => s.ShopName);
 
-        var cities = await _db.Users
+        var usersInfo = await _db.Users
             .AsNoTracking()
             .Where(u => storeUserIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.City);
+            .Select(u => new { u.Id, u.City, u.Country })
+            .ToDictionaryAsync(u => u.Id);
 
-        return (names, cities);
+        var cities = usersInfo.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.City);
+        var countries = usersInfo.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Country);
+
+        return (names, cities, countries);
     }
 }
