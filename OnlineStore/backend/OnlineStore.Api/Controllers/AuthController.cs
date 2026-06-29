@@ -42,8 +42,15 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> SendCode(SendCodeRequest req)
     {
         var code = _codeStore.StoreCode($"verify:{req.Email}", req.Email);
-        await _email.SendVerificationEmailAsync(req.Email, code);
-        return Ok(new MessageResponse("Verification code sent to your email."));
+        try
+        {
+            await _email.SendVerificationEmailAsync(req.Email, code);
+            return Ok(new MessageResponse("Verification code sent to your email."));
+        }
+        catch (System.Exception ex)
+        {
+            return BadRequest(new { error = $"Failed to send verification email. (For testing, your code is: {code}). Error: {ex.Message}" });
+        }
     }
 
     // ──────────────── Registration ────────────────
@@ -211,9 +218,15 @@ public class AuthController : ControllerBase
         var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
         var code = _codeStore.StoreCode($"reset:{req.Email}", resetToken);
 
-        await _email.SendPasswordResetEmailAsync(req.Email, code);
-
-        return Ok(new MessageResponse("If an account with that email exists, a reset code has been sent."));
+        try
+        {
+            await _email.SendPasswordResetEmailAsync(req.Email, code);
+            return Ok(new MessageResponse("If an account with that email exists, a reset code has been sent."));
+        }
+        catch (System.Exception ex)
+        {
+            return BadRequest(new { error = $"Failed to send password reset email. (For testing, your reset code is: {code}). Error: {ex.Message}" });
+        }
     }
 
     [HttpPost("reset-password")]

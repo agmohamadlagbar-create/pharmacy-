@@ -768,11 +768,11 @@
   "Weekly top 5 products ranking": "Weekly top 5 products ranking",
   "AI Business Insights": "AI Business Insights",
   "AI-powered business recommendations": "AI-powered business recommendations",
-  "rec_demand_increased": "rec_demand_increased",
-  "rec_low_stock": "rec_low_stock",
-  "rec_excellent_ratings": "rec_excellent_ratings",
-  "rec_low_ratings": "rec_low_ratings",
-  "rec_revenue_decreased": "rec_revenue_decreased",
-  "rec_revenue_grew": "rec_revenue_grew",
-  "rec_best_seller": "rec_best_seller"
+  "rec_demand_increased": "\"{{name}}\" demand increased by {{percent}}% in the last 7 days. Consider increasing stock.",
+  "rec_low_stock": "\"{{name}}\" has very low stock ({{remaining}} remaining). Restock soon to avoid lost sales.",
+  "rec_excellent_ratings": "\"{{name}}\" has excellent ratings ({{rating}}★ from {{reviews}} reviews). Feature it prominently.",
+  "rec_low_ratings": "\"{{name}}\" has low ratings ({{rating}}★). Consider improving quality or updating the product.",
+  "rec_revenue_decreased": "Revenue decreased by {{percent}}% compared to the previous period. Consider running promotions.",
+  "rec_revenue_grew": "Monthly revenue grew by {{percent}}%! Great performance — consider expanding your product range.",
+  "rec_best_seller": "\"{{name}}\" is your best seller with {{units}} units sold ({{currency}}{{revenue}} revenue). Ensure adequate stock."
 }
