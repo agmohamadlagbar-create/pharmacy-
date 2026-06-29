@@ -123,11 +123,11 @@ export default function NotificationsPage({ onBack }) {
                             </div>
                         </div>
                     ))}
-                    
+
                     {isLoading && !initialLoad && Array.from({ length: 3 }).map((_, i) => <NotificationSkeleton key={`shimmer-${i}`} />)}
-                    
+
                     {hasMore && !initialLoad && <div ref={sentinelRef} style={{ height: '1px' }} />}
-                    
+
                     {!hasMore && notifications.length > 0 && (
                         <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: '13px' }}>{t('No more notifications')}</div>
                     )}

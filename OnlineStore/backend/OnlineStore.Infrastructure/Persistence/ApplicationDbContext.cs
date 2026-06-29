@@ -29,6 +29,8 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
     public DbSet<AiMessage> AiMessages => Set<AiMessage>();
     public DbSet<AiToolCall> AiToolCalls => Set<AiToolCall>();
+    public DbSet<StoreTelegramSetting> StoreTelegramSettings => Set<StoreTelegramSetting>();
+    public DbSet<StoreTelegramNotificationSetting> StoreTelegramNotificationSettings => Set<StoreTelegramNotificationSetting>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -287,6 +289,29 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
             b.HasIndex(x => new { x.ConversationId, x.StartedAtUtc });
             b.HasIndex(x => new { x.ConversationId, x.ToolCallId }).IsUnique();
             b.ToTable(t => t.HasCheckConstraint("CK_AiToolCalls_Status", "[Status] IN ('Requested','Succeeded','Failed')"));
+        });
+
+        // StoreTelegramSetting
+        builder.Entity<StoreTelegramSetting>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.StoreUserId).HasMaxLength(450).IsRequired();
+            b.HasIndex(x => x.StoreUserId).IsUnique();
+        });
+
+        // StoreTelegramNotificationSetting
+        builder.Entity<StoreTelegramNotificationSetting>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.StoreUserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.NotificationType).HasMaxLength(100).IsRequired();
+            b.Property(x => x.Frequency).HasMaxLength(50).HasDefaultValue("Daily");
+            b.Property(x => x.TimeZone).HasMaxLength(100).HasDefaultValue("UTC");
+            b.Property(x => x.Hour).HasDefaultValue(9);
+            b.Property(x => x.Minute).HasDefaultValue(0);
+            b.HasIndex(x => x.StoreUserId);
+            b.HasIndex(x => new { x.StoreUserId, x.NotificationType }).IsUnique();
+            b.HasIndex(x => new { x.Enabled, x.NotificationType });
         });
     }
 

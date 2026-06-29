@@ -187,9 +187,39 @@ public class ProductsController : ControllerBase
         var userId = _userManager.GetUserId(User);
         if (userId is null) return Unauthorized();
 
-        var product = await _db.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == id);
+        var product = await _db.Products.AsTracking().Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == id);
         if (product is null) return NotFound();
         if (product.StoreUserId != userId) return Forbid();
+
+        // Check what fields actually changed (excluding StockQuantity)
+        bool nameChanged = req.Name is not null && req.Name != product.Name;
+        bool descriptionChanged = req.Description is not null && req.Description != product.Description;
+        bool priceChanged = req.Price.HasValue && req.Price.Value != product.Price;
+        bool imageUrlChanged = req.ImageUrl is not null && req.ImageUrl != product.ImageUrl;
+        bool categoryChanged = req.CategoryId.HasValue && req.CategoryId.Value != product.CategoryId;
+
+        bool additionalImagesChanged = false;
+        if (req.AdditionalImageUrls is not null)
+        {
+            var oldImages = product.AdditionalImageUrls ?? new List<string>();
+            var newImages = req.AdditionalImageUrls;
+            if (oldImages.Count != newImages.Count || !System.Linq.Enumerable.SequenceEqual(oldImages, newImages))
+            {
+                additionalImagesChanged = true;
+            }
+        }
+
+        bool contentChanged = nameChanged || descriptionChanged || priceChanged || imageUrlChanged || categoryChanged || additionalImagesChanged;
+
+        Console.WriteLine($"DEBUG UPDATE: id={id}");
+        Console.WriteLine($"  nameChanged={nameChanged} (req={req.Name}, prod={product.Name})");
+        Console.WriteLine($"  descriptionChanged={descriptionChanged} (req={req.Description}, prod={product.Description})");
+        Console.WriteLine($"  priceChanged={priceChanged} (req={req.Price}, prod={product.Price})");
+        Console.WriteLine($"  imageUrlChanged={imageUrlChanged} (req={req.ImageUrl}, prod={product.ImageUrl})");
+        Console.WriteLine($"  categoryChanged={categoryChanged} (req={req.CategoryId}, prod={product.CategoryId})");
+        Console.WriteLine($"  additionalImagesChanged={additionalImagesChanged}");
+        Console.WriteLine($"  contentChanged={contentChanged}");
+        Console.WriteLine($"  oldStatus={product.Status}");
 
         if (req.Name is not null) product.Name = req.Name;
         if (req.Description is not null) product.Description = req.Description;
@@ -209,11 +239,13 @@ public class ProductsController : ControllerBase
             product.Category = cat;
         }
 
-        // Re-approval required if it was Approved
-        if (product.Status == ProductStatus.Approved)
+        // Re-approval required if details (other than quantity) were changed
+        if (contentChanged)
+        {
             product.Status = ProductStatus.Pending;
+            product.RejectionReason = null; // Clear rejection reason on edit
+        }
 
-        product.RejectionReason = null; // Clear rejection reason on edit
         product.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

@@ -125,8 +125,12 @@ export default function StoreProductsPage({ onBack }) {
                 stockQuantity: parseInt(form.stockQuantity || '0')
             }
             if (editingId) {
-                await api.put(`/api/products/${editingId}`, body)
-                setMsg({ type: 'ok', text: t('Product updated (pending re-approval)') })
+                const { data } = await api.put(`/api/products/${editingId}`, body)
+                if (data && data.status === 'Approved') {
+                    setMsg({ type: 'ok', text: t('Product updated successfully!') })
+                } else {
+                    setMsg({ type: 'ok', text: t('Product updated (pending re-approval)') })
+                }
             } else {
                 await api.post('/api/products', body)
                 setMsg({ type: 'ok', text: t('Product created (pending approval)') })
@@ -166,8 +170,9 @@ export default function StoreProductsPage({ onBack }) {
             (async () => {
                 try {
                     const { data } = await api.get(`/api/products/mine?productId=${editProductId}`)
-                    if (data && data.items && data.items.length > 0) {
-                        const prod = data.items[0]
+                    const items = data && (data.data || data.items)
+                    if (items && items.length > 0) {
+                        const prod = items[0]
                         startEdit(prod)
                     }
                     // Clear the parameter so it doesn't open again on subsequent renders
@@ -180,6 +185,33 @@ export default function StoreProductsPage({ onBack }) {
             })()
         }
     }, [editProductId, setSearchParams, searchParams])
+
+    // Scroll to top on mount and when form is opened
+    useEffect(() => {
+        const isJSDom = typeof window !== 'undefined' && window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes('jsdom')
+        if (!isJSDom && typeof window.scrollTo === 'function') {
+            try {
+                window.scrollTo(0, 0)
+            } catch (e) {
+                console.warn(e)
+            }
+        }
+    }, [])
+
+    useEffect(() => {
+        const isJSDom = typeof window !== 'undefined' && window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes('jsdom')
+        if (showForm && !isJSDom && typeof window.scrollTo === 'function') {
+            try {
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+            } catch (e) {
+                try {
+                    window.scrollTo(0, 0)
+                } catch (err) {
+                    console.warn(err)
+                }
+            }
+        }
+    }, [showForm])
 
     async function handleDelete(id) {
         if (!confirm(t('Delete this product?'))) return

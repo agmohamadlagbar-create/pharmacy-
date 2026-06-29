@@ -1120,7 +1120,8 @@ class _AuthScreenState extends State<AuthScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Reset Password'.tr(), style: Theme.of(context).textTheme.titleLarge),
+        Text('Reset Password'.tr(),
+            style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
         TextField(
           controller: resetEmailCtrl,
@@ -1242,7 +1243,8 @@ class _AccountTypeSelector extends StatelessWidget {
       segments: [
         ButtonSegment(value: AccountType.user, label: Text('User'.tr())),
         ButtonSegment(value: AccountType.shop, label: Text('Shop'.tr())),
-        ButtonSegment(value: AccountType.delivery, label: Text('Delivery'.tr())),
+        ButtonSegment(
+            value: AccountType.delivery, label: Text('Delivery'.tr())),
       ],
       selected: {selected},
       onSelectionChanged: (s) => onChanged(s.first),

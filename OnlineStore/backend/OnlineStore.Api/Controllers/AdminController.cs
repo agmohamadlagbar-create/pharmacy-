@@ -87,7 +87,7 @@ public class AdminController : ControllerBase
     [HttpPut("products/{id:int}/approve")]
     public async Task<IActionResult> ApproveProduct(int id)
     {
-        var product = await _db.Products.FindAsync(id);
+        var product = await _db.Products.AsTracking().FirstOrDefaultAsync(p => p.Id == id);
         if (product is null) return NotFound();
 
         product.Status = ProductStatus.Approved;
@@ -107,7 +107,7 @@ public class AdminController : ControllerBase
     [HttpPut("products/{id:int}/reject")]
     public async Task<IActionResult> RejectProduct(int id, AdminRejectRequest req)
     {
-        var product = await _db.Products.FindAsync(id);
+        var product = await _db.Products.AsTracking().FirstOrDefaultAsync(p => p.Id == id);
         if (product is null) return NotFound();
 
         product.Status = ProductStatus.Rejected;
@@ -227,7 +227,7 @@ public class AdminController : ControllerBase
     [HttpPut("products/{id:int}")]
     public async Task<ActionResult<ProductDto>> UpdateProduct(int id, AdminUpdateProductRequest req)
     {
-        var product = await _db.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == id);
+        var product = await _db.Products.AsTracking().Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == id);
         if (product is null) return NotFound();
 
         if (req.Name is not null) product.Name = req.Name;
@@ -385,7 +385,7 @@ public class AdminController : ControllerBase
     [HttpPost("delivery/{jobId:int}/assign")]
     public async Task<IActionResult> AssignDelivery(int jobId, AssignDeliveryRequest req)
     {
-        var job = await _db.DeliveryJobs.Include(j => j.Order).FirstOrDefaultAsync(j => j.Id == jobId);
+        var job = await _db.DeliveryJobs.AsTracking().Include(j => j.Order).FirstOrDefaultAsync(j => j.Id == jobId);
         if (job is null) return NotFound();
 
         var driver = await _userManager.FindByIdAsync(req.DeliveryUserId);

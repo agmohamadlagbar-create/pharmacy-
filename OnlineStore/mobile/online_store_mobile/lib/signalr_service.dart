@@ -11,15 +11,19 @@ class SignalRService {
 
   HubConnection? _connection;
   final _statusController = StreamController<Map<String, dynamic>>.broadcast();
-  final _locationController = StreamController<Map<String, dynamic>>.broadcast();
+  final _locationController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<Map<String, dynamic>> get statusUpdates => _statusController.stream;
-  Stream<Map<String, dynamic>> get locationUpdates => _locationController.stream;
+  Stream<Map<String, dynamic>> get locationUpdates =>
+      _locationController.stream;
 
-  HubConnectionState get state => _connection?.state ?? HubConnectionState.Disconnected;
+  HubConnectionState get state =>
+      _connection?.state ?? HubConnectionState.Disconnected;
 
   Future<void> connect() async {
-    if (_connection != null && _connection!.state != HubConnectionState.Disconnected) {
+    if (_connection != null &&
+        _connection!.state != HubConnectionState.Disconnected) {
       return;
     }
 
@@ -28,11 +32,9 @@ class SignalRService {
     if (token == null) return;
 
     final hubUrl = '${Api.baseUrl}/hubs/tracking?access_token=$token';
-    
-    _connection = HubConnectionBuilder()
-        .withUrl(hubUrl)
-        .withAutomaticReconnect()
-        .build();
+
+    _connection =
+        HubConnectionBuilder().withUrl(hubUrl).withAutomaticReconnect().build();
 
     _connection!.on('order:status_updated', (arguments) {
       if (arguments != null && arguments.isNotEmpty) {
@@ -69,7 +71,8 @@ class SignalRService {
 
     if (_connection?.state == HubConnectionState.Connected) {
       try {
-        await _connection!.invoke('JoinGroupedOrderGroup', args: [orderGroupId]);
+        await _connection!
+            .invoke('JoinGroupedOrderGroup', args: [orderGroupId]);
         if (kDebugMode) print('Joined group: order_group_$orderGroupId');
       } catch (e) {
         if (kDebugMode) print('Error joining group: $e');
@@ -80,7 +83,8 @@ class SignalRService {
   Future<void> leaveGroupedOrderGroup(String orderGroupId) async {
     if (_connection?.state == HubConnectionState.Connected) {
       try {
-        await _connection!.invoke('LeaveGroupedOrderGroup', args: [orderGroupId]);
+        await _connection!
+            .invoke('LeaveGroupedOrderGroup', args: [orderGroupId]);
         if (kDebugMode) print('Left group: order_group_$orderGroupId');
       } catch (e) {
         if (kDebugMode) print('Error leaving group: $e');
@@ -88,9 +92,11 @@ class SignalRService {
     }
   }
 
-  Future<void> sendGroupLocation(String orderGroupId, double lat, double lng) async {
+  Future<void> sendGroupLocation(
+      String orderGroupId, double lat, double lng) async {
     if (_connection?.state == HubConnectionState.Connected) {
-      await _connection!.invoke('SendGroupLocation', args: [orderGroupId, lat, lng]);
+      await _connection!
+          .invoke('SendGroupLocation', args: [orderGroupId, lat, lng]);
     }
   }
 }

@@ -37,7 +37,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('${'Error:'.tr()} $e'), backgroundColor: Colors.redAccent),
+              content: Text('${'Error:'.tr()} $e'),
+              backgroundColor: Colors.redAccent),
         );
       }
     }
@@ -57,7 +58,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     children: [
                       Icon(Icons.notifications_none_rounded,
                           size: 64,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.3)),
                       const SizedBox(height: 12),
                       Text('No notifications yet.'.tr(),
                           style: const TextStyle(color: Colors.grey)),
@@ -85,7 +87,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           leading: CircleAvatar(
                             backgroundColor: isRead
                                 ? theme.colorScheme.surfaceContainerHighest
-                                : theme.colorScheme.primary.withValues(alpha: 0.15),
+                                : theme.colorScheme.primary
+                                    .withValues(alpha: 0.15),
                             child: Icon(
                               isRead
                                   ? Icons.notifications_rounded
@@ -112,4 +115,3 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 }
-

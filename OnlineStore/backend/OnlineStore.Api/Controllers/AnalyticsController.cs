@@ -89,7 +89,8 @@ public class AnalyticsController : ControllerBase
     [HttpGet("reports/monthly/pdf")]
     public async Task<IActionResult> DownloadMonthlyPdf(
         [FromQuery] int? year,
-        [FromQuery] int? month)
+        [FromQuery] int? month,
+        [FromQuery] string? lang)
     {
         var userId = User.GetAuthenticatedUserId();
         if (userId is null) return Unauthorized();
@@ -103,14 +104,16 @@ public class AnalyticsController : ControllerBase
 
         var shopName = await GetShopNameAsync(userId);
         var report = await _analytics.GetMonthlyReportAsync(userId, reportYear, reportMonth);
-        var pdf = _reportExport.GenerateMonthlyPdf(report, shopName);
+        var pdf = _reportExport.GenerateMonthlyPdf(report, shopName, lang ?? "en");
 
         return File(pdf, "application/pdf", $"MonthlySalesReport_{reportYear}_{reportMonth:D2}.pdf");
     }
 
     /// <summary>Download yearly report as PDF.</summary>
     [HttpGet("reports/yearly/pdf")]
-    public async Task<IActionResult> DownloadYearlyPdf([FromQuery] int? year)
+    public async Task<IActionResult> DownloadYearlyPdf(
+        [FromQuery] int? year,
+        [FromQuery] string? lang)
     {
         var userId = User.GetAuthenticatedUserId();
         if (userId is null) return Unauthorized();
@@ -118,7 +121,7 @@ public class AnalyticsController : ControllerBase
         var reportYear = year ?? DateTime.UtcNow.Year;
         var shopName = await GetShopNameAsync(userId);
         var report = await _analytics.GetYearlyReportAsync(userId, reportYear);
-        var pdf = _reportExport.GenerateYearlyPdf(report, shopName);
+        var pdf = _reportExport.GenerateYearlyPdf(report, shopName, lang ?? "en");
 
         return File(pdf, "application/pdf", $"YearlySalesReport_{reportYear}.pdf");
     }
@@ -131,7 +134,8 @@ public class AnalyticsController : ControllerBase
     [HttpGet("reports/monthly/excel")]
     public async Task<IActionResult> DownloadMonthlyExcel(
         [FromQuery] int? year,
-        [FromQuery] int? month)
+        [FromQuery] int? month,
+        [FromQuery] string? lang)
     {
         var userId = User.GetAuthenticatedUserId();
         if (userId is null) return Unauthorized();
@@ -145,7 +149,7 @@ public class AnalyticsController : ControllerBase
 
         var shopName = await GetShopNameAsync(userId);
         var report = await _analytics.GetMonthlyReportAsync(userId, reportYear, reportMonth);
-        var excel = _reportExport.GenerateMonthlyExcel(report, shopName);
+        var excel = _reportExport.GenerateMonthlyExcel(report, shopName, lang ?? "en");
 
         return File(excel,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -154,7 +158,9 @@ public class AnalyticsController : ControllerBase
 
     /// <summary>Download yearly report as Excel.</summary>
     [HttpGet("reports/yearly/excel")]
-    public async Task<IActionResult> DownloadYearlyExcel([FromQuery] int? year)
+    public async Task<IActionResult> DownloadYearlyExcel(
+        [FromQuery] int? year,
+        [FromQuery] string? lang)
     {
         var userId = User.GetAuthenticatedUserId();
         if (userId is null) return Unauthorized();
@@ -162,7 +168,7 @@ public class AnalyticsController : ControllerBase
         var reportYear = year ?? DateTime.UtcNow.Year;
         var shopName = await GetShopNameAsync(userId);
         var report = await _analytics.GetYearlyReportAsync(userId, reportYear);
-        var excel = _reportExport.GenerateYearlyExcel(report, shopName);
+        var excel = _reportExport.GenerateYearlyExcel(report, shopName, lang ?? "en");
 
         return File(excel,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

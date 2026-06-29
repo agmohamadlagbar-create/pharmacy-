@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { api, setAuthToken } from '../apiClient.js'
 import Spline from '@splinetool/react-spline'
+import CountryAutocomplete from '../components/CountryAutocomplete.jsx'
 
 function Typewriter({ text, speed = 80, delay = 2500 }) {
   const [displayedText, setDisplayedText] = useState('')
@@ -116,7 +117,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
   const [fullName, setFullName] = useState('')
   const [shopName, setShopName] = useState('')
   const [location, setLocation] = useState('')
-  const [country, setCountry] = useState('')
+  const [country, setCountry] = useState({ name: '', code: '' })
   const [storeType, setStoreType] = useState('Restaurant')
   const [code, setCode] = useState('')
   const [phone, setPhone] = useState('')
@@ -148,7 +149,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
 
     if (isSignup) {
       if (!code.trim()) return t("Verification code is required. Click 'Get Code' first.")
-      if (!country.trim()) return t('Country is required')
+      if (!country.code) return t('Please select a valid country from the list.')
       if (isShop) {
         if (!shopName.trim()) return t('Shop name is required')
       }
@@ -197,11 +198,11 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
         res = await api.post('/api/auth/login', { email, password })
       } else {
         if (isShop) {
-          res = await api.post('/api/auth/register-shop', { email, password, shopName, storeType, country, code })
+          res = await api.post('/api/auth/register-shop', { email, password, shopName, storeType, country: country.name, code })
         } else if (isDelivery) {
-          res = await api.post('/api/auth/register-delivery', { email, password, fullName: fullName || null, country, phone: phone || null, vehicleInfo: vehicleInfo || null, code })
+          res = await api.post('/api/auth/register-delivery', { email, password, fullName: fullName || null, country: country.name, phone: phone || null, vehicleInfo: vehicleInfo || null, code })
         } else {
-          res = await api.post('/api/auth/register-user', { email, password, fullName: fullName || null, country, code })
+          res = await api.post('/api/auth/register-user', { email, password, fullName: fullName || null, country: country.name, code })
         }
       }
 
@@ -381,7 +382,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
                 </div>
                 <div className="field">
                   <label>{t('Country *')}</label>
-                  <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder={t('e.g. Iraq, Turkey...')} required />
+                  <CountryAutocomplete value={country.name} onChange={(c) => setCountry(c)} placeholder={t('e.g. Iraq, Turkey...')} required />
                 </div>
               </>
             )}
@@ -394,7 +395,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
                 </div>
                 <div className="field">
                   <label>Country *</label>
-                  <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. Iraq, Turkey..." required />
+                  <CountryAutocomplete value={country.name} onChange={(c) => setCountry(c)} placeholder="e.g. Iraq, Turkey..." required />
                 </div>
                 <div className="field">
                   <label>Store Type</label>
@@ -415,7 +416,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
                 </div>
                 <div className="field">
                   <label>Country *</label>
-                  <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. Iraq, Turkey..." required />
+                  <CountryAutocomplete value={country.name} onChange={(c) => setCountry(c)} placeholder="e.g. Iraq, Turkey..." required />
                 </div>
                 <div className="field">
                   <label>Phone (optional)</label>

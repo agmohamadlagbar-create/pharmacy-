@@ -96,7 +96,7 @@ public class CategoriesController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, UpdateCategoryRequest req)
     {
-        var cat = await _db.Categories.FindAsync(id);
+        var cat = await _db.Categories.AsTracking().FirstOrDefaultAsync(c => c.Id == id);
         if (cat is null) return NotFound();
         cat.Name = req.Name;
         cat.Code = string.IsNullOrWhiteSpace(req.Code)

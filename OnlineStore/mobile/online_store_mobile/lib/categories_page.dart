@@ -247,7 +247,8 @@ class _CategoriesPageState extends State<CategoriesPage> {
               padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
               decoration: const BoxDecoration(
                 color: Color(0xFFF9F5F3), // Surface color
-                border: Border(bottom: BorderSide(color: Color(0x14000000), width: 0.5)),
+                border: Border(
+                    bottom: BorderSide(color: Color(0x14000000), width: 0.5)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -259,7 +260,11 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
-                        colors: [Color(0xFFF0997B), Color(0xFFD85A30), Color(0xFF4a1b0c)],
+                        colors: [
+                          Color(0xFFF0997B),
+                          Color(0xFFD85A30),
+                          Color(0xFF4a1b0c)
+                        ],
                       ),
                     ),
                     child: RippleAvatar(
@@ -285,7 +290,8 @@ class _CategoriesPageState extends State<CategoriesPage> {
                   if (_accountType != null) ...[
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFAECE7),
                         borderRadius: BorderRadius.circular(20),
@@ -377,7 +383,6 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     Navigator.of(context).pushNamed('/favorites');
                   },
                 ),
-
                 _buildDrawerItem(
                   icon: Icons.track_changes_rounded,
                   title: 'Active Orders'.tr(),
@@ -386,7 +391,6 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     Navigator.of(context).pushNamed('/active-orders');
                   },
                 ),
-
                 _buildDrawerItem(
                   icon: Icons.local_shipping_rounded,
                   title: 'Delivered Orders'.tr(),
@@ -459,15 +463,16 @@ class _CategoriesPageState extends State<CategoriesPage> {
                         final ad = _adBanners[i];
                         final imgUrl = ad['imageUrl']?.toString() ?? '';
                         final fullUrl = imgUrl.startsWith('http')
-                                ? imgUrl
-                                : '${Api.baseUrl}$imgUrl';
+                            ? imgUrl
+                            : '${Api.baseUrl}$imgUrl';
                         return GestureDetector(
                           onTap: () => _openAdLink(ad['linkUrl']?.toString()),
                           child: Image.network(
                             fullUrl,
                             fit: BoxFit.cover,
                             width: double.infinity,
-                            cacheWidth: 800, // Optimize memory for horizontal ads
+                            cacheWidth:
+                                800, // Optimize memory for horizontal ads
                             errorBuilder: (_, __, ___) => Container(
                               color: Colors.grey.shade300,
                               child: const Center(
@@ -596,7 +601,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
                 ),
               )
             else if (_categories.isEmpty)
-               Padding(
+              Padding(
                 padding: const EdgeInsets.all(40),
                 child: Text('No categories yet.'.tr(),
                     style: const TextStyle(color: Colors.grey)),
@@ -700,7 +705,8 @@ class _CategoryCard extends StatelessWidget {
   Widget _placeholder(BuildContext ctx) {
     return Container(
       color: const Color(0xFFF0E9E6),
-      child: const Icon(Icons.category_rounded, size: 40, color: Color(0xFFA8948D)),
+      child: const Icon(Icons.category_rounded,
+          size: 40, color: Color(0xFFA8948D)),
     );
   }
 }

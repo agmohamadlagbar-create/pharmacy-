@@ -918,6 +918,102 @@ namespace OnlineStore.Infrastructure.Migrations
                     b.ToTable("ShopProfiles");
                 });
 
+            modelBuilder.Entity("OnlineStore.Domain.Entities.StoreTelegramNotificationSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Daily");
+
+                    b.Property<int>("Hour")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(9);
+
+                    b.Property<int?>("IntervalDays")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastSentAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Minute")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("NotificationType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("StoreUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasDefaultValue("UTC");
+
+                    b.Property<int?>("WeeklyDay")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreUserId");
+
+                    b.HasIndex("Enabled", "NotificationType");
+
+                    b.HasIndex("StoreUserId", "NotificationType")
+                        .IsUnique();
+
+                    b.ToTable("StoreTelegramNotificationSettings");
+                });
+
+            modelBuilder.Entity("OnlineStore.Domain.Entities.StoreTelegramSetting", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("BotConnected")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("ChatId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("ConnectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("StoreUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreUserId")
+                        .IsUnique();
+
+                    b.ToTable("StoreTelegramSettings");
+                });
+
             modelBuilder.Entity("OnlineStore.Domain.Entities.UserAddress", b =>
                 {
                     b.Property<int>("Id")

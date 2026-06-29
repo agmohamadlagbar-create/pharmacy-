@@ -161,6 +161,11 @@ builder.Services.AddScoped<OnlineStore.Api.Services.IAiOrchestratorService, Onli
 builder.Services.AddScoped<OnlineStore.Api.Services.IAnalyticsService, OnlineStore.Api.Services.AnalyticsService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IReportExportService, OnlineStore.Api.Services.ReportExportService>();
 
+// Telegram services
+builder.Services.AddHttpClient("TelegramBot");
+builder.Services.AddScoped<OnlineStore.Api.Services.ITelegramService, OnlineStore.Api.Services.TelegramService>();
+builder.Services.AddHostedService<OnlineStore.Api.Services.TelegramNotificationBackgroundService>();
+
 builder.Services.AddHttpClient<OnlineStore.Api.Services.IGroqAiService, OnlineStore.Api.Services.GroqAiService>(client =>
 {
     client.BaseAddress = new Uri("https://api.groq.com/openai/v1/");
@@ -307,85 +312,92 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<OnlineStore.Api.Hubs.TrackingHub>("/hubs/tracking");
 
 // Auto-create roles + seed Admin on startup
-using (var scope = app.Services.CreateScope())
+var isDesignTime = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name?.Contains("ef", StringComparison.OrdinalIgnoreCase) == true
+    || AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name?.Contains("Design", StringComparison.OrdinalIgnoreCase) == true);
+
+if (!isDesignTime)
 {
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    foreach (var role in new[] { "User", "Shop", "Delivery", "Admin" })
+    using (var scope = app.Services.CreateScope())
     {
-        if (!await roleManager.RoleExistsAsync(role))
-            await roleManager.CreateAsync(new IdentityRole(role));
-    }
-
-    // Seed Admin account
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-    var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL") ?? "admin@lagbar.com";
-    var adminPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD");
-
-    var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
-    if (existingAdmin == null && !string.IsNullOrWhiteSpace(adminPassword))
-    {
-        var admin = new AppUser
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        if (db.Database.ProviderName != "Microsoft.EntityFrameworkCore.Sqlite")
         {
-            UserName = adminEmail,
-            Email = adminEmail,
-            EmailConfirmed = true,
-            AccountType = OnlineStore.Domain.Entities.AccountType.Admin,
-            FullName = "LAGBAR Admin"
-        };
+            db.Database.Migrate();
+        }
 
-        var result = await userManager.CreateAsync(admin, adminPassword);
-        adminPassword = string.Empty;
-        if (result.Succeeded)
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        foreach (var role in new[] { "User", "Shop", "Delivery", "Admin" })
         {
-            await userManager.AddToRoleAsync(admin, "Admin");
-            Console.WriteLine($"✅ Admin account created: {adminEmail} / {adminPassword}");
+            if (!await roleManager.RoleExistsAsync(role))
+                await roleManager.CreateAsync(new IdentityRole(role));
+        }
+
+        // Seed Admin account
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL") ?? "admin@lagbar.com";
+        var adminPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD");
+
+        var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
+        if (existingAdmin == null && !string.IsNullOrWhiteSpace(adminPassword))
+        {
+            var admin = new AppUser
+            {
+                UserName = adminEmail,
+                Email = adminEmail,
+                EmailConfirmed = true,
+                AccountType = OnlineStore.Domain.Entities.AccountType.Admin,
+                FullName = "LAGBAR Admin"
+            };
+
+            var result = await userManager.CreateAsync(admin, adminPassword);
+            adminPassword = string.Empty;
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(admin, "Admin");
+                Console.WriteLine($"✅ Admin account created: {adminEmail} / {adminPassword}");
+            }
+            else
+            {
+                Console.WriteLine($"⚠️ Failed to create admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            }
+        }
+        else if (existingAdmin == null)
+        {
+            Console.WriteLine("Admin account seed skipped. Set SEED_ADMIN_PASSWORD to create it.");
         }
         else
         {
-            Console.WriteLine($"⚠️ Failed to create admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            Console.WriteLine($"ℹ️ Admin account already exists: {adminEmail}");
         }
-    }
-    else if (existingAdmin == null)
-    {
-        Console.WriteLine("Admin account seed skipped. Set SEED_ADMIN_PASSWORD to create it.");
-    }
-    else
-    {
-        Console.WriteLine($"ℹ️ Admin account already exists: {adminEmail}");
-    }
 
-    // Seed default categories if none exist
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    if (db.Database.ProviderName != "Microsoft.EntityFrameworkCore.Sqlite")
-    {
-        db.Database.Migrate();
-    }
-    if (!db.Categories.Any())
-    {
-        var defaultCategories = new[]
+        // Seed default categories if none exist
+        if (!db.Categories.Any())
         {
-            new OnlineStore.Domain.Entities.Category { Name = "Food", Code = "FOOD", ImageUrl = "/uploads/category_food.png" },
-            new OnlineStore.Domain.Entities.Category { Name = "Beverages", Code = "BEV", ImageUrl = "/uploads/category_beverages.png" },
-            new OnlineStore.Domain.Entities.Category { Name = "Cleaning Supplies", Code = "CLEAN", ImageUrl = "/uploads/category_cleaning.png" },
-            new OnlineStore.Domain.Entities.Category { Name = "House Needs", Code = "HOUSE", ImageUrl = "/uploads/category_house.png" },
-            new OnlineStore.Domain.Entities.Category { Name = "Electronics", Code = "ELEC", ImageUrl = "/uploads/category_electronics.png" },
-            new OnlineStore.Domain.Entities.Category { Name = "Clothing", Code = "CLOTH", ImageUrl = "/uploads/category_clothing.png" },
-        };
-        db.Categories.AddRange(defaultCategories);
-        await db.SaveChangesAsync();
-        Console.WriteLine($"✅ Seeded {defaultCategories.Length} default categories.");
-    }
-
-    // Update existing shop profiles to have a default RegionCode if null
-    var shopsToUpdate = await db.ShopProfiles.Where(s => s.RegionCode == null).ToListAsync();
-    if (shopsToUpdate.Any())
-    {
-        foreach (var shop in shopsToUpdate)
-        {
-            shop.RegionCode = "GLOBAL";
+            var defaultCategories = new[]
+            {
+                new OnlineStore.Domain.Entities.Category { Name = "Food", Code = "FOOD", ImageUrl = "/uploads/category_food.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "Beverages", Code = "BEV", ImageUrl = "/uploads/category_beverages.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "Cleaning Supplies", Code = "CLEAN", ImageUrl = "/uploads/category_cleaning.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "House Needs", Code = "HOUSE", ImageUrl = "/uploads/category_house.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "Electronics", Code = "ELEC", ImageUrl = "/uploads/category_electronics.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "Clothing", Code = "CLOTH", ImageUrl = "/uploads/category_clothing.png" },
+            };
+            db.Categories.AddRange(defaultCategories);
+            await db.SaveChangesAsync();
+            Console.WriteLine($"✅ Seeded {defaultCategories.Length} default categories.");
         }
-        await db.SaveChangesAsync();
-        Console.WriteLine($"✅ Updated {shopsToUpdate.Count} shop profiles with default RegionCode 'GLOBAL'.");
+
+        // Update existing shop profiles to have a default RegionCode if null
+        var shopsToUpdate = await db.ShopProfiles.Where(s => s.RegionCode == null).ToListAsync();
+        if (shopsToUpdate.Any())
+        {
+            foreach (var shop in shopsToUpdate)
+            {
+                shop.RegionCode = "GLOBAL";
+            }
+            await db.SaveChangesAsync();
+            Console.WriteLine($"✅ Updated {shopsToUpdate.Count} shop profiles with default RegionCode 'GLOBAL'.");
+        }
     }
 }
 

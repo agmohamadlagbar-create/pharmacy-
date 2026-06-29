@@ -14,7 +14,8 @@ class SettingsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Settings'.tr(), style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w600)),
+        title: Text('Settings'.tr(),
+            style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w600)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -24,9 +25,12 @@ class SettingsPage extends StatelessWidget {
           const SizedBox(height: 8),
           Card(
             child: SwitchListTile(
-              title: Text('Dark Mode'.tr(), style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+              title: Text('Dark Mode'.tr(),
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
               subtitle: Text(
-                isDark ? 'Dark theme is active'.tr() : 'Light theme is active'.tr(),
+                isDark
+                    ? 'Dark theme is active'.tr()
+                    : 'Light theme is active'.tr(),
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
                   color: colorScheme.onSurface.withValues(alpha: 0.5),
@@ -62,20 +66,25 @@ class SettingsPage extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Language'.tr(), style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 16)),
-                      Text('Choose your preferred language'.tr(), style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
-                      )),
+                      Text('Language'.tr(),
+                          style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w600, fontSize: 16)),
+                      Text('Choose your preferred language'.tr(),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withValues(alpha: 0.5),
+                          )),
                     ],
                   ),
                   DropdownButton<String>(
                     value: context.locale.languageCode,
                     underline: const SizedBox(),
                     items: [
-                      DropdownMenuItem(value: 'en', child: Text('English'.tr())),
+                      DropdownMenuItem(
+                          value: 'en', child: Text('English'.tr())),
                       DropdownMenuItem(value: 'ar', child: Text('Arabic'.tr())),
-                      DropdownMenuItem(value: 'tr', child: Text('Turkish'.tr())),
+                      DropdownMenuItem(
+                          value: 'tr', child: Text('Turkish'.tr())),
                     ],
                     onChanged: (String? newLanguage) {
                       if (newLanguage != null) {
@@ -104,15 +113,20 @@ class SettingsPage extends StatelessWidget {
                       color: colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.info_outline_rounded, color: colorScheme.primary),
+                    child: Icon(Icons.info_outline_rounded,
+                        color: colorScheme.primary),
                   ),
-                  title: Text('App Version'.tr(), style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
-                  subtitle: Text('1.0.0', style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
-                  )),
+                  title: Text('App Version'.tr(),
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                  subtitle: Text('1.0.0',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      )),
                 ),
-                Divider(height: 1, color: colorScheme.onSurface.withValues(alpha: 0.06)),
+                Divider(
+                    height: 1,
+                    color: colorScheme.onSurface.withValues(alpha: 0.06)),
                 ListTile(
                   leading: Container(
                     width: 40,
@@ -121,13 +135,16 @@ class SettingsPage extends StatelessWidget {
                       color: colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.store_rounded, color: colorScheme.primary),
+                    child:
+                        Icon(Icons.store_rounded, color: colorScheme.primary),
                   ),
-                  title: Text('LAGBAR SHOP', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
-                  subtitle: Text('Your one-stop marketplace'.tr(), style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
-                  )),
+                  title: Text('LAGBAR SHOP',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                  subtitle: Text('Your one-stop marketplace'.tr(),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      )),
                 ),
               ],
             ),

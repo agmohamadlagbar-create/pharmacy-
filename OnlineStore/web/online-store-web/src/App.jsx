@@ -283,7 +283,7 @@ function AppContent() {
   async function fetchCart() {
     const currentAccountType = accountType || localStorage.getItem('accountType');
     console.log('[App] fetchCart called. AccountType:', currentAccountType);
-    
+
     if (currentAccountType !== 'User') return
     try {
       const { data } = await api.get(`/api/cart?t=${Date.now()}`)
@@ -464,26 +464,26 @@ function AppContent() {
         <Route path="/login" element={
           loggedIn || isGuest ? <Navigate to="/" replace /> : (
             <div className="auth-layout">
-              <AuthPage 
+              <AuthPage
                 initialMode="Login"
-                onLoginSuccess={handleLoginSuccess} 
-                onGuestLogin={handleGuestLogin} 
-                theme={theme} 
-                toggleTheme={toggleTheme} 
+                onLoginSuccess={handleLoginSuccess}
+                onGuestLogin={handleGuestLogin}
+                theme={theme}
+                toggleTheme={toggleTheme}
               />
             </div>
           )
         } />
-        
+
         <Route path="/signup" element={
           loggedIn || isGuest ? <Navigate to="/" replace /> : (
             <div className="auth-layout">
-              <AuthPage 
+              <AuthPage
                 initialMode="Sign Up"
-                onLoginSuccess={handleLoginSuccess} 
-                onGuestLogin={handleGuestLogin} 
-                theme={theme} 
-                toggleTheme={toggleTheme} 
+                onLoginSuccess={handleLoginSuccess}
+                onGuestLogin={handleGuestLogin}
+                theme={theme}
+                toggleTheme={toggleTheme}
               />
             </div>
           )
@@ -519,7 +519,7 @@ function AppContent() {
               />
             </UserProtectedRoute>
           } />
-          
+
           <Route path="/checkout" element={
             <UserProtectedRoute loggedIn={loggedIn}>
               <CheckoutPage
@@ -649,9 +649,9 @@ function AppContent() {
         />
       )}
       {loggedIn && (
-        <AiChatWidget 
-          onCartUpdate={fetchCart} 
-          onAddToCart={() => setActiveAnimation('cart')} 
+        <AiChatWidget
+          onCartUpdate={fetchCart}
+          onAddToCart={() => setActiveAnimation('cart')}
         />
       )}
     </>
