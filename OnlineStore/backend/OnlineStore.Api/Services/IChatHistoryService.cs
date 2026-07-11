@@ -32,4 +32,7 @@ public interface IChatHistoryService
 
     /// <summary>List all conversations for a user (most recent first).</summary>
     Task<List<AiConversation>> ListConversationsAsync(string userId);
+
+    /// <summary>Get the ID of the last assistant message in a user-owned conversation.</summary>
+    Task<int?> GetLastAssistantMessageIdAsync(string userId, int conversationId);
 }

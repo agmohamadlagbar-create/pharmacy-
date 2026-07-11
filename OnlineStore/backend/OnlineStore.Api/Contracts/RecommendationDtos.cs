@@ -20,4 +20,6 @@ public class RecommendationResultDto
     public List<RecommendedProductDto> RelatedByCategory { get; set; } = new();
     public List<RecommendedProductDto> SmartUpsells { get; set; } = new();
     public List<RecommendedProductDto> BasedOnHistory { get; set; } = new();
+    public List<RecommendedProductDto> TrendingNow { get; set; } = new();
+    public List<RecommendedProductDto> Promotions { get; set; } = new();
 }

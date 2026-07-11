@@ -93,6 +93,7 @@ public class ChatHistoryService : IChatHistoryService
             try
             {
                 var conversation = await _db.AiConversations
+                    .AsTracking()
                     .FirstOrDefaultAsync(c => c.Id == conversationId && c.UserId == userId);
 
                 if (conversation is null)
@@ -170,6 +171,7 @@ public class ChatHistoryService : IChatHistoryService
         }
 
         var conversation = await _db.AiConversations
+            .AsTracking()
             .FirstOrDefaultAsync(c => c.Id == conversationId && c.UserId == userId);
 
         if (conversation is null)
@@ -214,5 +216,18 @@ public class ChatHistoryService : IChatHistoryService
             .Where(c => c.UserId == userId)
             .OrderByDescending(c => c.UpdatedAtUtc)
             .ToListAsync();
+    }
+
+    public async Task<int?> GetLastAssistantMessageIdAsync(string userId, int conversationId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return null;
+
+        var message = await _db.AiMessages
+            .AsNoTracking()
+            .Where(m => m.ConversationId == conversationId && m.UserId == userId && m.Role == "assistant")
+            .OrderByDescending(m => m.SequenceNumber)
+            .FirstOrDefaultAsync();
+
+        return message?.Id;
     }
 }

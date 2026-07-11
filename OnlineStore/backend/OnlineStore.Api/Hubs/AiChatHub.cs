@@ -156,11 +156,14 @@ public class AiChatHub : Hub
                 },
                 cancellationToken);
 
+            var messageId = await _chatHistoryService.GetLastAssistantMessageIdAsync(userId, conversationId);
+
             await writer.WriteAsync(new AiChatStreamChunkDto
             {
                 EventType = AiChatStreamEventTypes.Completed,
                 ConversationId = conversationId,
-                FullResponse = fullResponse
+                FullResponse = fullResponse,
+                MessageId = messageId
             }, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

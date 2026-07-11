@@ -1313,6 +1313,7 @@ export default function StoreAnalyticsPage({ onBack }) {
           duration={1500}
         />
       )}
+
     </div>
   )
 }

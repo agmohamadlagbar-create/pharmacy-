@@ -4,10 +4,12 @@ import { api } from '../apiClient.js'
 import { formatPrice } from '../utils/formatPrice.js'
 import Skeleton from '../components/Skeleton.jsx'
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js'
+import AiDashboardTab from '../components/AiDashboardTab.jsx'
 
 export default function AdminPage({ onBack }) {
     const { t } = useTranslation()
     const [tab, setTab] = useState('products')
+    const [aiSubTab, setAiSubTab] = useState('dashboard')
     const [categories, setCategories] = useState([])
     const [subcategories, setSubcategories] = useState({})
     const [ads, setAds] = useState([])
@@ -422,6 +424,7 @@ export default function AdminPage({ onBack }) {
                 <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>{t('Orders')}</button>
                 <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>{t('Categories')}</button>
                 <button className={tab === 'ads' ? 'active' : ''} onClick={() => setTab('ads')}>{t('Ads')}</button>
+                <button className={tab === 'ai' ? 'active' : ''} onClick={() => setTab('ai')}>AI Assistant</button>
             </div>
 
             {/* ── Products Tab ── */}
@@ -728,6 +731,11 @@ export default function AdminPage({ onBack }) {
                         <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: '13px' }}>{t('End of categories list')}</div>
                     )}
                 </div>
+            )}
+
+            {/* ── AI Assistant Tab ── */}
+            {tab === 'ai' && (
+                <AiDashboardTab />
             )}
 
             {/* ── Ads Tab (no pagination per user request) ── */}

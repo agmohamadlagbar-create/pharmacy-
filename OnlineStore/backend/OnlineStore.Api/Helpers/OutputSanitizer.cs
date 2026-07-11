@@ -17,12 +17,19 @@ public static partial class OutputSanitizer
     [GeneratedRegex(@"\{[^{}]*""[A-Za-z]+"":\s*(\d+|null|true|false)[^{}]*\}")]
     private static partial Regex JsonObjectLeakRegex();
 
+    // Match product ID leaks (e.g. "Product ID: 15", "product_id=15", "productId 15")
+    [GeneratedRegex(@"\b(Product\s*ID|productId|product_id)\s*[:=]?\s*\d+\b", RegexOptions.IgnoreCase)]
+    private static partial Regex ProductIdLeakRegex();
+
     public static string Sanitize(string input)
     {
         if (string.IsNullOrWhiteSpace(input))
             return input;
 
         var result = input;
+
+        // Remove product ID leaks
+        result = ProductIdLeakRegex().Replace(result, "");
 
         // Remove leaked function-call syntax
         result = FunctionLeakRegex().Replace(result, "");

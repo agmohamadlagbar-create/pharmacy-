@@ -19,7 +19,7 @@ public class TelegramNotificationBackgroundService : BackgroundService
     private static readonly HashSet<string> ScheduledTypes = new()
     {
         "DailyIncome", "WeeklyReport", "MonthlyReport",
-        "TopProducts", "AiInsights"
+        "TopProducts", "AiInsights", "AiWeeklyReport"
     };
 
     public TelegramNotificationBackgroundService(
@@ -58,6 +58,7 @@ public class TelegramNotificationBackgroundService : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var telegramService = scope.ServiceProvider.GetRequiredService<ITelegramService>();
         var analyticsService = scope.ServiceProvider.GetRequiredService<IAnalyticsService>();
+        var learningService = scope.ServiceProvider.GetRequiredService<ILearningService>();
 
         var utcNow = DateTime.UtcNow;
 
@@ -95,7 +96,7 @@ public class TelegramNotificationBackgroundService : BackgroundService
 
                 var message = await GenerateReportMessageAsync(
                     setting.NotificationType, setting.StoreUserId,
-                    analyticsService, db, ct);
+                    analyticsService, learningService, db, ct);
 
                 if (string.IsNullOrEmpty(message)) continue;
 
@@ -192,6 +193,7 @@ public class TelegramNotificationBackgroundService : BackgroundService
         string notificationType,
         string storeUserId,
         IAnalyticsService analyticsService,
+        ILearningService learningService,
         ApplicationDbContext db,
         CancellationToken ct)
     {
@@ -210,6 +212,7 @@ public class TelegramNotificationBackgroundService : BackgroundService
             "MonthlyReport" => await GenerateMonthlyReportAsync(storeUserId, shopName, currencySymbol, analyticsService),
             "TopProducts" => await GenerateTopProductsAsync(storeUserId, shopName, currencySymbol, analyticsService),
             "AiInsights" => await GenerateAiInsightsAsync(storeUserId, shopName, currencySymbol, analyticsService),
+            "AiWeeklyReport" => await GenerateAiWeeklyReportAsync(learningService, shopName),
             _ => null
         };
     }
@@ -388,6 +391,59 @@ public class TelegramNotificationBackgroundService : BackgroundService
 
         sb.AppendLine();
         sb.AppendLine($"📅 {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC");
+
+        return sb.ToString();
+    }
+
+    private static async Task<string> GenerateAiWeeklyReportAsync(
+        ILearningService learningService, string shopName)
+    {
+        var report = await learningService.GetWeeklyReportAsync();
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"🤖 <b>AI Weekly Performance Report</b>");
+        sb.AppendLine($"📍 {shopName}");
+        sb.AppendLine();
+
+        sb.AppendLine($"⭐ Satisfaction: {report.AverageSatisfaction}/5");
+        sb.AppendLine($"💬 Conversations: {report.TotalConversations}");
+        sb.AppendLine($"📊 Success Rate: {report.SuccessRate}%");
+        sb.AppendLine();
+
+        if (report.TopQuestions.Count > 0)
+        {
+            sb.AppendLine("📋 Top Questions:");
+            foreach (var q in report.TopQuestions.Take(3))
+            {
+                sb.AppendLine($"  • {q}");
+            }
+            sb.AppendLine();
+        }
+
+        if (report.KnowledgeGaps.Count > 0)
+        {
+            sb.AppendLine("🔍 Knowledge Gaps:");
+            foreach (var gap in report.KnowledgeGaps.Take(3))
+            {
+                sb.AppendLine($"  • {gap}");
+            }
+            sb.AppendLine();
+        }
+
+        if (report.AgentRanking.Count > 0)
+        {
+            sb.AppendLine("🏆 Agent Ranking:");
+            foreach (var kvp in report.AgentRanking.OrderByDescending(x => x.Value))
+            {
+                var stars = kvp.Value >= 4 ? "⭐" : kvp.Value >= 3 ? "👍" : "⚠️";
+                sb.AppendLine($"  {stars} {kvp.Key}: {kvp.Value}/5");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine($"⏳ Pending Suggestions: {report.PendingSuggestions}");
+        sb.AppendLine();
+        sb.AppendLine($"📅 {report.Period}");
 
         return sb.ToString();
     }

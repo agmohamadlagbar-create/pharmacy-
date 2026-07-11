@@ -35,4 +35,5 @@ public class AiChatStreamChunkDto
     public string? Token { get; set; }
     public string? FullResponse { get; set; }
     public string? Error { get; set; }
+    public int? MessageId { get; set; }
 }

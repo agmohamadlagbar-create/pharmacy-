@@ -3,6 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
@@ -161,6 +162,16 @@ builder.Services.AddScoped<OnlineStore.Api.Services.IAiOrchestratorService, Onli
 builder.Services.AddScoped<OnlineStore.Api.Services.IAnalyticsService, OnlineStore.Api.Services.AnalyticsService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IReportExportService, OnlineStore.Api.Services.ReportExportService>();
 
+// Phase 4: Feedback & Learning System
+builder.Services.AddScoped<OnlineStore.Api.Services.IFeedbackService, OnlineStore.Api.Services.FeedbackService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.ILearningService, OnlineStore.Api.Services.LearningService>();
+builder.Services.AddHostedService<OnlineStore.Api.Services.LearningBackgroundService>();
+
+// Advanced Memory & A/B Testing
+builder.Services.AddScoped<OnlineStore.Api.Services.IAiMemoryService, OnlineStore.Api.Services.AiMemoryService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.IAbTestingService, OnlineStore.Api.Services.AbTestingService>();
+builder.Services.AddHostedService<OnlineStore.Api.Services.MemoryCleanupBackgroundService>();
+
 // Telegram services
 builder.Services.AddHttpClient("TelegramBot");
 builder.Services.AddScoped<OnlineStore.Api.Services.ITelegramService, OnlineStore.Api.Services.TelegramService>();
@@ -175,6 +186,117 @@ builder.Services.AddHttpClient<OnlineStore.Api.Services.IGroqAiService, OnlineSt
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
     }
 });
+
+// ═══════════════════════════════════════════════════
+//  Multi-Provider AI Gateway
+// ═══════════════════════════════════════════════════
+
+// Configuration
+builder.Services.Configure<OnlineStore.Api.Services.Agents.AiProviderConfig>(
+    builder.Configuration.GetSection("AiGateway"));
+
+// Groq API Client (primary provider)
+builder.Services.AddHttpClient<OnlineStore.Api.Services.Agents.GroqApiClient>(client =>
+{
+    client.BaseAddress = new Uri("https://api.groq.com/openai/v1/");
+    var apiKey = builder.Configuration["Groq:ApiKey"];
+    if (!string.IsNullOrEmpty(apiKey))
+    {
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+    }
+});
+
+// GLM API Client (secondary provider — OpenAI-compatible)
+builder.Services.AddHttpClient<OnlineStore.Api.Services.Agents.GlmApiClient>(client =>
+{
+    var baseUrl = builder.Configuration["Glm:BaseUrl"]
+        ?? "https://open.bigmodel.cn/api/paas/v4/";
+    client.BaseAddress = new Uri(baseUrl);
+    var apiKey = builder.Configuration["Glm:ApiKey"];
+    if (!string.IsNullOrEmpty(apiKey))
+    {
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+    }
+});
+
+// FreeLLMAPI Client (OpenAI-compatible gateway)
+builder.Services.AddHttpClient<OnlineStore.Api.Services.Agents.FreeLlmApiClient>(client =>
+{
+    var baseUrl = builder.Configuration["FreeLlmApi:BaseUrl"]
+        ?? "http://localhost:3001/v1/";
+    client.BaseAddress = new Uri(baseUrl);
+    var apiKey = builder.Configuration["FreeLlmApi:ApiKey"];
+    if (!string.IsNullOrEmpty(apiKey))
+    {
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+    }
+});
+
+// Usage Tracker (singleton — shared counter state across all requests)
+builder.Services.AddSingleton<OnlineStore.Api.Services.Agents.AiUsageTracker>();
+builder.Services.AddSingleton<OnlineStore.Api.Services.IConversationStateManager, OnlineStore.Api.Services.ConversationStateManager>();
+
+// AI Gateway (scoped — one per request)
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.AiGateway>();
+
+// Tool Registry (singleton — registered once, used by all agents)
+builder.Services.AddSingleton<OnlineStore.Api.Services.Agents.ToolRegistry>();
+
+// Customer Agents
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Customer.PlannerAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Customer.ShoppingAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Customer.CustomerServiceAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Customer.RecommendationAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Customer.OrderTrackingAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Customer.ReflectionAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Customer.GeneralChatAgent>();
+
+// Shop Owner Agents
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.ShopOwner.ShopOwnerPlannerAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.ShopOwner.ProductManagementAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.ShopOwner.ReportingAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.ShopOwner.AnalyticsAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.ShopOwner.InventoryAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.ShopOwner.MarketingAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.ShopOwner.CustomerInsightAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.ShopOwner.BusinessAdvisorAgent>();
+
+// Shop Owner Backend Services
+builder.Services.AddScoped<OnlineStore.Api.Services.IProductManagementAiService, OnlineStore.Api.Services.ProductManagementAiService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.IInventoryIntelligenceService, OnlineStore.Api.Services.InventoryIntelligenceService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.IMarketingService, OnlineStore.Api.Services.MarketingService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.ICustomerInsightService, OnlineStore.Api.Services.CustomerInsightService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.IBusinessAdvisorService, OnlineStore.Api.Services.BusinessAdvisorService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.BusinessAdvisorJobs>();
+
+// Hangfire services
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseInMemoryStorage());
+builder.Services.AddHangfireServer();
+
+// Admin Agents
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Admin.AdminPlannerAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Admin.FraudDetectionAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Admin.SecurityMonitoringAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Admin.PlatformAnalyticsAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Admin.StoreApprovalAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Admin.ModerationAgent>();
+builder.Services.AddScoped<OnlineStore.Api.Services.Agents.Admin.GlobalSupportAgent>();
+
+// Admin Backend Services
+builder.Services.AddScoped<OnlineStore.Api.Services.IFraudDetectionService, OnlineStore.Api.Services.FraudDetectionService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.ISecurityMonitoringService, OnlineStore.Api.Services.SecurityMonitoringService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.IPlatformAnalyticsService, OnlineStore.Api.Services.PlatformAnalyticsService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.IStoreApprovalService, OnlineStore.Api.Services.StoreApprovalService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.IModerationService, OnlineStore.Api.Services.ModerationService>();
+builder.Services.AddScoped<OnlineStore.Api.Services.IGlobalSupportService, OnlineStore.Api.Services.GlobalSupportService>();
+
+// Security Event Middleware (singleton channel + background service)
+builder.Services.AddSingleton<OnlineStore.Api.Helpers.SecurityEventChannel>();
+builder.Services.AddHostedService<OnlineStore.Api.Helpers.SecurityEventBackgroundService>();
 
 // Configure ImageSharp for HEIF support
 SixLabors.ImageSharp.Configuration.Default.Configure(new HeifConfigurationModule());
@@ -303,13 +425,22 @@ app.UseCors("dev");
 
 app.UseRateLimiter();
 
+// Security event middleware
+app.UseMiddleware<OnlineStore.Api.Helpers.SecurityEventMiddleware>();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<AiChatHub>("/hubs/ai-chat").RequireRateLimiting("AiRateLimit");
+app.MapHub<OnlineStore.Api.Hubs.ShopAiChatHub>("/hubs/shop-ai-chat").RequireRateLimiting("AiRateLimit");
+app.MapHub<OnlineStore.Api.Hubs.AdminAiChatHub>("/hubs/admin-ai-chat").RequireRateLimiting("AiRateLimit");
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<OnlineStore.Api.Hubs.TrackingHub>("/hubs/tracking");
+
+// Register all tools in the ToolRegistry
+var toolRegistry = app.Services.GetRequiredService<OnlineStore.Api.Services.Agents.ToolRegistry>();
+OnlineStore.Api.Services.Agents.ToolRegistrationService.RegisterAllTools(toolRegistry, app.Services);
 
 // Auto-create roles + seed Admin on startup
 var isDesignTime = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name?.Contains("ef", StringComparison.OrdinalIgnoreCase) == true
@@ -400,6 +531,24 @@ if (!isDesignTime)
         }
     }
 }
+
+// Hangfire Dashboard and recurring jobs
+app.UseHangfireDashboard("/hangfire");
+
+RecurringJob.AddOrUpdate<OnlineStore.Api.Services.BusinessAdvisorJobs>(
+    "business-advisor-daily",
+    job => job.GenerateDailyReportsAsync(),
+    Cron.Daily(9, 0));
+
+RecurringJob.AddOrUpdate<OnlineStore.Api.Services.BusinessAdvisorJobs>(
+    "business-advisor-weekly",
+    job => job.GenerateWeeklyReportsAsync(),
+    "0 18 * * 0"); // Sunday 18:00
+
+RecurringJob.AddOrUpdate<OnlineStore.Api.Services.BusinessAdvisorJobs>(
+    "business-advisor-monthly",
+    job => job.GenerateMonthlyReportsAsync(),
+    "0 9 1 * *"); // First of month 09:00
 
 // SPA fallback: serve index.html for any route not handled by API or static files
 app.MapFallbackToFile("index.html");

@@ -3,6 +3,7 @@ import * as signalR from '@microsoft/signalr';
 import { useVoice } from '../hooks/useVoice';
 import { api } from '../apiClient';
 import RecommendationCards from './RecommendationCards';
+import AiMessageFeedback from './AiMessageFeedback';
 import './AiChatWidget.css';
 
 export default function AiChatWidget(props) {
@@ -107,6 +108,7 @@ export default function AiChatWidget(props) {
                 ...lastMsg,
                 text: finalText,
                 isUser: false,
+                messageId: chunk.messageId,
                 recommendations: lastMsg ? lastMsg.recommendations : undefined
               };
               return newMsgs;
@@ -207,6 +209,9 @@ export default function AiChatWidget(props) {
                     }}
                     onNavigateProduct={(id) => { window.location.href = `/product/${id}`; }}
                   />
+                )}
+                {!msg.isUser && msg.text && msg.messageId && (
+                  <AiMessageFeedback conversationId={conversationId} messageId={msg.messageId} />
                 )}
               </div>
             ))}

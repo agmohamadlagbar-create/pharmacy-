@@ -22,7 +22,8 @@ public class TelegramService : ITelegramService
         "LowStock", "NegativeReview",
         "DailyIncome", "WeeklyReport", "MonthlyReport",
         "RevenueGoal", "ReturningCustomer",
-        "TopProducts", "AiInsights"
+        "TopProducts", "AiInsights",
+        "BusinessAdvisorDaily", "BusinessAdvisorWeekly", "BusinessAdvisorMonthly"
     };
 
     // Event-driven (real-time) types — not scheduled
@@ -30,7 +31,8 @@ public class TelegramService : ITelegramService
     {
         "NewCustomer", "NewOrder", "OrderDelivered",
         "LowStock", "NegativeReview",
-        "RevenueGoal", "ReturningCustomer"
+        "RevenueGoal", "ReturningCustomer",
+        "BusinessAdvisorDaily", "BusinessAdvisorWeekly", "BusinessAdvisorMonthly"
     };
 
     public TelegramService(

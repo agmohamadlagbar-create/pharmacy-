@@ -16,8 +16,17 @@ public class AiConversation
     /// <summary>Optional system prompt snapshot used to initialize this conversation.</summary>
     public string? SystemPrompt { get; set; }
 
+    /// <summary>Which agent ecosystem: "customer", "shop_owner", "admin".</summary>
+    public string? AgentType { get; set; }
+
+    /// <summary>Tracks which specialist agent last handled this conversation.</summary>
+    public string? LastAgentUsed { get; set; }
+
     /// <summary>Updated whenever a new message is persisted.</summary>
     public DateTime? LastMessageAtUtc { get; set; }
+
+    /// <summary>A/B testing: which prompt variant was used for this conversation.</summary>
+    public int? PromptVariantId { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
@@ -28,3 +37,4 @@ public class AiConversation
     public ICollection<AiMessage> Messages { get; set; } = new List<AiMessage>();
     public ICollection<AiToolCall> ToolCalls { get; set; } = new List<AiToolCall>();
 }
+

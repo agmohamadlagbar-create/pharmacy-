@@ -31,6 +31,24 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
     public DbSet<AiToolCall> AiToolCalls => Set<AiToolCall>();
     public DbSet<StoreTelegramSetting> StoreTelegramSettings => Set<StoreTelegramSetting>();
     public DbSet<StoreTelegramNotificationSetting> StoreTelegramNotificationSettings => Set<StoreTelegramNotificationSetting>();
+    public DbSet<AiFeedback> AiFeedbacks => Set<AiFeedback>();
+    public DbSet<AiConversationAnalysis> AiConversationAnalyses => Set<AiConversationAnalysis>();
+    public DbSet<AiKnowledgeGap> AiKnowledgeGaps => Set<AiKnowledgeGap>();
+    public DbSet<AiImprovementSuggestion> AiImprovementSuggestions => Set<AiImprovementSuggestion>();
+    public DbSet<AiPromptVariant> AiPromptVariants => Set<AiPromptVariant>();
+    public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
+    public DbSet<FraudAlert> FraudAlerts => Set<FraudAlert>();
+    public DbSet<ModerationFlag> ModerationFlags => Set<ModerationFlag>();
+    public DbSet<AiUserPreference> AiUserPreferences => Set<AiUserPreference>();
+    public DbSet<AiShopContext> AiShopContexts => Set<AiShopContext>();
+    public DbSet<AiLongTermMemory> AiLongTermMemories => Set<AiLongTermMemory>();
+    public DbSet<AiEpisodicMemory> AiEpisodicMemories => Set<AiEpisodicMemory>();
+
+    // Business Advisor
+    public DbSet<BusinessGoal> BusinessGoals => Set<BusinessGoal>();
+    public DbSet<BusinessRecommendation> BusinessRecommendations => Set<BusinessRecommendation>();
+    public DbSet<BusinessAdvisorReport> BusinessAdvisorReports => Set<BusinessAdvisorReport>();
+    public DbSet<BusinessAdvisorMemory> BusinessAdvisorMemories => Set<BusinessAdvisorMemory>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -244,6 +262,8 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
             b.Property(x => x.Title).HasMaxLength(300);
             b.Property(x => x.ModelName).HasMaxLength(120);
             b.Property(x => x.SystemPrompt).HasMaxLength(8000);
+            b.Property(x => x.AgentType).HasMaxLength(50);
+            b.Property(x => x.LastAgentUsed).HasMaxLength(120);
             b.HasMany(x => x.Messages).WithOne(x => x.Conversation).HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
             b.HasMany(x => x.ToolCalls).WithOne(x => x.Conversation).HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
             b.OwnsOne(x => x.State, sb =>
@@ -253,6 +273,11 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
                 sb.Property(s => s.PendingQuantity);
                 sb.Property(s => s.PendingAction).HasMaxLength(100);
                 sb.Property(s => s.AwaitingConfirmation);
+                sb.Property(s => s.PendingIntentJson).HasMaxLength(2000);
+                sb.Property(s => s.LastShoppingIntentJson).HasMaxLength(2000);
+                sb.Property(s => s.SelectedProductId);
+                sb.Property(s => s.SelectedStoreName).HasMaxLength(200);
+                sb.Property(s => s.LastSuccessfulToolResult).HasMaxLength(4000);
             });
             b.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
             b.HasIndex(x => x.UserId);
@@ -312,6 +337,225 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
             b.HasIndex(x => x.StoreUserId);
             b.HasIndex(x => new { x.StoreUserId, x.NotificationType }).IsUnique();
             b.HasIndex(x => new { x.Enabled, x.NotificationType });
+        });
+
+        // AiFeedback
+        builder.Entity<AiFeedback>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.FeedbackType).HasMaxLength(50);
+            b.Property(x => x.ImplicitSignal).HasMaxLength(50);
+            b.Property(x => x.AgentName).HasMaxLength(120);
+            b.Property(x => x.FeedbackSource).HasMaxLength(20).IsRequired();
+            b.Property(x => x.Comment).HasMaxLength(2000);
+            b.HasOne(x => x.Conversation).WithMany().HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.Message).WithMany().HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.ClientSetNull);
+            b.HasIndex(x => new { x.ConversationId, x.CreatedAtUtc });
+            b.HasIndex(x => x.AgentName);
+            b.HasIndex(x => x.UserId);
+        });
+
+        // AiConversationAnalysis
+        builder.Entity<AiConversationAnalysis>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.AnalysisDate).IsRequired();
+            b.HasIndex(x => x.AnalysisDate).IsUnique();
+        });
+
+        // AiKnowledgeGap
+        builder.Entity<AiKnowledgeGap>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Topic).HasMaxLength(200).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            b.Property(x => x.Resolution).HasMaxLength(2000);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => x.Topic);
+        });
+
+        // AiImprovementSuggestion
+        builder.Entity<AiImprovementSuggestion>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Category).HasMaxLength(50).IsRequired();
+            b.Property(x => x.AgentName).HasMaxLength(120).IsRequired();
+            b.Property(x => x.Title).HasMaxLength(300).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(4000).IsRequired();
+            b.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            b.Property(x => x.ReviewedBy).HasMaxLength(450);
+            b.Property(x => x.ReviewNotes).HasMaxLength(2000);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => x.AgentName);
+        });
+
+        // AiPromptVariant
+        builder.Entity<AiPromptVariant>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.AgentName).HasMaxLength(120).IsRequired();
+            b.Property(x => x.VariantName).HasMaxLength(200).IsRequired();
+            b.Property(x => x.SystemPrompt).IsRequired();
+            b.Property(x => x.ExperimentName).HasMaxLength(200);
+            b.Property(x => x.WinnerDecision).HasMaxLength(30);
+            b.HasIndex(x => new { x.AgentName, x.VariantName }).IsUnique();
+            b.HasIndex(x => new { x.AgentName, x.IsActive });
+            b.HasIndex(x => x.ExperimentName);
+        });
+
+        // AiUserPreference
+        builder.Entity<AiUserPreference>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.PreferenceKey).HasMaxLength(100).IsRequired();
+            b.Property(x => x.PreferenceValue).HasMaxLength(500).IsRequired();
+            b.Property(x => x.Source).HasMaxLength(20).IsRequired();
+            b.HasIndex(x => new { x.UserId, x.PreferenceKey }).IsUnique();
+        });
+
+        // AiShopContext
+        builder.Entity<AiShopContext>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.PreferredLanguage).HasMaxLength(10);
+            b.Property(x => x.PreferredCurrency).HasMaxLength(10);
+            b.Property(x => x.ShopPoliciesJson).HasMaxLength(4000);
+            b.Property(x => x.ReportingPreferencesJson).HasMaxLength(2000);
+            b.Property(x => x.CustomInstructionsJson).HasMaxLength(2000);
+            b.HasIndex(x => x.UserId).IsUnique();
+        });
+
+        // AiLongTermMemory
+        builder.Entity<AiLongTermMemory>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.MemoryType).HasMaxLength(30).IsRequired();
+            b.Property(x => x.Content).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.SourceConversationSummary).HasMaxLength(500);
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => new { x.UserId, x.MemoryType });
+            b.HasIndex(x => x.ExpiresAtUtc);
+        });
+
+        // AiEpisodicMemory
+        builder.Entity<AiEpisodicMemory>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.EpisodeType).HasMaxLength(50).IsRequired();
+            b.Property(x => x.Summary).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.Outcome).HasMaxLength(30);
+            b.Property(x => x.SentimentAtEnd).HasMaxLength(20);
+            b.Property(x => x.KeyEntitiesJson).HasMaxLength(2000);
+            b.HasOne(x => x.Conversation).WithMany().HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => new { x.UserId, x.EpisodeType });
+        });
+
+        // Phase 5: SecurityEvent
+        builder.Entity<SecurityEvent>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.EventType).HasMaxLength(50).IsRequired();
+            b.Property(x => x.UserId).HasMaxLength(450);
+            b.Property(x => x.IpAddress).HasMaxLength(50);
+            b.Property(x => x.UserAgent).HasMaxLength(500);
+            b.Property(x => x.RequestPath).HasMaxLength(500);
+            b.Property(x => x.Severity).HasMaxLength(20).IsRequired();
+            b.HasIndex(x => new { x.EventType, x.CreatedAtUtc });
+            b.HasIndex(x => x.IpAddress);
+        });
+
+        // Phase 5: FraudAlert
+        builder.Entity<FraudAlert>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.AlertType).HasMaxLength(50).IsRequired();
+            b.Property(x => x.UserId).HasMaxLength(450);
+            b.Property(x => x.OrderIds).HasMaxLength(500);
+            b.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.Severity).HasMaxLength(20).IsRequired();
+            b.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            b.Property(x => x.ResolvedBy).HasMaxLength(450);
+            b.Property(x => x.ResolutionNotes).HasMaxLength(2000);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
+        });
+
+        // Phase 5: ModerationFlag
+        builder.Entity<ModerationFlag>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.ContentType).HasMaxLength(30).IsRequired();
+            b.Property(x => x.FlagType).HasMaxLength(50).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.Severity).HasMaxLength(20).IsRequired();
+            b.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            b.Property(x => x.ResolvedBy).HasMaxLength(450);
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => new { x.ContentType, x.ContentId });
+        });
+
+        // Business Advisor: BusinessGoal
+        builder.Entity<BusinessGoal>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.StoreUserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.Title).HasMaxLength(500).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(2000);
+            b.Property(x => x.TargetMetric).HasMaxLength(100);
+            b.Property(x => x.TargetValue).HasColumnType("decimal(18,2)");
+            b.Property(x => x.CurrentProgress).HasColumnType("decimal(18,2)");
+            b.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+            b.HasIndex(x => x.StoreUserId);
+            b.HasIndex(x => new { x.StoreUserId, x.Status });
+        });
+
+        // Business Advisor: BusinessRecommendation
+        builder.Entity<BusinessRecommendation>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.StoreUserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.Title).HasMaxLength(500).IsRequired();
+            b.Property(x => x.Description).HasMaxLength(4000).IsRequired();
+            b.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            b.Property(x => x.Priority).HasConversion<string>().HasMaxLength(30);
+            b.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+            b.Property(x => x.VerificationCriteria).HasMaxLength(2000);
+            b.Property(x => x.VerificationResult).HasMaxLength(2000);
+            b.HasOne(x => x.Goal).WithMany().HasForeignKey(x => x.GoalId).OnDelete(DeleteBehavior.SetNull);
+            b.HasIndex(x => x.StoreUserId);
+            b.HasIndex(x => new { x.StoreUserId, x.Status });
+            b.HasIndex(x => x.CreatedAtUtc);
+        });
+
+        // Business Advisor: BusinessAdvisorReport
+        builder.Entity<BusinessAdvisorReport>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.StoreUserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.ReportType).HasMaxLength(30).IsRequired();
+            b.Property(x => x.ReportContent).IsRequired();
+            b.Property(x => x.ReportDataJson);
+            b.HasIndex(x => x.StoreUserId);
+            b.HasIndex(x => new { x.StoreUserId, x.ReportType, x.CreatedAtUtc });
+        });
+
+        // Business Advisor: BusinessAdvisorMemory
+        builder.Entity<BusinessAdvisorMemory>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.StoreUserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.MemoryType).HasMaxLength(50).IsRequired();
+            b.Property(x => x.Content).HasMaxLength(4000).IsRequired();
+            b.HasIndex(x => x.StoreUserId);
+            b.HasIndex(x => new { x.StoreUserId, x.MemoryType });
+            b.HasIndex(x => x.ExpiresAtUtc);
         });
     }
 

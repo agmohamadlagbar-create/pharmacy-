@@ -37,6 +37,9 @@ public class RecommendationService : IRecommendationService
             ? await GetSmartUpsellsAsync(productId.Value)
             : await GetSmartUpsellsFromHistoryAsync(userId, purchasedIds);
 
+        result.TrendingNow = await GetTrendingNowAsync(purchasedIds);
+        result.Promotions = await GetSeasonalPromotionsAsync(purchasedIds);
+
         return result;
     }
 
@@ -191,6 +194,103 @@ public class RecommendationService : IRecommendationService
         return products
             .Select(p => MapToDto(p, "Based on your purchase history"))
             .ToList();
+    }
+
+    /// <summary>
+    /// Products with the most orders in the last 7 days (trending).
+    /// </summary>
+    private async Task<List<RecommendedProductDto>> GetTrendingNowAsync(HashSet<int> purchasedIds)
+    {
+        var since = DateTime.UtcNow.AddDays(-7);
+
+        var trending = await _db.OrderItems
+            .AsNoTracking()
+            .Where(oi => oi.Order!.CreatedAtUtc >= since &&
+                         oi.Order.Status != OrderStatus.Cancelled &&
+                         oi.ProductId != null &&
+                         oi.Product!.Status == ProductStatus.Approved &&
+                         oi.Product.StockQuantity > 0)
+            .GroupBy(oi => new { oi.ProductId, oi.Product!.Name, oi.Product.Price, oi.Product.ImageUrl,
+                CategoryName = oi.Product.Category!.Name, oi.Product.StockQuantity })
+            .Select(g => new
+            {
+                ProductId = g.Key.ProductId!.Value,
+                ProductName = g.Key.Name,
+                Price = g.Key.Price,
+                StockQuantity = g.Key.StockQuantity,
+                ImageUrl = g.Key.ImageUrl,
+                CategoryName = g.Key.CategoryName,
+                OrderCount = g.Count()
+            })
+            .OrderByDescending(x => x.OrderCount)
+            .Take(MaxResults)
+            .ToListAsync();
+
+        return trending.Select(p => new RecommendedProductDto
+        {
+            ProductId = p.ProductId,
+            ProductName = p.ProductName,
+            Price = p.Price,
+            Stock = p.StockQuantity,
+            ImageUrl = p.ImageUrl,
+            CategoryName = p.CategoryName,
+            Reason = "Trending this week"
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Products from categories trending in the current season (seasonal/promotional).
+    /// </summary>
+    private async Task<List<RecommendedProductDto>> GetSeasonalPromotionsAsync(HashSet<int> purchasedIds)
+    {
+        var (seasonStart, seasonEnd) = GetCurrentSeasonRange();
+
+        // Find categories with the most orders in the current season
+        var topSeasonCategoryIds = await _db.OrderItems
+            .AsNoTracking()
+            .Where(oi => oi.Order!.CreatedAtUtc >= seasonStart &&
+                         oi.Order.CreatedAtUtc <= seasonEnd &&
+                         oi.Order.Status != OrderStatus.Cancelled &&
+                         oi.ProductId != null)
+            .Join(_db.Products, oi => oi.ProductId, p => p.Id, (oi, p) => p.CategoryId)
+            .GroupBy(catId => catId)
+            .OrderByDescending(g => g.Count())
+            .Take(3)
+            .Select(g => g.Key)
+            .ToListAsync();
+
+        if (!topSeasonCategoryIds.Any())
+            return new List<RecommendedProductDto>();
+
+        var products = await GetProductDetailsAsync(null,
+            query: q => q.Where(p =>
+                topSeasonCategoryIds.Contains(p.CategoryId) &&
+                !purchasedIds.Contains(p.Id) &&
+                p.Status == ProductStatus.Approved &&
+                p.StockQuantity > 0)
+            .OrderByDescending(p => p.CreatedAtUtc)
+            .Take(MaxResults));
+
+        return products
+            .Select(p => MapToDto(p, $"Seasonal pick — popular this season"))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Determine the current meteorological season date range.
+    /// </summary>
+    private static (DateTime start, DateTime end) GetCurrentSeasonRange()
+    {
+        var now = DateTime.UtcNow;
+        var year = now.Year;
+
+        return now.Month switch
+        {
+            3 or 4 or 5 => (new DateTime(year, 3, 1), new DateTime(year, 5, 31)),          // Spring
+            6 or 7 or 8 => (new DateTime(year, 6, 1), new DateTime(year, 8, 31)),          // Summer
+            9 or 10 or 11 => (new DateTime(year, 9, 1), new DateTime(year, 11, 30)),       // Fall
+            _ => (new DateTime(year, 12, 1), new DateTime(year, 12, 31))                   // Winter
+        };
     }
 
     // ── Shared helpers ──────────────────────────────────────────────────
