@@ -1,4 +1,9 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using OnlineStore.Api.Contracts;
 using OnlineStore.Domain.Entities;
@@ -13,6 +18,153 @@ public class AnalyticsService : IAnalyticsService
     public AnalyticsService(ApplicationDbContext db)
     {
         _db = db;
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  Helper structures for unified querying
+    // ═══════════════════════════════════════════════════
+    private class PeriodAnalyticsData
+    {
+        public decimal TotalRevenue { get; set; }
+        public int TotalOrders { get; set; }
+        public Dictionary<int, ProductSalesDto> ProductSales { get; set; } = new();
+        public Dictionary<string, int> CustomerOrderCounts { get; set; } = new();
+        public Dictionary<DateTime, (decimal Revenue, int OrderCount)> DailySales { get; set; } = new();
+    }
+
+    private async Task<PeriodAnalyticsData> LoadPeriodAnalyticsDataAsync(string storeUserId, DateTime start, DateTime endExclusive)
+    {
+        var data = new PeriodAnalyticsData();
+
+        // 1. Load aggregated daily records in the date range
+        var dailyRecords = await _db.StoreAnalyticsDailies
+            .AsNoTracking()
+            .Where(d => d.StoreUserId == storeUserId && d.Date >= start && d.Date < endExclusive)
+            .ToListAsync();
+
+        var aggregatedDates = new HashSet<DateTime>(dailyRecords.Select(r => r.Date.Date));
+
+        // Combine aggregated daily records
+        foreach (var row in dailyRecords)
+        {
+            var dateKey = row.Date.Date;
+            data.TotalRevenue += row.TotalSales;
+            data.TotalOrders += row.TotalOrders;
+            
+            data.DailySales[dateKey] = (row.TotalSales, row.TotalOrders);
+
+            // Combine product sales
+            var prodSales = JsonSerializer.Deserialize<List<ProductSalesDto>>(row.ProductSalesJson) ?? new();
+            foreach (var ps in prodSales)
+            {
+                if (data.ProductSales.TryGetValue(ps.ProductId, out var existing))
+                {
+                    existing.Quantity += ps.Quantity;
+                    existing.Revenue += ps.Revenue;
+                }
+                else
+                {
+                    data.ProductSales[ps.ProductId] = new ProductSalesDto
+                    {
+                        ProductId = ps.ProductId,
+                        Quantity = ps.Quantity,
+                        Revenue = ps.Revenue
+                    };
+                }
+            }
+
+            // Combine customer order counts
+            var custOrders = JsonSerializer.Deserialize<Dictionary<string, int>>(row.CustomersJson) ?? new();
+            foreach (var co in custOrders)
+            {
+                if (data.CustomerOrderCounts.TryGetValue(co.Key, out var existingCount))
+                {
+                    data.CustomerOrderCounts[co.Key] = existingCount + co.Value;
+                }
+                else
+                {
+                    data.CustomerOrderCounts[co.Key] = co.Value;
+                }
+            }
+        }
+
+        // 2. Load raw events for dates within the range that are NOT yet aggregated
+        var rawEvents = await _db.StoreAnalyticsEvents
+            .AsNoTracking()
+            .Where(e => e.StoreUserId == storeUserId && e.CreatedAtUtc >= start && e.CreatedAtUtc < endExclusive)
+            .ToListAsync();
+
+        var unaggregatedEvents = rawEvents
+            .Where(e => !aggregatedDates.Contains(e.CreatedAtUtc.Date))
+            .ToList();
+
+        if (unaggregatedEvents.Count > 0)
+        {
+            // Group by Date to populate DailySales
+            var eventsByDate = unaggregatedEvents.GroupBy(e => e.CreatedAtUtc.Date);
+            foreach (var dateGroup in eventsByDate)
+            {
+                var date = dateGroup.Key;
+                var dateEvents = dateGroup.ToList();
+                var dateRevenue = dateEvents.Sum(e => e.TotalAmount);
+                var dateOrders = dateEvents.Select(e => e.OrderId).Distinct().Count();
+                
+                if (data.DailySales.TryGetValue(date, out var existingVal))
+                {
+                    data.DailySales[date] = (existingVal.Revenue + dateRevenue, existingVal.OrderCount + dateOrders);
+                }
+                else
+                {
+                    data.DailySales[date] = (dateRevenue, dateOrders);
+                }
+
+                data.TotalRevenue += dateRevenue;
+                data.TotalOrders += dateOrders;
+            }
+
+            // Combine product sales from raw events
+            var eventsByProduct = unaggregatedEvents.GroupBy(e => e.ProductId);
+            foreach (var prodGroup in eventsByProduct)
+            {
+                var productId = prodGroup.Key;
+                var qty = prodGroup.Sum(e => e.Quantity);
+                var rev = prodGroup.Sum(e => e.TotalAmount);
+
+                if (data.ProductSales.TryGetValue(productId, out var existing))
+                {
+                    existing.Quantity += qty;
+                    existing.Revenue += rev;
+                }
+                else
+                {
+                    data.ProductSales[productId] = new ProductSalesDto
+                    {
+                        ProductId = productId,
+                        Quantity = qty,
+                        Revenue = rev
+                    };
+                }
+            }
+
+            // Combine customer order counts from raw events
+            var eventsByCustomer = unaggregatedEvents.GroupBy(e => e.UserId);
+            foreach (var custGroup in eventsByCustomer)
+            {
+                var userId = custGroup.Key;
+                var orderCount = custGroup.Select(e => e.OrderId).Distinct().Count();
+
+                if (data.CustomerOrderCounts.TryGetValue(userId, out var existingCount))
+                {
+                    data.CustomerOrderCounts[userId] = existingCount + orderCount;
+                }
+                else
+                {
+                    data.CustomerOrderCounts[userId] = orderCount;
+                }
+            }
+        }
+
+        return data;
     }
 
     // ═══════════════════════════════════════════════════
@@ -115,26 +267,6 @@ public class AnalyticsService : IAnalyticsService
         var currencySymbol = GetCurrencySymbol(storeUser?.Country);
         var lowStockThreshold = shopProfile?.LowStockThreshold ?? 10;
 
-        // ── Load all non-cancelled orders for this store with items (single query) ──
-        var allOrders = await _db.Orders
-            .AsNoTracking()
-            .Where(o => o.StoreUserId == storeUserId && o.Status != OrderStatus.Cancelled)
-            .Select(o => new
-            {
-                o.Id,
-                o.UserId,
-                o.TotalAmount,
-                o.CreatedAtUtc,
-                o.Status,
-                Items = o.Items.Select(i => new
-                {
-                    i.ProductId,
-                    i.Quantity,
-                    i.UnitPrice
-                }).ToList()
-            })
-            .ToListAsync();
-
         // ── Load all store products (single query) ──
         var allProducts = await _db.Products
             .AsNoTracking()
@@ -161,11 +293,22 @@ public class AnalyticsService : IAnalyticsService
             .Select(r => new { r.ProductId, r.Rating })
             .ToListAsync();
 
-        // ═══ Section 1: Summary Cards ═══
-        var rangeOrders = allOrders.Where(o => o.CreatedAtUtc >= rangeStart && o.CreatedAtUtc < rangeEndExclusive).ToList();
+        // ── Load analytics data for both current and previous periods ──
+        var currData = await LoadPeriodAnalyticsDataAsync(storeUserId, rangeStart, rangeEndExclusive);
 
-        var totalRevenue = rangeOrders.Sum(o => o.TotalAmount);
-        var totalOrders = rangeOrders.Count;
+        var periodLength = rangeEndExclusive - rangeStart;
+        if (periodLength <= TimeSpan.Zero)
+        {
+            periodLength = TimeSpan.FromDays(1);
+        }
+        var prevPeriodStart = rangeStart - periodLength;
+        var prevPeriodEnd = rangeStart;
+
+        var prevData = await LoadPeriodAnalyticsDataAsync(storeUserId, prevPeriodStart, prevPeriodEnd);
+
+        // ═══ Section 1: Summary Cards ═══
+        var totalRevenue = currData.TotalRevenue;
+        var totalOrders = currData.TotalOrders;
         var avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0m;
 
         var daysInPeriod = Math.Max(1, (rangeEndDateExclusive - rangeStart.Date).Days);
@@ -174,9 +317,8 @@ public class AnalyticsService : IAnalyticsService
         var monthsInPeriod = Math.Max(1, ((rangeEndDateExclusive.Year - rangeStart.Year) * 12) + rangeEndDateExclusive.Month - rangeStart.Month);
         var averageMonthlyRevenue = totalRevenue / monthsInPeriod;
 
-        var peakDayRevenue = rangeOrders
-            .GroupBy(o => o.CreatedAtUtc.Date)
-            .Select(g => g.Sum(o => o.TotalAmount))
+        var peakDayRevenue = currData.DailySales.Values
+            .Select(v => v.Revenue)
             .DefaultIfEmpty(0m)
             .Max();
 
@@ -191,7 +333,7 @@ public class AnalyticsService : IAnalyticsService
         );
 
         // ═══ Section 2: Sales Charts ═══
-        // Daily — last 7 days
+        // Daily sales chart points
         var selectedDayCount = Math.Max(1, (rangeEndDateExclusive - rangeStart.Date).Days);
         var dailyStart = selectedDayCount <= 31
             ? rangeStart.Date
@@ -202,17 +344,16 @@ public class AnalyticsService : IAnalyticsService
             .Select(i => dailyStart.AddDays(i))
             .Select(day =>
             {
-                var dayEnd = day.AddDays(1);
-                var dayOrders = rangeOrders.Where(o => o.CreatedAtUtc >= day && o.CreatedAtUtc < dayEnd).ToList();
+                currData.DailySales.TryGetValue(day.Date, out var val);
                 return new DailySalesPointDto(
                     day.ToString("MMM dd"),
-                    dayOrders.Sum(o => o.TotalAmount),
-                    dayOrders.Count
+                    val.Revenue,
+                    val.OrderCount
                 );
             })
             .ToList();
 
-        // Monthly — last 12 months
+        // Monthly sales chart points
         var monthChartStart = new DateTime(rangeStart.Year, rangeStart.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var lastSelectedDay = rangeEndDateExclusive.AddDays(-1);
         var monthChartEnd = new DateTime(lastSelectedDay.Year, lastSelectedDay.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
@@ -228,29 +369,34 @@ public class AnalyticsService : IAnalyticsService
             {
                 var mStart = monthChartStart.AddMonths(i);
                 var mEnd = mStart.AddMonths(1);
-                var mOrders = rangeOrders.Where(o => o.CreatedAtUtc >= mStart && o.CreatedAtUtc < mEnd).ToList();
+
+                // Sum daily sales falling in this month
+                var mRevenue = currData.DailySales
+                    .Where(kvp => kvp.Key >= mStart && kvp.Key < mEnd)
+                    .Sum(kvp => kvp.Value.Revenue);
+                var mOrders = currData.DailySales
+                    .Where(kvp => kvp.Key >= mStart && kvp.Key < mEnd)
+                    .Sum(kvp => kvp.Value.OrderCount);
+
                 return new MonthlySalesPointDto(
                     mStart.ToString("MMM yyyy"),
-                    mOrders.Sum(o => o.TotalAmount),
-                    mOrders.Count
+                    mRevenue,
+                    mOrders
                 );
             })
             .ToList();
 
         // ═══ Section 3: Top Selling Products ═══
-        var productSales = rangeOrders
-            .SelectMany(o => o.Items)
-            .Where(i => i.ProductId.HasValue)
-            .GroupBy(i => i.ProductId!.Value)
-            .Select(g =>
+        var productSales = currData.ProductSales.Values
+            .Select(p =>
             {
-                var product = productDict.GetValueOrDefault(g.Key);
+                productDict.TryGetValue(p.ProductId, out var product);
                 return new TopSellingProductDto(
-                    g.Key,
+                    p.ProductId,
                     product?.Name ?? "Unknown",
                     product?.ImageUrl,
-                    g.Sum(i => i.Quantity),
-                    g.Sum(i => i.Quantity * i.UnitPrice)
+                    p.Quantity,
+                    p.Revenue
                 );
             })
             .OrderByDescending(p => p.QuantitySold)
@@ -258,12 +404,6 @@ public class AnalyticsService : IAnalyticsService
             .ToList();
 
         // ═══ Section 4: Product Previews ═══
-        var allItemsSold = rangeOrders
-            .SelectMany(o => o.Items)
-            .Where(i => i.ProductId.HasValue)
-            .GroupBy(i => i.ProductId!.Value)
-            .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
-
         var productPreviews = allProducts
             .Where(p => p.Status == ProductStatus.Approved)
             .Select(p => new ProductPreviewDto(
@@ -272,28 +412,17 @@ public class AnalyticsService : IAnalyticsService
                 p.ImageUrl,
                 p.StockQuantity,
                 p.Price,
-                allItemsSold.GetValueOrDefault(p.Id, 0)
+                currData.ProductSales.TryGetValue(p.Id, out var sales) ? sales.Quantity : 0
             ))
             .OrderByDescending(p => p.TotalSoldCount)
             .Take(12)
             .ToList();
 
         // ═══ Section 5: Growth Percentage ═══
-        var periodLength = rangeEndExclusive - rangeStart;
-        if (periodLength <= TimeSpan.Zero)
-        {
-            periodLength = TimeSpan.FromDays(1);
-        }
-        var prevPeriodStart = rangeStart - periodLength;
-        var prevPeriodEnd = rangeStart;
-
-        var prevMonthOrders = allOrders.Where(o => o.CreatedAtUtc >= prevPeriodStart && o.CreatedAtUtc < prevPeriodEnd).ToList();
-        var currMonthOrders = rangeOrders;
-
-        var prevRevenue = prevMonthOrders.Sum(o => o.TotalAmount);
-        var currRevenue = currMonthOrders.Sum(o => o.TotalAmount);
-        var prevOrderCount = prevMonthOrders.Count;
-        var currOrderCount = currMonthOrders.Count;
+        var prevRevenue = prevData.TotalRevenue;
+        var currRevenue = currData.TotalRevenue;
+        var prevOrderCount = prevData.TotalOrders;
+        var currOrderCount = currData.TotalOrders;
 
         var revenueGrowth = prevRevenue > 0
             ? Math.Round(((currRevenue - prevRevenue) / prevRevenue) * 100, 2)
@@ -310,29 +439,21 @@ public class AnalyticsService : IAnalyticsService
         );
 
         // ═══ Section 6: Trending Products ═══
-        var selectedPeriodItems = rangeOrders
-            .SelectMany(o => o.Items)
-            .Where(i => i.ProductId.HasValue)
-            .GroupBy(i => i.ProductId!.Value)
-            .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
-
-        var previousPeriodItems = prevMonthOrders
-            .SelectMany(o => o.Items)
-            .Where(i => i.ProductId.HasValue)
-            .GroupBy(i => i.ProductId!.Value)
-            .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
-
-        var trendingProducts = selectedPeriodItems
+        var trendingProducts = currData.ProductSales
             .Select(kvp =>
             {
-                var prevQty = previousPeriodItems.GetValueOrDefault(kvp.Key, 0);
-                var currentQty = kvp.Value;
+                var productId = kvp.Key;
+                var currentQty = kvp.Value.Quantity;
+                prevData.ProductSales.TryGetValue(productId, out var prevProductSales);
+                var prevQty = prevProductSales?.Quantity ?? 0;
+
                 var growthPct = prevQty > 0
                     ? Math.Round(((decimal)(currentQty - prevQty) / prevQty) * 100, 2)
                     : currentQty > 0 ? 100m : 0m;
-                var product = productDict.GetValueOrDefault(kvp.Key);
+
+                productDict.TryGetValue(productId, out var product);
                 return new TrendingProductDto(
-                    kvp.Key,
+                    productId,
                     product?.Name ?? "Unknown",
                     product?.ImageUrl,
                     growthPct,
@@ -347,12 +468,8 @@ public class AnalyticsService : IAnalyticsService
             .ToList();
 
         // ═══ Section 7: Returning Customers ═══
-        var customerOrderCounts = rangeOrders
-            .GroupBy(o => o.UserId)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        var totalCustomers = customerOrderCounts.Count;
-        var returningCount = customerOrderCounts.Count(kvp => kvp.Value > 1);
+        var totalCustomers = currData.CustomerOrderCounts.Count;
+        var returningCount = currData.CustomerOrderCounts.Count(kvp => kvp.Value > 1);
         var returningPct = totalCustomers > 0
             ? Math.Round((decimal)returningCount / totalCustomers * 100, 2)
             : 0m;
@@ -548,34 +665,15 @@ public class AnalyticsService : IAnalyticsService
         var monthEnd = monthStart.AddMonths(1);
         var prevMonthStart = monthStart.AddMonths(-1);
 
-        var orders = await _db.Orders
-            .AsNoTracking()
-            .Where(o => o.StoreUserId == storeUserId
-                        && o.Status != OrderStatus.Cancelled
-                        && o.CreatedAtUtc >= prevMonthStart
-                        && o.CreatedAtUtc < monthEnd)
-            .Select(o => new
-            {
-                o.TotalAmount,
-                o.CreatedAtUtc,
-                Items = o.Items.Select(i => new
-                {
-                    i.ProductId,
-                    i.Quantity,
-                    i.UnitPrice
-                }).ToList()
-            })
-            .ToListAsync();
+        var currMonthData = await LoadPeriodAnalyticsDataAsync(storeUserId, monthStart, monthEnd);
+        var prevMonthData = await LoadPeriodAnalyticsDataAsync(storeUserId, prevMonthStart, monthStart);
 
-        var currOrders = orders.Where(o => o.CreatedAtUtc >= monthStart && o.CreatedAtUtc < monthEnd).ToList();
-        var prevOrders = orders.Where(o => o.CreatedAtUtc >= prevMonthStart && o.CreatedAtUtc < monthStart).ToList();
-
-        var totalRevenue = currOrders.Sum(o => o.TotalAmount);
-        var totalOrderCount = currOrders.Count;
+        var totalRevenue = currMonthData.TotalRevenue;
+        var totalOrderCount = currMonthData.TotalOrders;
         var avgOrderValue = totalOrderCount > 0 ? Math.Round(totalRevenue / totalOrderCount, 2) : 0m;
 
-        var prevRevenue = prevOrders.Sum(o => o.TotalAmount);
-        var prevOrderCount = prevOrders.Count;
+        var prevRevenue = prevMonthData.TotalRevenue;
+        var prevOrderCount = prevMonthData.TotalOrders;
 
         var revenueGrowth = prevRevenue > 0
             ? Math.Round(((totalRevenue - prevRevenue) / prevRevenue) * 100, 2)
@@ -585,12 +683,7 @@ public class AnalyticsService : IAnalyticsService
             : totalOrderCount > 0 ? 100m : 0m;
 
         // Product names lookup
-        var productIdsInMonth = currOrders
-            .SelectMany(o => o.Items)
-            .Where(i => i.ProductId.HasValue)
-            .Select(i => i.ProductId!.Value)
-            .Distinct()
-            .ToList();
+        var productIdsInMonth = currMonthData.ProductSales.Keys.ToList();
 
         var productNames = await _db.Products
             .AsNoTracking()
@@ -598,19 +691,16 @@ public class AnalyticsService : IAnalyticsService
             .Select(p => new { p.Id, p.Name, p.ImageUrl })
             .ToDictionaryAsync(p => p.Id);
 
-        var topProducts = currOrders
-            .SelectMany(o => o.Items)
-            .Where(i => i.ProductId.HasValue)
-            .GroupBy(i => i.ProductId!.Value)
-            .Select(g =>
+        var topProducts = currMonthData.ProductSales.Values
+            .Select(p =>
             {
-                productNames.TryGetValue(g.Key, out var pInfo);
+                productNames.TryGetValue(p.ProductId, out var pInfo);
                 return new TopSellingProductDto(
-                    g.Key,
+                    p.ProductId,
                     pInfo?.Name ?? "Unknown",
                     pInfo?.ImageUrl,
-                    g.Sum(i => i.Quantity),
-                    g.Sum(i => i.Quantity * i.UnitPrice)
+                    p.Quantity,
+                    p.Revenue
                 );
             })
             .OrderByDescending(p => p.QuantitySold)
@@ -623,11 +713,11 @@ public class AnalyticsService : IAnalyticsService
             .Select(d =>
             {
                 var day = new DateTime(year, month, d, 0, 0, 0, DateTimeKind.Utc);
-                var dayOrders = currOrders.Where(o => o.CreatedAtUtc.Date == day).ToList();
+                currMonthData.DailySales.TryGetValue(day.Date, out var val);
                 return new DailySalesPointDto(
                     day.ToString("MMM dd"),
-                    dayOrders.Sum(o => o.TotalAmount),
-                    dayOrders.Count
+                    val.Revenue,
+                    val.OrderCount
                 );
             })
             .ToList();
@@ -660,28 +750,11 @@ public class AnalyticsService : IAnalyticsService
         var yearEnd = yearStart.AddYears(1);
         var prevYearStart = yearStart.AddYears(-1);
 
-        var orders = await _db.Orders
-            .AsNoTracking()
-            .Where(o => o.StoreUserId == storeUserId
-                        && o.Status != OrderStatus.Cancelled
-                        && o.CreatedAtUtc >= prevYearStart
-                        && o.CreatedAtUtc < yearEnd)
-            .Select(o => new
-            {
-                o.TotalAmount,
-                o.CreatedAtUtc,
-                Items = o.Items.Select(i => new
-                {
-                    i.ProductId,
-                    i.Quantity,
-                    i.UnitPrice
-                }).ToList()
-            })
-            .ToListAsync();
+        var currYearData = await LoadPeriodAnalyticsDataAsync(storeUserId, yearStart, yearEnd);
+        var prevYearData = await LoadPeriodAnalyticsDataAsync(storeUserId, prevYearStart, yearStart);
 
-        var yearOrders = orders.Where(o => o.CreatedAtUtc >= yearStart && o.CreatedAtUtc < yearEnd).ToList();
-        var totalRevenue = yearOrders.Sum(o => o.TotalAmount);
-        var totalOrderCount = yearOrders.Count;
+        var totalRevenue = currYearData.TotalRevenue;
+        var totalOrderCount = currYearData.TotalOrders;
         var avgOrderValue = totalOrderCount > 0 ? Math.Round(totalRevenue / totalOrderCount, 2) : 0m;
 
         // Monthly breakdown
@@ -690,22 +763,19 @@ public class AnalyticsService : IAnalyticsService
             {
                 var mStart = new DateTime(year, m, 1, 0, 0, 0, DateTimeKind.Utc);
                 var mEnd = mStart.AddMonths(1);
-                var mOrders = yearOrders.Where(o => o.CreatedAtUtc >= mStart && o.CreatedAtUtc < mEnd).ToList();
+                var mRevenue = currYearData.DailySales.Where(kvp => kvp.Key >= mStart && kvp.Key < mEnd).Sum(kvp => kvp.Value.Revenue);
+                var mOrders = currYearData.DailySales.Where(kvp => kvp.Key >= mStart && kvp.Key < mEnd).Sum(kvp => kvp.Value.OrderCount);
+                
                 return new MonthlySalesPointDto(
                     CultureInfo.InvariantCulture.DateTimeFormat.GetAbbreviatedMonthName(m) + " " + year,
-                    mOrders.Sum(o => o.TotalAmount),
-                    mOrders.Count
+                    mRevenue,
+                    mOrders
                 );
             })
             .ToList();
 
         // Top products for the year
-        var productIdsInYear = yearOrders
-            .SelectMany(o => o.Items)
-            .Where(i => i.ProductId.HasValue)
-            .Select(i => i.ProductId!.Value)
-            .Distinct()
-            .ToList();
+        var productIdsInYear = currYearData.ProductSales.Keys.ToList();
 
         var productNames = await _db.Products
             .AsNoTracking()
@@ -713,19 +783,16 @@ public class AnalyticsService : IAnalyticsService
             .Select(p => new { p.Id, p.Name, p.ImageUrl })
             .ToDictionaryAsync(p => p.Id);
 
-        var topProducts = yearOrders
-            .SelectMany(o => o.Items)
-            .Where(i => i.ProductId.HasValue)
-            .GroupBy(i => i.ProductId!.Value)
-            .Select(g =>
+        var topProducts = currYearData.ProductSales.Values
+            .Select(p =>
             {
-                productNames.TryGetValue(g.Key, out var pInfo);
+                productNames.TryGetValue(p.ProductId, out var pInfo);
                 return new TopSellingProductDto(
-                    g.Key,
+                    p.ProductId,
                     pInfo?.Name ?? "Unknown",
                     pInfo?.ImageUrl,
-                    g.Sum(i => i.Quantity),
-                    g.Sum(i => i.Quantity * i.UnitPrice)
+                    p.Quantity,
+                    p.Revenue
                 );
             })
             .OrderByDescending(p => p.QuantitySold)
@@ -740,13 +807,21 @@ public class AnalyticsService : IAnalyticsService
             var mEnd = mStart.AddMonths(1);
             var pStart = mStart.AddMonths(-1);
 
-            var currMOrders = orders.Where(o => o.CreatedAtUtc >= mStart && o.CreatedAtUtc < mEnd).ToList();
-            var prevMOrders = orders.Where(o => o.CreatedAtUtc >= pStart && o.CreatedAtUtc < mStart).ToList();
+            var currR = currYearData.DailySales.Where(kvp => kvp.Key >= mStart && kvp.Key < mEnd).Sum(kvp => kvp.Value.Revenue);
+            var currC = currYearData.DailySales.Where(kvp => kvp.Key >= mStart && kvp.Key < mEnd).Sum(kvp => kvp.Value.OrderCount);
 
-            var currR = currMOrders.Sum(o => o.TotalAmount);
-            var prevR = prevMOrders.Sum(o => o.TotalAmount);
-            var currC = currMOrders.Count;
-            var prevC = prevMOrders.Count;
+            decimal prevR = 0;
+            int prevC = 0;
+            if (m == 1)
+            {
+                prevR = prevYearData.DailySales.Where(kvp => kvp.Key >= pStart && kvp.Key < mStart).Sum(kvp => kvp.Value.Revenue);
+                prevC = prevYearData.DailySales.Where(kvp => kvp.Key >= pStart && kvp.Key < mStart).Sum(kvp => kvp.Value.OrderCount);
+            }
+            else
+            {
+                prevR = currYearData.DailySales.Where(kvp => kvp.Key >= pStart && kvp.Key < mStart).Sum(kvp => kvp.Value.Revenue);
+                prevC = currYearData.DailySales.Where(kvp => kvp.Key >= pStart && kvp.Key < mStart).Sum(kvp => kvp.Value.OrderCount);
+            }
 
             var rGrowth = prevR > 0 ? Math.Round(((currR - prevR) / prevR) * 100, 2) : currR > 0 ? 100m : 0m;
             var oGrowth = prevC > 0 ? Math.Round(((decimal)(currC - prevC) / prevC) * 100, 2) : currC > 0 ? 100m : 0m;

@@ -154,3 +154,10 @@ public record GrowthTrendDto(string Month, decimal RevenueGrowthPercent, decimal
 // ════════════════════════════════════════════
 
 public record UpdateLowStockThresholdRequest(int Threshold);
+
+public class ProductSalesDto
+{
+    public int ProductId { get; set; }
+    public int Quantity { get; set; }
+    public decimal Revenue { get; set; }
+}

@@ -31,6 +31,12 @@ try
 
     builder.Host.UseSerilog();
 
+    builder.WebHost.UseSentry(o =>
+    {
+        o.Dsn = "https://0197591d8966cddacb8d26d5849a1551@o4511719405584384.ingest.de.sentry.io/4511719412465744";
+        o.TracesSampleRate = 1.0; // Captures 100% of transactions for performance monitoring.
+    });
+
 // Stripe Configuration
 StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"] ?? throw new InvalidOperationException("Stripe:SecretKey missing");
 
@@ -149,6 +155,7 @@ builder.Services.AddSingleton<OnlineStore.Api.Services.IImageProcessingQueue, On
 builder.Services.AddHostedService<OnlineStore.Api.Services.ImageProcessingBackgroundService>();
 builder.Services.AddHostedService<OnlineStore.Api.Services.NotificationCleanupService>();
 builder.Services.AddHostedService<OnlineStore.Api.Services.DeliveredOrderCleanupService>();
+builder.Services.AddHostedService<OnlineStore.Api.Services.AnalyticsAggregationBackgroundService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<OnlineStore.Api.Services.ICacheService, OnlineStore.Api.Services.LocalCacheService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IStoreCacheService, OnlineStore.Api.Services.StoreCacheService>();
