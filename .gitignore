@@ -96,3 +96,10 @@ ngrok_all.yml
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Graphify
+graphify-repo/
+graphify-out/
+graph.json
+graph.html
+GRAPH_REPORT.md
