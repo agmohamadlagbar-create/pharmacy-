@@ -34,6 +34,7 @@ export default function CategoriesPage({ onLogout, theme, onToggleTheme, account
     const [ads, setAds] = useState([])
     const [loadingCategories, setLoadingCategories] = useState(true)
     const [loadingAds, setLoadingAds] = useState(true)
+    const [fetchTimestamp] = useState(Date.now())
 
     useEffect(() => {
         if (!isGuest) {
@@ -430,7 +431,7 @@ export default function CategoriesPage({ onLogout, theme, onToggleTheme, account
                     <>
                         {ads.map((ad, i) => {
                     const imgUrl = ad.imageUrl.startsWith('http') ? ad.imageUrl : `${api.defaults.baseURL}${ad.imageUrl}`
-                    const cacheBustedUrl = `${imgUrl}${imgUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+                    const cacheBustedUrl = `${imgUrl}${imgUrl.includes('?') ? '&' : '?'}t=${fetchTimestamp}`
                     const content = (
                         <img
                             src={cacheBustedUrl}

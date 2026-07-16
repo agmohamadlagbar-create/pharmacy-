@@ -1,9 +1,11 @@
-import { useMemo, useState, useEffect, Suspense } from 'react'
+import { useMemo, useState, useEffect, Suspense, lazy } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { api, setAuthToken } from '../apiClient.js'
-import Spline from '@splinetool/react-spline'
 import CountryAutocomplete from '../components/CountryAutocomplete.jsx'
+
+const Spline = lazy(() => import('@splinetool/react-spline'))
+
 
 function Typewriter({ text, speed = 80, delay = 2500 }) {
   const [displayedText, setDisplayedText] = useState('')

@@ -370,6 +370,12 @@ app.UseSwaggerUI();
 
 app.UseResponseCompression();
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+
 // Only log at Debug level, not on every request
 if (app.Environment.IsDevelopment())
 {

@@ -1,26 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useParams, useLocation, Navigate, Outlet } from 'react-router-dom'
 import './i18n'
-import AuthPage from './pages/AuthPage.jsx'
 import CategoriesPage from './pages/CategoriesPage.jsx'
-import ProfilePage from './pages/ProfilePage.jsx'
-import EditProfilePage from './pages/EditProfilePage.jsx'
-import CategoryProductsPage from './pages/CategoryProductsPage.jsx'
-import StoreProductsPage from './pages/StoreProductsPage.jsx'
-import StoreOrdersPage from './pages/StoreOrdersPage.jsx'
-import StoreAnalyticsPage from './pages/StoreAnalyticsPage.jsx'
-import DeliveryJobsPage from './pages/DeliveryJobsPage.jsx'
-import AdminPage from './pages/AdminPage.jsx'
-import NotificationsPage from './pages/NotificationsPage.jsx'
-import ProductInfoPage from './pages/ProductInfoPage.jsx'
-import CartPage from './pages/CartPage.jsx'
-import PublicStorePage from './pages/PublicStorePage.jsx'
-import SettingsPage from './pages/SettingsPage.jsx'
-import CheckoutPage from './pages/CheckoutPage.jsx'
-import PaymentPage from './pages/PaymentPage.jsx'
-import FavoritesPage from './pages/FavoritesPage.jsx'
-import SearchProductsPage from './pages/SearchProductsPage.jsx'
-import MyShopsPage from './pages/MyShopsPage.jsx'
 import Skeleton from './components/Skeleton.jsx'
 import AnimationOverlay from './components/AnimationOverlay.jsx'
 import addToCartAnim from './assets/lottie/add-to-cart.json'
@@ -31,6 +12,28 @@ import ErrorOverlay from './components/ErrorOverlay'
 import AiChatWidget from './components/AiChatWidget.jsx'
 import ShopAiChatWidget from './components/ShopAiChatWidget.jsx'
 import AdminAiChatWidget from './components/AdminAiChatWidget.jsx'
+
+// Lazy-loaded pages for optimization
+const AuthPage = lazy(() => import('./pages/AuthPage.jsx'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'))
+const EditProfilePage = lazy(() => import('./pages/EditProfilePage.jsx'))
+const CategoryProductsPage = lazy(() => import('./pages/CategoryProductsPage.jsx'))
+const StoreProductsPage = lazy(() => import('./pages/StoreProductsPage.jsx'))
+const StoreOrdersPage = lazy(() => import('./pages/StoreOrdersPage.jsx'))
+const StoreAnalyticsPage = lazy(() => import('./pages/StoreAnalyticsPage.jsx'))
+const DeliveryJobsPage = lazy(() => import('./pages/DeliveryJobsPage.jsx'))
+const AdminPage = lazy(() => import('./pages/AdminPage.jsx'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'))
+const ProductInfoPage = lazy(() => import('./pages/ProductInfoPage.jsx'))
+const CartPage = lazy(() => import('./pages/CartPage.jsx'))
+const PublicStorePage = lazy(() => import('./pages/PublicStorePage.jsx'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'))
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'))
+const PaymentPage = lazy(() => import('./pages/PaymentPage.jsx'))
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage.jsx'))
+const SearchProductsPage = lazy(() => import('./pages/SearchProductsPage.jsx'))
+const MyShopsPage = lazy(() => import('./pages/MyShopsPage.jsx'))
+
 
 // Helper Wrappers for Parameterized Routes
 function CategoryProductsWrapper({ categoryProductsProps }) {
@@ -461,180 +464,191 @@ function AppContent() {
 
   return (
     <>
-      <Routes>
-        {/* Auth pages, accessible only when NOT logged in and NOT guest */}
-        <Route path="/login" element={
-          loggedIn || isGuest ? <Navigate to="/" replace /> : (
-            <div className="auth-layout">
-              <AuthPage
-                initialMode="Login"
-                onLoginSuccess={handleLoginSuccess}
-                onGuestLogin={handleGuestLogin}
-                theme={theme}
-                toggleTheme={toggleTheme}
-              />
-            </div>
-          )
-        } />
-
-        <Route path="/signup" element={
-          loggedIn || isGuest ? <Navigate to="/" replace /> : (
-            <div className="auth-layout">
-              <AuthPage
-                initialMode="Sign Up"
-                onLoginSuccess={handleLoginSuccess}
-                onGuestLogin={handleGuestLogin}
-                theme={theme}
-                toggleTheme={toggleTheme}
-              />
-            </div>
-          )
-        } />
-
-        {/* All other pages, protected by RequireAuth */}
-        <Route element={<RequireAuth loggedIn={loggedIn} isGuest={isGuest} />}>
-          <Route path="/" element={<CategoriesPage {...categoriesProps} />} />
-          <Route path="/categories" element={<CategoriesPage {...categoriesProps} />} />
-          <Route path="/home" element={<CategoriesPage {...categoriesProps} />} />
-          <Route path="/search" element={<SearchProductsWrapper searchProductsProps={searchProductsProps} />} />
-          <Route path="/category/:id" element={<CategoryProductsWrapper categoryProductsProps={categoryProductsProps} />} />
-          <Route path="/:categoryName" element={<CategoryProductsWrapper categoryProductsProps={categoryProductsProps} />} />
-          <Route path="/product/:id" element={<ProductInfoWrapper productInfoProps={productInfoProps} />} />
-          <Route path="/store/:storeId" element={<PublicStoreWrapper publicStoreProps={publicStoreProps} />} />
-          <Route path="/favorites" element={<FavoritesPage favorites={favorites} onBack={() => navigate('/')} {...favoritesProps} />} />
-          <Route path="/my-shops" element={<MyShopsPage onBack={() => navigate('/')} {...myShopsProps} />} />
-          <Route path="/settings" element={<SettingsPage onBack={() => navigate('/')} theme={theme} toggleTheme={toggleTheme} />} />
-
-          {/* Authenticated User Guarded Pages */}
-          <Route path="/cart" element={
-            <UserProtectedRoute loggedIn={loggedIn}>
-              <CartPage
-                cart={cart}
-                onBack={() => navigate('/')}
-                onUpdateQuantity={updateCartQuantity}
-                onRemoveItem={removeFromCart}
-                onNavigateStore={(storeId) => navigate(`/store/${storeId}`)}
-                onCheckout={() => {
-                  if (cart.items.length === 0) return;
-                  navigate('/checkout');
-                }}
-              />
-            </UserProtectedRoute>
+      <Suspense fallback={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh' }}>
+          <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--border)', borderTop: '4px solid var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      }>
+        <Routes>
+          {/* Auth pages, accessible only when NOT logged in and NOT guest */}
+          <Route path="/login" element={
+            loggedIn || isGuest ? <Navigate to="/" replace /> : (
+              <div className="auth-layout">
+                <AuthPage
+                  initialMode="Login"
+                  onLoginSuccess={handleLoginSuccess}
+                  onGuestLogin={handleGuestLogin}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                />
+              </div>
+            )
           } />
 
-          <Route path="/checkout" element={
-            <UserProtectedRoute loggedIn={loggedIn}>
-              <CheckoutPage
-                cart={cart}
-                onBack={() => navigate('/cart')}
-                onProceed={(data) => {
-                  setCheckoutData(data);
-                  navigate('/payment');
-                }}
-                userLocation={userLocation}
-                onChangeLocation={async (newCity, shouldRedirect = true) => {
-                  try {
-                    const { data: profile } = await api.get('/api/me');
-                    await api.put('/api/me/profile', {
-                      fullName: profile.fullName,
-                      country: profile.country,
-                      street: profile.street,
-                      buildingNumber: profile.buildingNumber,
-                      city: newCity,
-                      postalCode: profile.postalCode,
-                      latitude: profile.latitude,
-                      longitude: profile.longitude,
-                      description: profile.description,
-                      openingTime: profile.openingTime,
-                      closingTime: profile.closingTime
-                    });
-                    await fetchProfile();
-                    if (shouldRedirect) showToast(`Profile location updated to ${newCity}`);
-                  } catch (err) {
-                    console.error('Failed to update profile location', err);
-                    setUserLocation(prev => ({ ...prev, city: newCity }));
-                    if (shouldRedirect) showToast(`Location updated to ${newCity} (locally)`);
-                  }
-                  if (shouldRedirect) {
-                    navigate('/');
-                  }
-                }}
-              />
-            </UserProtectedRoute>
+          <Route path="/signup" element={
+            loggedIn || isGuest ? <Navigate to="/" replace /> : (
+              <div className="auth-layout">
+                <AuthPage
+                  initialMode="Sign Up"
+                  onLoginSuccess={handleLoginSuccess}
+                  onGuestLogin={handleGuestLogin}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                />
+              </div>
+            )
           } />
 
-          <Route path="/payment" element={
-            <UserProtectedRoute loggedIn={loggedIn}>
-              <PaymentPage
-                cart={cart}
-                checkoutData={checkoutData}
-                onBack={() => navigate('/checkout')}
-                onSuccess={() => {
-                  setActiveAnimation('payment');
-                  setTimeout(() => {
-                    fetchCart();
-                    navigate('/');
-                  }, 2300);
-                }}
-              />
-            </UserProtectedRoute>
-          } />
+          {/* All other pages, protected by RequireAuth */}
+          <Route element={<RequireAuth loggedIn={loggedIn} isGuest={isGuest} />}>
+            <Route path="/" element={<CategoriesPage {...categoriesProps} />} />
+            <Route path="/categories" element={<CategoriesPage {...categoriesProps} />} />
+            <Route path="/home" element={<CategoriesPage {...categoriesProps} />} />
+            <Route path="/search" element={<SearchProductsWrapper searchProductsProps={searchProductsProps} />} />
+            <Route path="/category/:id" element={<CategoryProductsWrapper categoryProductsProps={categoryProductsProps} />} />
+            <Route path="/:categoryName" element={<CategoryProductsWrapper categoryProductsProps={categoryProductsProps} />} />
+            <Route path="/product/:id" element={<ProductInfoWrapper productInfoProps={productInfoProps} />} />
+            <Route path="/store/:storeId" element={<PublicStoreWrapper publicStoreProps={publicStoreProps} />} />
+            <Route path="/favorites" element={<FavoritesPage favorites={favorites} onBack={() => navigate('/')} {...favoritesProps} />} />
+            <Route path="/my-shops" element={<MyShopsPage onBack={() => navigate('/')} {...myShopsProps} />} />
+            <Route path="/settings" element={<SettingsPage onBack={() => navigate('/')} theme={theme} toggleTheme={toggleTheme} />} />
 
-          <Route path="/profile" element={
-            <UserProtectedRoute loggedIn={loggedIn}>
-              <ProfilePage onBack={() => navigate('/')} onEdit={() => navigate('/edit-profile')} />
-            </UserProtectedRoute>
-          } />
+            {/* Authenticated User Guarded Pages */}
+            <Route path="/cart" element={
+              <UserProtectedRoute loggedIn={loggedIn}>
+                <CartPage
+                  cart={cart}
+                  onBack={() => navigate('/')}
+                  onUpdateQuantity={updateCartQuantity}
+                  onRemoveItem={removeFromCart}
+                  onNavigateStore={(storeId) => navigate(`/store/${storeId}`)}
+                  onCheckout={() => {
+                    if (cart.items.length === 0) return;
+                    navigate('/checkout');
+                  }}
+                />
+              </UserProtectedRoute>
+            } />
 
-          <Route path="/edit-profile" element={
-            <UserProtectedRoute loggedIn={loggedIn}>
-              <EditProfilePage onBack={() => navigate('/profile')} onSave={() => { fetchProfile(); navigate('/profile'); }} />
-            </UserProtectedRoute>
-          } />
+            <Route path="/checkout" element={
+              <UserProtectedRoute loggedIn={loggedIn}>
+                <CheckoutPage
+                  cart={cart}
+                  onBack={() => navigate('/cart')}
+                  onProceed={(data) => {
+                    setCheckoutData(data);
+                    navigate('/payment');
+                  }}
+                  userLocation={userLocation}
+                  onChangeLocation={async (newCity, shouldRedirect = true) => {
+                    try {
+                      const { data: profile } = await api.get('/api/me');
+                      await api.put('/api/me/profile', {
+                        fullName: profile.fullName,
+                        country: profile.country,
+                        street: profile.street,
+                        buildingNumber: profile.buildingNumber,
+                        city: newCity,
+                        postalCode: profile.postalCode,
+                        latitude: profile.latitude,
+                        longitude: profile.longitude,
+                        description: profile.description,
+                        openingTime: profile.openingTime,
+                        closingTime: profile.closingTime
+                      });
+                      await fetchProfile();
+                      if (shouldRedirect) showToast(`Profile location updated to ${newCity}`);
+                    } catch (err) {
+                      console.error('Failed to update profile location', err);
+                      setUserLocation(prev => ({ ...prev, city: newCity }));
+                      if (shouldRedirect) showToast(`Location updated to ${newCity} (locally)`);
+                    }
+                    if (shouldRedirect) {
+                      navigate('/');
+                    }
+                  }}
+                  showToast={showToast}
+                />
+              </UserProtectedRoute>
+            } />
 
-          <Route path="/notifications" element={
-            <UserProtectedRoute loggedIn={loggedIn}>
-              <NotificationsPage onBack={() => navigate('/')} />
-            </UserProtectedRoute>
-          } />
+            <Route path="/payment" element={
+              <UserProtectedRoute loggedIn={loggedIn}>
+                <PaymentPage
+                  cart={cart}
+                  checkoutData={checkoutData}
+                  onBack={() => navigate('/checkout')}
+                  onSuccess={async () => {
+                    setActiveAnimation('payment');
+                    await fetchCart();
+                  }}
+                  showToast={showToast}
+                />
+              </UserProtectedRoute>
+            } />
 
-          {/* Shop Owner Guarded Pages */}
-          <Route path="/store-products" element={
-            <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Shop">
-              <StoreProductsPage onBack={() => navigate('/')} />
-            </RoleProtectedRoute>
-          } />
+            <Route path="/profile" element={
+              <UserProtectedRoute loggedIn={loggedIn}>
+                <ProfilePage onBack={() => navigate('/')} />
+              </UserProtectedRoute>
+            } />
 
-          <Route path="/store-orders" element={
-            <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Shop">
-              <StoreOrdersPage onBack={() => navigate('/')} />
-            </RoleProtectedRoute>
-          } />
+            <Route path="/edit-profile" element={
+              <UserProtectedRoute loggedIn={loggedIn}>
+                <EditProfilePage onBack={() => navigate('/profile')} />
+              </UserProtectedRoute>
+            } />
 
-          <Route path="/store-analytics" element={
-            <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Shop">
-              <StoreAnalyticsPage onBack={() => navigate('/')} />
-            </RoleProtectedRoute>
-          } />
+            <Route path="/notifications" element={
+              <UserProtectedRoute loggedIn={loggedIn}>
+                <NotificationsPage onBack={() => navigate('/')} />
+              </UserProtectedRoute>
+            } />
 
-          {/* Delivery Driver Guarded Pages */}
-          <Route path="/delivery-jobs" element={
-            <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Delivery">
-              <DeliveryJobsPage onBack={() => navigate('/')} />
-            </RoleProtectedRoute>
-          } />
+            {/* Shop Owner Guarded Pages */}
+            <Route path="/store-products" element={
+              <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Shop">
+                <StoreProductsPage onBack={() => navigate('/')} />
+              </RoleProtectedRoute>
+            } />
 
-          {/* Admin Guarded Pages */}
-          <Route path="/admin" element={
-            <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Admin">
-              <AdminPage onBack={() => navigate('/')} />
-            </RoleProtectedRoute>
-          } />
-        </Route>
+            <Route path="/store-orders" element={
+              <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Shop">
+                <StoreOrdersPage onBack={() => navigate('/')} />
+              </RoleProtectedRoute>
+            } />
 
-        {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+            <Route path="/store-analytics" element={
+              <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Shop">
+                <StoreAnalyticsPage onBack={() => navigate('/')} />
+              </RoleProtectedRoute>
+            } />
+
+            {/* Delivery Driver Guarded Pages */}
+            <Route path="/delivery-jobs" element={
+              <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Delivery">
+                <DeliveryJobsPage onBack={() => navigate('/')} />
+              </RoleProtectedRoute>
+            } />
+
+            {/* Admin Guarded Pages */}
+            <Route path="/admin" element={
+              <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Admin">
+                <AdminPage onBack={() => navigate('/')} />
+              </RoleProtectedRoute>
+            } />
+          </Route>
+
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
 
       {activeAnimation === 'cart' && (
         <AnimationOverlay
@@ -646,7 +660,10 @@ function AppContent() {
       {activeAnimation === 'payment' && (
         <AnimationOverlay
           animationData={paymentSuccessAnim}
-          onComplete={() => setActiveAnimation(null)}
+          onComplete={() => {
+            setActiveAnimation(null);
+            navigate('/');
+          }}
           duration={2000}
         />
       )}
