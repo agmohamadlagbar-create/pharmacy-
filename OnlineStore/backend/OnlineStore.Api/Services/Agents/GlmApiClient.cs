@@ -28,6 +28,7 @@ public class GlmApiClient : IAiProviderClient
         string model,
         List<GroqMessageDto> messages,
         List<GroqToolDto>? tools = null,
+        double? temperature = null,
         CancellationToken cancellationToken = default)
     {
         var requestDto = new GroqChatRequestDto
@@ -35,7 +36,8 @@ public class GlmApiClient : IAiProviderClient
             Model = model,
             Messages = messages,
             Tools = tools,
-            Stream = null
+            Stream = null,
+            Temperature = temperature
         };
 
         var jsonContent = JsonSerializer.Serialize(requestDto, _jsonOptions);
@@ -72,6 +74,7 @@ public class GlmApiClient : IAiProviderClient
         List<GroqMessageDto> messages,
         List<GroqToolDto>? tools,
         Func<string, CancellationToken, Task> onToken,
+        double? temperature = null,
         CancellationToken cancellationToken = default)
     {
         var requestDto = new GroqChatRequestDto
@@ -79,7 +82,8 @@ public class GlmApiClient : IAiProviderClient
             Model = model,
             Messages = messages,
             Tools = tools,
-            Stream = true
+            Stream = true,
+            Temperature = temperature
         };
 
         var jsonContent = JsonSerializer.Serialize(requestDto, _jsonOptions);

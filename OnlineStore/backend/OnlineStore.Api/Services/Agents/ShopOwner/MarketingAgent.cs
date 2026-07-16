@@ -31,6 +31,8 @@ public class MarketingAgent : BaseAgent
 
     public override TaskComplexity DefaultComplexity => TaskComplexity.Background;
 
+    protected override int MaxToolRounds => 8;
+
     public MarketingAgent(
         AiGateway gateway,
         ToolRegistry toolRegistry,

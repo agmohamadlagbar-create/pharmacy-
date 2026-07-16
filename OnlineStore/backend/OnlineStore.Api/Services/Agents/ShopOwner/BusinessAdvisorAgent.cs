@@ -68,6 +68,8 @@ public class BusinessAdvisorAgent : BaseAgent
 
     public override TaskComplexity DefaultComplexity => TaskComplexity.Complex;
 
+    protected override int MaxToolRounds => 10;
+
     public BusinessAdvisorAgent(
         AiGateway gateway,
         ToolRegistry toolRegistry,

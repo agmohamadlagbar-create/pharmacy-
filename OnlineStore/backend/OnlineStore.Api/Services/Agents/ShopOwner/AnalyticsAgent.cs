@@ -23,6 +23,8 @@ public class AnalyticsAgent : BaseAgent
         "5. Respond in the owner's language.\n" +
         "6. Never fabricate data — only analyze what the backend provides.";
 
+    protected override int MaxToolRounds => 8;
+
     public AnalyticsAgent(
         AiGateway gateway,
         ToolRegistry toolRegistry,

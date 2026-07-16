@@ -28,6 +28,8 @@ public class ReportingAgent : BaseAgent
 
     public override TaskComplexity DefaultComplexity => TaskComplexity.Background;
 
+    protected override int MaxToolRounds => 8;
+
     public ReportingAgent(
         AiGateway gateway,
         ToolRegistry toolRegistry,

@@ -28,6 +28,8 @@ public class InventoryAgent : BaseAgent
         "7. Respond in the owner's language.\n" +
         "8. Never fabricate stock numbers.";
 
+    protected override int MaxToolRounds => 8;
+
     public InventoryAgent(
         AiGateway gateway,
         ToolRegistry toolRegistry,

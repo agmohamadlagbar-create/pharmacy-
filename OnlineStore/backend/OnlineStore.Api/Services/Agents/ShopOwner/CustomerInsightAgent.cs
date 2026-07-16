@@ -29,6 +29,8 @@ public class CustomerInsightAgent : BaseAgent
         "6. Respond in the owner's language.\n" +
         "7. Never fabricate data — only analyze what the backend provides.";
 
+    protected override int MaxToolRounds => 8;
+
     public CustomerInsightAgent(
         AiGateway gateway,
         ToolRegistry toolRegistry,

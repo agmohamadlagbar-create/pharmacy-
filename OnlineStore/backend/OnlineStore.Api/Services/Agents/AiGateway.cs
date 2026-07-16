@@ -35,14 +35,15 @@ public class AiGateway
         CancellationToken ct = default)
     {
         var route = ResolveRoute(requestContext);
+        var temperature = requestContext.Temperature;
 
-        _logger.LogInformation("[AiGateway] Agent={Agent}, Complexity={Complexity}, Provider={Provider}, Model={Model}",
-            requestContext.AgentName, requestContext.Complexity, route.Provider, route.Model);
+        _logger.LogInformation("[AiGateway] Agent={Agent}, Complexity={Complexity}, Provider={Provider}, Model={Model}, Temperature={Temperature}",
+            requestContext.AgentName, requestContext.Complexity, route.Provider, route.Model, temperature?.ToString() ?? "default");
 
         if (_config.EnableLoadBalancing && route.Provider == "groq" && _usageTracker.IsAboveThreshold("groq", _config.GroqThresholdPerMinute))
         {
             _logger.LogInformation("[AiGateway] Groq above threshold. Pre-emptively routing to GLM fallback model.");
-            return await ExecuteWithTrackingAsync(_glmClient, _config.DefaultFallbackModel, messages, tools, true, ct);
+            return await ExecuteWithTrackingAsync(_glmClient, _config.DefaultFallbackModel, messages, tools, temperature, true, ct);
         }
 
         var primaryClient = route.Provider switch
@@ -55,7 +56,7 @@ public class AiGateway
 
         try
         {
-            return await ExecuteWithTrackingAsync(primaryClient, route.Model, messages, tools, false, ct);
+            return await ExecuteWithTrackingAsync(primaryClient, route.Model, messages, tools, temperature, false, ct);
         }
         catch (RateLimitException ex) when (_config.EnableFallback)
         {
@@ -63,14 +64,14 @@ public class AiGateway
             {
                 _logger.LogWarning("[AiGateway] Groq rate limited. Falling back to GLM {Model}.", _config.DefaultFallbackModel);
                 _usageTracker.RecordFallback("groq", "glm");
-                return await ExecuteWithTrackingAsync(_glmClient, _config.DefaultFallbackModel, messages, tools, true, ct);
+                return await ExecuteWithTrackingAsync(_glmClient, _config.DefaultFallbackModel, messages, tools, temperature, true, ct);
             }
             else if (ex.ProviderName == "freellmapi")
             {
                 var fallbackGroqModel = _config.DefaultFallbackModel;
                 _logger.LogWarning("[AiGateway] FreeLLMAPI rate limited. Falling back to Groq {Model}.", fallbackGroqModel);
                 _usageTracker.RecordFallback("freellmapi", "groq");
-                return await ExecuteWithTrackingAsync(_groqClient, fallbackGroqModel, messages, tools, true, ct);
+                return await ExecuteWithTrackingAsync(_groqClient, fallbackGroqModel, messages, tools, temperature, true, ct);
             }
             throw;
         }
@@ -84,14 +85,15 @@ public class AiGateway
         CancellationToken ct = default)
     {
         var route = ResolveRoute(requestContext);
+        var temperature = requestContext.Temperature;
 
-        _logger.LogInformation("[AiGateway] Agent={Agent}, Complexity={Complexity}, Provider={Provider}, Model={Model} (streaming)",
-            requestContext.AgentName, requestContext.Complexity, route.Provider, route.Model);
+        _logger.LogInformation("[AiGateway] Agent={Agent}, Complexity={Complexity}, Provider={Provider}, Model={Model}, Temperature={Temperature} (streaming)",
+            requestContext.AgentName, requestContext.Complexity, route.Provider, route.Model, temperature?.ToString() ?? "default");
 
         if (_config.EnableLoadBalancing && route.Provider == "groq" && _usageTracker.IsAboveThreshold("groq", _config.GroqThresholdPerMinute))
         {
             _logger.LogInformation("[AiGateway] Groq above threshold. Pre-emptively routing to GLM fallback model (streaming).");
-            return await ExecuteStreamingWithTrackingAsync(_glmClient, _config.DefaultFallbackModel, messages, tools, onToken, true, ct);
+            return await ExecuteStreamingWithTrackingAsync(_glmClient, _config.DefaultFallbackModel, messages, tools, onToken, temperature, true, ct);
         }
 
         var primaryClient = route.Provider switch
@@ -104,7 +106,7 @@ public class AiGateway
 
         try
         {
-            return await ExecuteStreamingWithTrackingAsync(primaryClient, route.Model, messages, tools, onToken, false, ct);
+            return await ExecuteStreamingWithTrackingAsync(primaryClient, route.Model, messages, tools, onToken, temperature, false, ct);
         }
         catch (RateLimitException ex) when (_config.EnableFallback)
         {
@@ -112,14 +114,14 @@ public class AiGateway
             {
                 _logger.LogWarning("[AiGateway] Groq rate limited. Falling back to GLM {Model} (streaming).", _config.DefaultFallbackModel);
                 _usageTracker.RecordFallback("groq", "glm");
-                return await ExecuteStreamingWithTrackingAsync(_glmClient, _config.DefaultFallbackModel, messages, tools, onToken, true, ct);
+                return await ExecuteStreamingWithTrackingAsync(_glmClient, _config.DefaultFallbackModel, messages, tools, onToken, temperature, true, ct);
             }
             else if (ex.ProviderName == "freellmapi")
             {
                 var fallbackGroqModel = _config.DefaultFallbackModel;
                 _logger.LogWarning("[AiGateway] FreeLLMAPI rate limited. Falling back to Groq {Model} (streaming).", fallbackGroqModel);
                 _usageTracker.RecordFallback("freellmapi", "groq");
-                return await ExecuteStreamingWithTrackingAsync(_groqClient, fallbackGroqModel, messages, tools, onToken, true, ct);
+                return await ExecuteStreamingWithTrackingAsync(_groqClient, fallbackGroqModel, messages, tools, onToken, temperature, true, ct);
             }
             throw;
         }
@@ -140,10 +142,10 @@ public class AiGateway
     private async Task<ChatCompletionResult> ExecuteWithTrackingAsync(
         IAiProviderClient client, string model,
         List<GroqMessageDto> messages, List<GroqToolDto>? tools,
-        bool isFallback, CancellationToken ct)
+        double? temperature, bool isFallback, CancellationToken ct)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var result = await client.SendChatCompletionAsync(model, messages, tools, ct);
+        var result = await client.SendChatCompletionAsync(model, messages, tools, temperature, ct);
         sw.Stop();
 
         _usageTracker.RecordRequest(client.ProviderName, model, EstimateTokens(messages, result.Content), sw.ElapsedMilliseconds);
@@ -156,10 +158,10 @@ public class AiGateway
         IAiProviderClient client, string model,
         List<GroqMessageDto> messages, List<GroqToolDto>? tools,
         Func<string, CancellationToken, Task> onToken,
-        bool isFallback, CancellationToken ct)
+        double? temperature, bool isFallback, CancellationToken ct)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var result = await client.SendChatCompletionStreamingAsync(model, messages, tools, onToken, ct);
+        var result = await client.SendChatCompletionStreamingAsync(model, messages, tools, onToken, temperature, ct);
         sw.Stop();
 
         _usageTracker.RecordRequest(client.ProviderName, model, EstimateTokens(messages, result.Content), sw.ElapsedMilliseconds);

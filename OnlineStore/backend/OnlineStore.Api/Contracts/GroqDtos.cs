@@ -17,6 +17,10 @@ public class GroqChatRequestDto
     [JsonPropertyName("stream")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? Stream { get; set; }
+
+    [JsonPropertyName("temperature")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? Temperature { get; set; }
 }
 
 public class GroqToolDto

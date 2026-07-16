@@ -10,7 +10,7 @@ namespace OnlineStore.Api.Services.Agents;
 /// </summary>
 public abstract class BaseAgent : IAgent
 {
-    protected const int MaxToolRounds = 4;
+    protected virtual int MaxToolRounds => 4;
 
     protected readonly AiGateway Gateway;
     protected readonly ToolRegistry ToolRegistry;
@@ -89,6 +89,7 @@ public abstract class BaseAgent : IAgent
         var hasTools = tools.Count > 0;
 
         // If tools are available, add anti-hallucination instruction to the system prompt
+        // and use low temperature for deterministic, grounded responses
         if (hasTools)
         {
             var toolNames = string.Join(", ", tools.Select(t => t.Function.Name));
@@ -100,7 +101,10 @@ public abstract class BaseAgent : IAgent
                     "- You have access to the following tools: " + toolNames + "\n" +
                     "- You MUST use these tools to perform any actions. NEVER claim to have performed an action without calling the appropriate tool.\n" +
                     "- If the user asks you to do something that requires a tool, call the tool if you have all required parameters. If you are missing required parameters (e.g. order ID), use available tools (e.g. get_recent_orders) to retrieve them, or ask the user to provide them first. Do NOT call a tool with placeholder/invalid parameters.\n" +
-                    "- Only confirm success AFTER you receive a successful tool result."
+                    "- Only confirm success AFTER you receive a successful tool result.\n" +
+                    "- If a tool returns an error or fails, report the error honestly to the user. Do NOT fabricate data or pretend the tool succeeded.\n" +
+                    "- NEVER invent numbers, product names, prices, stock levels, revenue figures, or any other metrics. All data MUST come from tool results.\n" +
+                    "- If you lack enough data from tools to answer a question, say so honestly instead of guessing."
             };
         }
 
@@ -113,10 +117,23 @@ public abstract class BaseAgent : IAgent
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            // On the last round, inject a warning so the model doesn't try to call
+            // tools that won't get executed
+            var isLastRound = round == MaxToolRounds - 1;
+            if (isLastRound && hasTools)
+            {
+                messages.Add(new GroqMessageDto
+                {
+                    Role = "system",
+                    Content = "IMPORTANT: This is your FINAL opportunity to respond. You MUST provide your complete answer NOW based on the data you have already gathered from tools. Do NOT request any more tool calls — they will NOT be executed. Summarize your findings and respond to the user."
+                });
+            }
+
             var aiContext = new AiRequestContext
             {
                 AgentName = AgentName,
-                Complexity = DefaultComplexity
+                Complexity = DefaultComplexity,
+                Temperature = hasTools ? 0.2 : null
             };
 
             ChatCompletionResult iterationResult;
@@ -142,6 +159,14 @@ public abstract class BaseAgent : IAgent
             // (e.g. answering support FAQs or asking for missing parameters like order ID).
             if (!iterationResult.ToolCalls.Any())
             {
+                break;
+            }
+
+            // If this is the last round and the model still tried to call tools, ignore them
+            if (isLastRound)
+            {
+                Logger.LogWarning("[{AgentName}] Model attempted tool calls on last round — ignoring. Tools: {ToolNames}",
+                    AgentName, string.Join(", ", iterationResult.ToolCalls.Select(tc => tc.Function.Name)));
                 break;
             }
 
@@ -211,13 +236,20 @@ public abstract class BaseAgent : IAgent
                     structuredDataType = "recommendations";
                 }
 
+                // Build tool result content — inject explicit anti-hallucination context on errors
+                var toolResultContent = toolResult;
+                if (toolResult.StartsWith("Error"))
+                {
+                    toolResultContent = toolResult + "\n\n[SYSTEM: The tool call failed. Report this error to the user. Do NOT fabricate data or pretend this tool succeeded.]";
+                }
+
                 // Add tool result to message chain
                 messages.Add(new GroqMessageDto
                 {
                     Role = "tool",
                     ToolCallId = toolCall.Id,
                     Name = toolCall.Function.Name,
-                    Content = toolResult
+                    Content = toolResultContent
                 });
             }
         }

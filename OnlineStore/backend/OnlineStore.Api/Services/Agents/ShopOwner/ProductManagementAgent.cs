@@ -23,6 +23,8 @@ public class ProductManagementAgent : BaseAgent
         "4. Respond in the owner's language.\n\n" +
         "NEVER execute changes directly — always return suggestions for owner confirmation.";
 
+    protected override int MaxToolRounds => 8;
+
     public ProductManagementAgent(
         AiGateway gateway,
         ToolRegistry toolRegistry,

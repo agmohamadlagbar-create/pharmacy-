@@ -10,6 +10,7 @@ public interface IAiProviderClient
         string model,
         List<GroqMessageDto> messages,
         List<GroqToolDto>? tools = null,
+        double? temperature = null,
         CancellationToken cancellationToken = default);
 
     Task<ChatCompletionResult> SendChatCompletionStreamingAsync(
@@ -17,5 +18,6 @@ public interface IAiProviderClient
         List<GroqMessageDto> messages,
         List<GroqToolDto>? tools,
         Func<string, CancellationToken, Task> onToken,
+        double? temperature = null,
         CancellationToken cancellationToken = default);
 }
