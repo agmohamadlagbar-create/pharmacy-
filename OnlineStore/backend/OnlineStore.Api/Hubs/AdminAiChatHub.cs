@@ -40,6 +40,11 @@ public class AdminAiChatHub : Hub
         return channel.Reader;
     }
 
+    public async Task<ChannelReader<AiChatStreamChunkDto>> StreamChat(AiChatRequestDto request)
+    {
+        return await SendMessage(request);
+    }
+
     private async Task WriteToChannel(ChannelWriter<AiChatStreamChunkDto> writer, string userId, AiChatRequestDto request)
     {
         int conversationId = request.ConversationId ?? 0;

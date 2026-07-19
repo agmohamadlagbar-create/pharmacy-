@@ -348,6 +348,14 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     Navigator.of(context).pushNamed('/store-orders');
                   },
                 ),
+                _buildDrawerItem(
+                  icon: Icons.analytics_rounded,
+                  title: 'Store Analytics'.tr(),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pushNamed('/store-analytics');
+                  },
+                ),
               ],
 
               if (_accountType == 'Delivery')

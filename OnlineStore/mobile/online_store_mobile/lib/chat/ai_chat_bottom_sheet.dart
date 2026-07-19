@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ai_chat_service.dart';
 import 'voice_chat_manager.dart';
 import '../widgets/recommendation_cards_widget.dart';
@@ -38,6 +39,7 @@ class _AiChatBottomSheetState extends State<AiChatBottomSheet>
   bool _isListening = false;
   bool _isGenerating = false;
 
+  String _accountType = 'User';
   String _currentAssistantResponse = '';
   StreamSubscription? _voiceTextSub;
   StreamSubscription? _voiceStatusSub;
@@ -48,6 +50,7 @@ class _AiChatBottomSheetState extends State<AiChatBottomSheet>
   @override
   void initState() {
     super.initState();
+    _loadAccountType();
     _aiChatService.connect();
     _voiceManager.initialize();
 
@@ -81,6 +84,15 @@ class _AiChatBottomSheetState extends State<AiChatBottomSheet>
     _scrollController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAccountType() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _accountType = prefs.getString('accountType') ?? 'User';
+      });
+    }
   }
 
   void _scrollToBottom() {
@@ -265,8 +277,44 @@ class _AiChatBottomSheetState extends State<AiChatBottomSheet>
   }
 
   Widget _buildWelcomeScreen(ThemeData theme) {
+    IconData mainIcon = Icons.auto_awesome;
+    String greeting = 'Hi! How can I help you today?'.tr();
+    String description =
+        'Search products, track orders, manage your cart and more.'.tr();
+    List<String> promptChips = [
+      'Show me popular beverages',
+      'Where is my order?',
+      'Recommend top electronics',
+      'Help me find deals'
+    ];
+
+    if (_accountType == 'Shop') {
+      mainIcon = Icons.storefront;
+      greeting = 'Welcome Shop Owner!'.tr();
+      description =
+          'Ask about revenue, inventory restock alerts, managing products, or sales analytics.'.tr();
+      promptChips = [
+        'Show my sales analytics',
+        'Which products need restock?',
+        'How can I boost my revenue?',
+        'Summarize recent orders'
+      ];
+    } else if (_accountType == 'Admin') {
+      mainIcon = Icons.admin_panel_settings;
+      greeting = 'Welcome Platform Admin!'.tr();
+      description =
+          'Ask about store approvals, platform analytics, moderation, and system health.'.tr();
+      promptChips = [
+        'Show platform revenue report',
+        'List pending store approvals',
+        'Check fraud and security alerts',
+        'Summarize active users'
+      ];
+    }
+
     return Center(
       child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -276,23 +324,39 @@ class _AiChatBottomSheetState extends State<AiChatBottomSheet>
                 color: theme.primaryColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.auto_awesome, size: 40, color: theme.primaryColor),
+              child: Icon(mainIcon, size: 40, color: theme.primaryColor),
             ),
             const SizedBox(height: 16),
             Text(
-              'Hi! How can I help you today?'.tr(),
+              greeting,
               style: theme.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                'Search products, track orders, manage your cart and more.'.tr(),
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.hintColor),
-              ),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.hintColor),
+            ),
+            const SizedBox(height: 24),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: promptChips.map((chipText) {
+                return ActionChip(
+                  avatar: const Icon(Icons.bolt, size: 16),
+                  label: Text(chipText.tr()),
+                  onPressed: () => _sendMessage(chipText),
+                  backgroundColor: theme.primaryColor.withValues(alpha: 0.08),
+                  side: BorderSide.none,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -301,6 +365,20 @@ class _AiChatBottomSheetState extends State<AiChatBottomSheet>
   }
 
   Widget _buildHeader(ThemeData theme) {
+    IconData icon = Icons.auto_awesome;
+    String title = 'Shopping Assistant'.tr();
+    String subtitle = 'Customer AI Agent'.tr();
+
+    if (_accountType == 'Shop') {
+      icon = Icons.storefront;
+      title = 'Shop AI Agent'.tr();
+      subtitle = 'Shop Management & Analytics'.tr();
+    } else if (_accountType == 'Admin') {
+      icon = Icons.admin_panel_settings;
+      title = 'Admin AI Agent'.tr();
+      subtitle = 'Platform Admin & Oversight'.tr();
+    }
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 4, 8, 8),
       decoration: BoxDecoration(
@@ -316,7 +394,7 @@ class _AiChatBottomSheetState extends State<AiChatBottomSheet>
               color: theme.primaryColor.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.auto_awesome, color: theme.primaryColor, size: 20),
+            child: Icon(icon, color: theme.primaryColor, size: 20),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -324,16 +402,16 @@ class _AiChatBottomSheetState extends State<AiChatBottomSheet>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AI Assistant'.tr(),
+                  title,
                   style: theme.textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                if (_isGenerating)
-                  Text(
-                    'Thinking...'.tr(),
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.primaryColor),
+                Text(
+                  _isGenerating ? 'Thinking...'.tr() : subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: _isGenerating ? theme.primaryColor : theme.hintColor,
                   ),
+                ),
               ],
             ),
           ),

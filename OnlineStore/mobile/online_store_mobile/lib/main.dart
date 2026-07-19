@@ -14,6 +14,7 @@ import 'category_products_page.dart';
 import 'admin_page.dart';
 import 'store_products_page.dart';
 import 'store_orders_page.dart';
+import 'store_analytics_page.dart';
 import 'delivery_jobs_page.dart';
 import 'notifications_page.dart';
 import 'settings_page.dart';
@@ -423,6 +424,7 @@ class OnlineStoreAppState extends State<OnlineStoreApp> {
         },
         '/store-products': (context) => const StoreProductsPage(),
         '/store-orders': (context) => const StoreOrdersPage(),
+        '/store-analytics': (context) => const StoreAnalyticsPage(),
         '/delivery-jobs': (context) => const DeliveryJobsPage(),
         '/admin': (context) => const AdminPage(),
         '/notifications': (context) => const NotificationsPage(),

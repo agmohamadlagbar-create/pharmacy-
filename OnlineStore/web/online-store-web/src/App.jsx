@@ -595,7 +595,7 @@ function AppContent() {
 
             <Route path="/profile" element={
               <UserProtectedRoute loggedIn={loggedIn}>
-                <ProfilePage onBack={() => navigate('/')} />
+                <ProfilePage onBack={() => navigate('/')} onEdit={() => navigate('/edit-profile')} />
               </UserProtectedRoute>
             } />
 

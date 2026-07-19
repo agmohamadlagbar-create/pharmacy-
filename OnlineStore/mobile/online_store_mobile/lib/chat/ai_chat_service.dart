@@ -37,17 +37,31 @@ class AiChatService {
   AiChatService._internal();
 
   HubConnection? _connection;
+  String? _currentHubPath;
 
   Future<void> connect() async {
-    if (_connection != null && _connection!.state != HubConnectionState.Disconnected) {
-      return;
-    }
-
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token == null) return;
 
-    final hubUrl = '${Api.baseUrl}/hubs/ai-chat?access_token=$token';
+    final accountType = prefs.getString('accountType') ?? 'User';
+    String hubPath = '/hubs/ai-chat';
+    if (accountType == 'Shop') {
+      hubPath = '/hubs/shop-ai-chat';
+    } else if (accountType == 'Admin') {
+      hubPath = '/hubs/admin-ai-chat';
+    }
+
+    if (_connection != null && _currentHubPath != hubPath) {
+      await disconnect();
+    }
+
+    if (_connection != null && _connection!.state != HubConnectionState.Disconnected) {
+      return;
+    }
+
+    _currentHubPath = hubPath;
+    final hubUrl = '${Api.baseUrl}$hubPath?access_token=$token';
 
     _connection = HubConnectionBuilder()
         .withUrl(hubUrl)
@@ -56,15 +70,16 @@ class AiChatService {
 
     try {
       await _connection!.start();
-      if (kDebugMode) print('SignalR AiChatHub Connected');
+      if (kDebugMode) print('SignalR $hubPath Connected for accountType $accountType');
     } catch (e) {
-      if (kDebugMode) print('SignalR AiChatHub Connection Error: $e');
+      if (kDebugMode) print('SignalR $hubPath Connection Error: $e');
     }
   }
 
   Future<void> disconnect() async {
     await _connection?.stop();
     _connection = null;
+    _currentHubPath = null;
   }
 
   Stream<AiChatStreamChunkDto> streamChat(String message, {int? conversationId}) async* {
@@ -82,12 +97,14 @@ class AiChatService {
       if (conversationId != null) 'conversationId': conversationId,
     };
 
-    // The stream is returned by StreamChat method in the hub
-    final stream = _connection!.stream('StreamChat', [request]);
+    final methodName = (_currentHubPath == '/hubs/shop-ai-chat' || _currentHubPath == '/hubs/admin-ai-chat')
+        ? 'SendMessage'
+        : 'StreamChat';
+
+    final stream = _connection!.stream(methodName, [request]);
 
     await for (final event in stream) {
       if (event == null) continue;
-      // Depending on the signalr package version, event might be Map or List
       final data = event is List ? (event.isNotEmpty ? event.first : null) : event;
       if (data is Map<String, dynamic>) {
         yield AiChatStreamChunkDto.fromJson(data);

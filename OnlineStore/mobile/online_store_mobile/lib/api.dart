@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Api {
   // Android emulator localhost => 10.0.2.2, Physical device via USB => 127.0.0.1, LAN => 192.168.1.132
   // Chrome / Web => localhost
-  static String get baseUrl => kIsWeb ? '' : 'http://lagbar.runasp.net';
+  static String get baseUrl => kIsWeb ? '' : 'https://lagbar.runasp.net';
 
   static bool _isRefreshing = false;
 
@@ -152,6 +152,38 @@ class Api {
   static Future<Map<String, dynamic>> removeFromCart(int productId) =>
       delete('/api/cart/items/$productId');
   static Future<Map<String, dynamic>> clearCart() => delete('/api/cart');
+
+  /// Download binary data (e.g. PDF/Excel reports) with authentication.
+  static Future<List<int>> getBytes(String path) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final prefs = await _sharedPrefs;
+    final token = prefs.getString('token');
+
+    var res = await http.get(
+      uri,
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (res.statusCode == 401) {
+      final refreshed = await _tryRefresh();
+      if (refreshed) {
+        final newToken = (await _sharedPrefs).getString('token');
+        res = await http.get(
+          uri,
+          headers: {
+            if (newToken != null) 'Authorization': 'Bearer $newToken',
+          },
+        );
+      }
+    }
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return res.bodyBytes;
+    }
+    throw Exception('Download failed (${res.statusCode})');
+  }
 
   static Future<Map<String, dynamic>> upload(String path, File file) async {
     final uri = Uri.parse('$baseUrl$path');
