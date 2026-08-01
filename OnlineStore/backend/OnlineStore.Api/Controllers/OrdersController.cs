@@ -628,16 +628,44 @@ public class OrdersController : ControllerBase
         DeliveryJob? deliveryJob = null;
         if (newStatus == OrderStatus.ReadyForPickup)
         {
-            var orderGroupId = OrderGroupHelper.ResolveGroupId(order);
-            var groupedOrders = await _db.Orders
-                .AsNoTracking()
-                .Where(o => o.OrderGroupId == order.OrderGroupId)
-                .ToListAsync();
+            List<Order> groupedOrders;
+            if (!string.IsNullOrWhiteSpace(order.OrderGroupId))
+            {
+                groupedOrders = await _db.Orders
+                    .AsNoTracking()
+                    .Where(o => o.OrderGroupId == order.OrderGroupId)
+                    .ToListAsync();
+
+                var currentInList = groupedOrders.FirstOrDefault(o => o.Id == order.Id);
+                if (currentInList != null)
+                {
+                    currentInList.Status = OrderStatus.ReadyForPickup;
+                }
+                else
+                {
+                    groupedOrders.Add(order);
+                }
+            }
+            else
+            {
+                groupedOrders = new List<Order> { order };
+            }
 
             var allReadyForPickup = groupedOrders.Count > 0 && groupedOrders.All(o => o.Status == OrderStatus.ReadyForPickup);
-            var existingJob = await _db.DeliveryJobs
-                .AsNoTracking()
-                .AnyAsync(j => j.Order.OrderGroupId == order.OrderGroupId);
+
+            bool existingJob;
+            if (!string.IsNullOrWhiteSpace(order.OrderGroupId))
+            {
+                existingJob = await _db.DeliveryJobs
+                    .AsNoTracking()
+                    .AnyAsync(j => j.Order.OrderGroupId == order.OrderGroupId || j.OrderId == order.Id);
+            }
+            else
+            {
+                existingJob = await _db.DeliveryJobs
+                    .AsNoTracking()
+                    .AnyAsync(j => j.OrderId == order.Id);
+            }
 
             if (allReadyForPickup && !existingJob)
             {

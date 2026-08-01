@@ -216,6 +216,13 @@ public class StoreCacheService : IStoreCacheService
     {
         var ads = await _cache.GetAsync<List<AdBannerDto>>(AdsCacheKey);
 
+        // Automatically clear stale cache if it contains test/dummy placeholder data like /media/hero.png
+        if (ads != null && ads.Any(a => a.ImageUrl != null && (a.ImageUrl.Equals("/media/hero.png", StringComparison.OrdinalIgnoreCase) || a.ImageUrl.Equals("/media/new.png", StringComparison.OrdinalIgnoreCase))))
+        {
+            await _cache.RemoveAsync(AdsCacheKey);
+            ads = null;
+        }
+
         if (ads == null)
         {
             await _adsLock.WaitAsync();
