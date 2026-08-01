@@ -2,85 +2,150 @@ import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 import { Trend } from 'k6/metrics';
 
-// Per-endpoint timing metrics
-const categoriesDuration = new Trend('duration_categories');
-const productsDuration = new Trend('duration_products');
-const productInfoDuration = new Trend('duration_product_info');
-const profileDuration = new Trend('duration_profile');
+// Step duration metrics (in milliseconds)
+const step1LoginDuration = new Trend('duration_step1_login');
+const step2CategoriesDuration = new Trend('duration_step2_categories');
+const step3BeveragesDuration = new Trend('duration_step3_beverages');
+const step4ProfileDuration = new Trend('duration_step4_profile');
+const step5LogoutDuration = new Trend('duration_step5_logout');
 
-// 1. Setup global options
 export const options = {
-    // A typical load test scenario: ramp up to 10 users over 10 seconds, stay for 30s, ramp down over 10s.
+    // Start with 10 Virtual Users (VUs)
     stages: [
-        { duration: '10s', target: 100 },
-        { duration: '30s', target: 1000 },
-        { duration: '10s', target: 0 },
+        { duration: '5s', target: 10 },  // Ramp up to 10 users over 5 seconds
+        { duration: '20s', target: 10 }, // Stay at 10 users for 20 seconds
+        { duration: '5s', target: 0 },   // Ramp down over 5 seconds
     ],
-};  
+};
 
-const BASE_URL = 'http://lagbar.runasp.net';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
+const TEST_EMAIL = __ENV.TEST_EMAIL || 'muhammed0949857914@gmail.com';
+const TEST_PASSWORD = __ENV.TEST_PASSWORD || '012345678';
 
 export default function () {
+    let token = null;
+    let refreshToken = null;
+    let beveragesCategoryId = null;
+
     // ==========================================
-    // 1. Category Pages API
+    // 1. Step 1: Login
     // ==========================================
-    group('Browse Categories', () => {
-        const res = http.get(`${BASE_URL}/api/Categories`);
-        categoriesDuration.add(res.timings.duration);
-        check(res, {
-            'Categories fetched successfully (status 200)': (r) => r.status === 200,
+    group('Step 1: Login', () => {
+        const payload = JSON.stringify({
+            email: TEST_EMAIL,
+            password: TEST_PASSWORD,
         });
+
+        const params = {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        };
+
+        const res = http.post(`${BASE_URL}/api/auth/login`, payload, params);
+        step1LoginDuration.add(res.timings.duration);
+
+        const success = check(res, {
+            'Step 1 - Login status 200': (r) => r.status === 200,
+            'Step 1 - Token received': (r) => r.json('token') !== undefined,
+        });
+
+        if (success && res.status === 200) {
+            token = res.json('token');
+            refreshToken = res.json('refreshToken');
+        }
+
         sleep(1);
     });
 
     // ==========================================
-    // 2. Products API
+    // 2. Step 2: Fetch Categories
     // ==========================================
-    let productId = 1; // Default fallback ID if no products are returned
-    group('Browse Products', () => {
-        const res = http.get(`${BASE_URL}/api/Products?page=1&limit=10`);
-        productsDuration.add(res.timings.duration);
+    group('Step 2: Fetch Categories', () => {
+        const res = http.get(`${BASE_URL}/api/categories`);
+        step2CategoriesDuration.add(res.timings.duration);
+
         check(res, {
-            'Products fetched successfully (status 200)': (r) => r.status === 200,
+            'Step 2 - Fetch categories status 200': (r) => r.status === 200,
         });
 
-        // Try to dynamically extract a product ID for the product info details test
         try {
-            const data = res.json();
-            // Handle both flat array and object response wrappers
-            const items = Array.isArray(data) ? data : (data.items || data.products || []);
-            if (items.length > 0) {
-                productId = items[0].id || items[0].productId || 1;
+            const categories = res.json();
+            if (Array.isArray(categories)) {
+                // Find "Beverages" category or fallback to first available category
+                const bevCategory = categories.find(
+                    (c) => c.name && c.name.toLowerCase().includes('beverages')
+                );
+                if (bevCategory) {
+                    beveragesCategoryId = bevCategory.id;
+                } else if (categories.length > 0) {
+                    beveragesCategoryId = categories[0].id;
+                }
             }
         } catch (e) {
-            // Ignore parsing errors and keep fallback
+            // fallback
         }
+
         sleep(1);
     });
 
     // ==========================================
-    // 3. Product Info Details API
+    // 3. Step 3: Open Beverages
     // ==========================================
-    group('Browse Product Info', () => {
-        const res = http.get(`${BASE_URL}/api/products/${productId}/details`);
-        productInfoDuration.add(res.timings.duration);
+    group('Step 3: Open Beverages', () => {
+        const categoryParam = beveragesCategoryId ? `?categoryId=${beveragesCategoryId}` : '';
+        const res = http.get(`${BASE_URL}/api/products${categoryParam}`);
+        step3BeveragesDuration.add(res.timings.duration);
+
         check(res, {
-            'Product details fetched successfully (status 200)': (r) => r.status === 200,
+            'Step 3 - Open Beverages products status 200': (r) => r.status === 200,
         });
+
         sleep(1);
     });
 
     // ==========================================
-    // 4. Profile API (Without Login)
+    // 4. Step 4: Open Profile Page
     // ==========================================
-    group('Browse Profile', () => {
-        // Without authentication header, this is expected to return 401 Unauthorized
-        const res = http.get(`${BASE_URL}/api/Me`);
-        profileDuration.add(res.timings.duration);
+    group('Step 4: Open Profile Page', () => {
+        const params = {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        };
+
+        const res = http.get(`${BASE_URL}/api/me`, params);
+        step4ProfileDuration.add(res.timings.duration);
+
         check(res, {
-            'Profile request returned unauthorized status': (r) => r.status === 401,
+            'Step 4 - Profile fetched status 200': (r) => r.status === 200,
         });
+
+        sleep(1);
+    });
+
+    // ==========================================
+    // 5. Step 5: Logout
+    // ==========================================
+    group('Step 5: Logout', () => {
+        const payload = JSON.stringify({
+            refreshToken: refreshToken || '',
+        });
+
+        const params = {
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+        };
+
+        const res = http.post(`${BASE_URL}/api/auth/logout`, payload, params);
+        step5LogoutDuration.add(res.timings.duration);
+
+        check(res, {
+            'Step 5 - Logout status 200': (r) => r.status === 200,
+        });
+
         sleep(1);
     });
 }
+
 

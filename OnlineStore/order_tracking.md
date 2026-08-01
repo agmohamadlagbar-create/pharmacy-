@@ -16,19 +16,20 @@ This document covers how order status flows from payment to delivery, what notif
 [Customer Pays]
        |
        | → Notification sent to Shop
-       ▼
-[Shop: "Preparing"]
-       |
-       | → Notification sent to Customer
-       ▼
-[Shop: "Ready for Pickup"]
-       |
-       | → Notification sent to Delivery Agent
-       ▼
-[Delivery: "Accepted Job"]
-       |
-       | → Notification sent to Customer
-       ▼
+       |----------------------------------------------------------\
+       ▼                                                           ▼
+[Shop: "Preparing"]                                       [Cancellation Flow]
+       |                                                    |-- Customer cancels (Pending/Preparing)
+       | → Notification sent to Customer                    |   └─ 95% Stripe refund + Stock restored
+       ▼                                                    |-- Shop declines (Pending only + Reason)
+[Shop: "Ready for Pickup"]                                  |   └─ 100% Stripe refund + Stock restored
+       |                                                    ▼
+       | → Notification sent to Delivery Agent            [OrderStatus = Cancelled]
+       ▼                                                    | → Push notification sent to Customer
+[Delivery: "Accepted Job"]                                  | → SignalR broadcast (with Reason & Role)
+       |                                                    ▼
+       | → Notification sent to Customer                  [DeliveredOrderCleanupService]
+       ▼                                                    └─ Auto-purged from DB after 7 days
 [Delivery: "Picked Up"]
        |
        | → Notification sent to Customer
@@ -41,7 +42,8 @@ This document covers how order status flows from payment to delivery, what notif
        |
        | → Notification sent to Customer + Tracking card closes
        ▼
-[Order Complete]
+[DeliveredOrderCleanupService]
+       └─ Auto-purged from DB after 7 days
 ```
 
 ---

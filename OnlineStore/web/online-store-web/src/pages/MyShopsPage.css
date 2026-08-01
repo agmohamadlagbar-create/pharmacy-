@@ -1,0 +1,298 @@
+/* ═══════════════════════════════════════════════════════════
+   MyShopsPage CSS — Stitch Directory Redesign
+   ═══════════════════════════════════════════════════════════ */
+
+.my-shops-page {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--on-surface);
+  display: flex;
+  flex-direction: column;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  padding-bottom: 60px;
+}
+
+.shops-header {
+  padding: 16px var(--screen-pad);
+  background: var(--surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--outline-variant);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header-top-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-top-row h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.shops-subtitle {
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  margin: 2px 0 0;
+}
+
+.shops-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-full);
+  padding: 8px 16px;
+  width: 100%;
+  max-width: 400px;
+  color: var(--on-surface-variant);
+}
+
+.shops-search-bar input {
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--on-surface);
+  font-size: 14px;
+  width: 100%;
+  font-family: inherit;
+}
+
+.shops-main-content {
+  max-width: var(--container-max);
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px var(--screen-pad);
+  flex: 1;
+}
+
+.shops-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .shops-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .shops-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.shop-order-card {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.shop-order-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.shop-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.shop-card-title-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.store-avatar-mini {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.shop-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--on-surface);
+}
+
+.shop-card-date {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.shop-card-price-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.status-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  text-transform: uppercase;
+}
+
+.shop-card-price {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.stores-list-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.store-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface);
+  transition: all 0.2s ease;
+}
+
+.store-preview-chip:hover {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  border-color: var(--primary);
+}
+
+.arrow-icon {
+  color: var(--primary);
+}
+
+/* Expanded Sub-orders */
+.shop-expanded-details {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.suborder-item-box {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.suborder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.suborder-store-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.suborder-store-link:hover {
+  text-decoration: underline;
+}
+
+.suborder-part-id {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
+
+.suborder-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suborder-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.item-name-qty {
+  color: var(--on-surface);
+}
+
+.item-price {
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+
+.reorder-action-bar {
+  margin-top: 16px;
+}
+
+.reorder-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.empty-shops-card {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-xl);
+  padding: 60px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 480px;
+  margin: 40px auto;
+}
+
+.empty-shops-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.empty-shops-card p {
+  font-size: 14px;
+  color: var(--on-surface-variant);
+  margin: 0;
+}

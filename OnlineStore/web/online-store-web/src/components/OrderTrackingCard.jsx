@@ -99,23 +99,28 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
     const [isCancelling, setIsCancelling] = useState(false)
     const [showCancelModal, setShowCancelModal] = useState(false)
 
+    const [cancellationReason, setCancellationReason] = useState(order.cancellationReason || null)
+    const [cancelledByRole, setCancelledByRole] = useState(order.cancelledByRole || null)
+
     useEffect(() => {
         setTrackingStatus((order.status || '').toLowerCase())
-    }, [order.status, order.orderGroupId])
+        setCancellationReason(order.cancellationReason || null)
+        setCancelledByRole(order.cancelledByRole || null)
+    }, [order.status, order.orderGroupId, order.cancellationReason, order.cancelledByRole])
 
     const readyStoreCount = useMemo(() => countReadyStores(stores), [stores])
 
     const totalItems = useMemo(() => countTotalItems(stores), [stores])
 
     const info = useMemo(
-        () => getTrackingInfo(trackingStatus, readyStoreCount, stores.length),
-        [readyStoreCount, stores.length, trackingStatus]
+        () => getTrackingInfo(trackingStatus, readyStoreCount, stores.length, cancellationReason, cancelledByRole),
+        [readyStoreCount, stores.length, trackingStatus, cancellationReason, cancelledByRole]
     )
 
     useEffect(() => {
         const status = (trackingStatus || '').toLowerCase()
         if ((status === 'delivered' || status === 'cancelled') && onDismiss) {
-            const delay = status === 'cancelled' ? 2000 : 10000
+            const delay = status === 'cancelled' ? 5000 : 10000
             const timer = setTimeout(() => onDismiss(order.orderGroupId), delay)
             return () => clearTimeout(timer)
         }
@@ -140,6 +145,12 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
 
             if (String(returnedGroupId) === String(order.orderGroupId) && status) {
                 setTrackingStatus(status)
+                if (data.cancellationReason ?? data.CancellationReason) {
+                    setCancellationReason(data.cancellationReason ?? data.CancellationReason)
+                }
+                if (data.cancelledByRole ?? data.CancelledByRole) {
+                    setCancelledByRole(data.cancelledByRole ?? data.CancelledByRole)
+                }
             }
         }
 

@@ -37,6 +37,30 @@ public class AdminController : ControllerBase
         _logger = logger;
     }
 
+    // ──────────────── Admin Stats Overview ────────────────
+
+    /// <summary>Get admin dashboard summary stats.</summary>
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetAdminStats()
+    {
+        var totalProducts = await _db.Products.CountAsync();
+        var pendingProducts = await _db.Products.CountAsync(p => p.Status == ProductStatus.Pending);
+        var totalUsers = await _db.Users.CountAsync();
+        var totalOrders = await _db.Orders.CountAsync();
+        var totalCategories = await _db.Categories.CountAsync();
+        var totalAds = await _db.AdBanners.CountAsync();
+
+        return Ok(new
+        {
+            totalProducts,
+            pendingProducts,
+            totalUsers,
+            totalOrders,
+            totalCategories,
+            totalAds
+        });
+    }
+
     // ──────────────── Products ────────────────
 
     /// <summary>Get all products, optionally filtered by status. Supports pagination.</summary>

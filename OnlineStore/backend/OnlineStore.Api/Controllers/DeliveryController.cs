@@ -23,14 +23,16 @@ public class DeliveryController : ControllerBase
     private readonly INotificationService _notif;
     private readonly IHubContext<OnlineStore.Api.Hubs.TrackingHub> _trackingHub;
     private readonly ILogger<DeliveryController> _logger;
+    private readonly INotificationQueue _notifQueue;
 
-    public DeliveryController(ApplicationDbContext db, UserManager<AppUser> userManager, INotificationService notif, IHubContext<OnlineStore.Api.Hubs.TrackingHub> trackingHub, ILogger<DeliveryController> logger)
+    public DeliveryController(ApplicationDbContext db, UserManager<AppUser> userManager, INotificationService notif, IHubContext<OnlineStore.Api.Hubs.TrackingHub> trackingHub, ILogger<DeliveryController> logger, INotificationQueue notifQueue)
     {
         _db = db;
         _userManager = userManager;
         _notif = notif;
         _trackingHub = trackingHub;
         _logger = logger;
+        _notifQueue = notifQueue;
     }
 
     /// <summary>Get available (unassigned) delivery jobs.</summary>
@@ -84,28 +86,11 @@ public class DeliveryController : ControllerBase
         if (rowsAffected == 0)
             return BadRequest(new { error = "This delivery job is no longer available." });
 
-        // Update order status
-        var job = await _db.DeliveryJobs
-            .Include(j => j.Order)
-            .FirstOrDefaultAsync(j => j.Id == jobId);
-        if (job?.Order is not null)
-        {
-            var orderGroupId = OrderGroupHelper.ResolveGroupId(job.Order);
-            var groupedOrders = await LoadGroupedOrdersAsync(orderGroupId);
-            try
-            {
-                await _notif.NotifyUserAsync(job.Order.UserId, "Delivery Assigned", $"A driver is collecting items for order #{orderGroupId} from {groupedOrders.Count} stores.");
-
-                await _notif.NotifyOrderStatusChangedAsync(job.Order.UserId, job.Order.Id, DeliveryStatus.Assigned.ToString());
-
-            _logger.LogInformation("[SignalR] Sending order:status_updated → group: order_{OrderId}, status: {Status}", job.OrderId, OrderStatus.PickedUp);
-                await BroadcastGroupedOrderStatusAsync(groupedOrders, job);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Delivery job {JobId} was accepted, but notification delivery failed.", jobId);
-            }
-        }
+        // Enqueue background notifications (<50ms response)
+        await _notifQueue.QueueNotificationAsync(new NotificationWorkItem(
+            NotificationTaskType.DeliveryAcceptJob,
+            0, null, null, null, jobId
+        ));
 
         return Ok(new MessageResponse("Delivery job accepted successfully."));
     }
@@ -158,26 +143,19 @@ public class DeliveryController : ControllerBase
                 groupedOrder.Status = mappedOrderStatus;
                 groupedOrder.UpdatedAtUtc = DateTime.UtcNow;
             }
-
-            await _db.SaveChangesAsync();
-
-            var orderGroupId = OrderGroupHelper.ResolveGroupId(job.Order);
-            try
-            {
-                await _notif.NotifyUserAsync(job.Order.UserId, "Delivery Update", $"Your order #{orderGroupId} is now {newStatus}.");
-                await _notif.NotifyOrderStatusChangedAsync(job.Order.UserId, job.Order.Id, mappedOrderStatus.ToString());
-
-            _logger.LogInformation("[SignalR] Sending order:status_updated → group: order_{OrderId}, status: {Status}", job.OrderId, job.Order.Status);
-                await BroadcastGroupedOrderStatusAsync(groupedOrders, job);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Delivery job {JobId} status changed to {Status}, but notification delivery failed.", jobId, newStatus);
-            }
         }
 
-        if (job.Order is null)
-            await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync();
+
+        // Enqueue background notifications (<50ms response)
+        await _notifQueue.QueueNotificationAsync(new NotificationWorkItem(
+            NotificationTaskType.DeliveryStatusUpdate,
+            job.OrderId,
+            job.Order != null ? OrderGroupHelper.ResolveGroupId(job.Order) : null,
+            job.Order?.UserId,
+            newStatus.ToString(),
+            jobId
+        ));
 
         return Ok(new MessageResponse($"Delivery status updated to {newStatus}"));
     }

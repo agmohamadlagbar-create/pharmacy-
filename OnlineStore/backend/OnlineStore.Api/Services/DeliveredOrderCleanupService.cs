@@ -5,8 +5,8 @@ using OnlineStore.Infrastructure.Persistence;
 namespace OnlineStore.Api.Services;
 
 /// <summary>
-/// Background service that automatically deletes delivered orders older than 7 days.
-/// Runs once every 6 hours to check for and remove expired delivered orders,
+/// Background service that automatically deletes delivered and cancelled orders older than 7 days.
+/// Runs once every 6 hours to check for and remove expired delivered and cancelled orders,
 /// their associated order items, and related delivery jobs.
 /// </summary>
 public class DeliveredOrderCleanupService : BackgroundService
@@ -33,7 +33,7 @@ public class DeliveredOrderCleanupService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while cleaning up delivered orders.");
+                _logger.LogError(ex, "Error occurred while cleaning up delivered and cancelled orders.");
             }
 
             await Task.Delay(_checkInterval, stoppingToken);
@@ -47,21 +47,21 @@ public class DeliveredOrderCleanupService : BackgroundService
 
         var cutoff = DateTime.UtcNow.AddDays(-7);
 
-        _logger.LogInformation("Cleaning up delivered orders older than {Cutoff}...", cutoff);
+        _logger.LogInformation("Cleaning up delivered and cancelled orders older than {Cutoff}...", cutoff);
 
-        // Find all delivered orders older than 7 days
+        // Find all delivered or cancelled orders older than 7 days
         var expiredOrderIds = await db.Orders
-            .Where(o => o.Status == OrderStatus.Delivered && o.UpdatedAtUtc < cutoff)
+            .Where(o => (o.Status == OrderStatus.Delivered || o.Status == OrderStatus.Cancelled) && o.UpdatedAtUtc < cutoff)
             .Select(o => o.Id)
             .ToListAsync();
 
         if (expiredOrderIds.Count == 0)
         {
-            _logger.LogInformation("No expired delivered orders found.");
+            _logger.LogInformation("No expired delivered or cancelled orders found.");
             return;
         }
 
-        _logger.LogInformation("Found {Count} delivered orders older than 7 days. Deleting...", expiredOrderIds.Count);
+        _logger.LogInformation("Found {Count} delivered or cancelled orders older than 7 days. Deleting...", expiredOrderIds.Count);
 
         // Delete related delivery jobs first (foreign key constraint)
         var deletedJobs = await db.DeliveryJobs

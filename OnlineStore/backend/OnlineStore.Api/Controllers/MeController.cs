@@ -61,6 +61,10 @@ public class MeController : ControllerBase
             user.BuildingNumber,
             user.City,
             user.PostalCode,
+            user.District,
+            user.Neighborhood,
+            user.Floor,
+            user.ApartmentNo,
             user.Latitude,
             user.Longitude,
             data.Shop?.Description,
@@ -117,12 +121,32 @@ public class MeController : ControllerBase
         var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null) return Unauthorized();
 
+        // Validate required address fields for Customer accounts
+        if (user.AccountType == OnlineStore.Domain.Entities.AccountType.User)
+        {
+            var missingFields = new List<string>();
+            if (string.IsNullOrWhiteSpace(request.Street)) missingFields.Add("Address Information");
+            if (string.IsNullOrWhiteSpace(request.District)) missingFields.Add("District");
+            if (string.IsNullOrWhiteSpace(request.Neighborhood)) missingFields.Add("Neighborhood");
+            if (string.IsNullOrWhiteSpace(request.BuildingNumber)) missingFields.Add("Building Number");
+            if (string.IsNullOrWhiteSpace(request.Floor)) missingFields.Add("Floor");
+            if (string.IsNullOrWhiteSpace(request.ApartmentNo)) missingFields.Add("Apartment No.");
+            if (string.IsNullOrWhiteSpace(request.City)) missingFields.Add("City");
+
+            if (missingFields.Count > 0)
+                return BadRequest(new { error = $"The following address fields are required: {string.Join(", ", missingFields)}" });
+        }
+
         user.FullName = request.FullName ?? user.FullName;
         user.Country = request.Country ?? user.Country;
         user.Street = request.Street ?? user.Street;
         user.BuildingNumber = request.BuildingNumber ?? user.BuildingNumber;
         user.City = request.City ?? user.City;
         user.PostalCode = request.PostalCode ?? user.PostalCode;
+        user.District = request.District ?? user.District;
+        user.Neighborhood = request.Neighborhood ?? user.Neighborhood;
+        user.Floor = request.Floor ?? user.Floor;
+        user.ApartmentNo = request.ApartmentNo ?? user.ApartmentNo;
         user.Latitude = request.Latitude ?? user.Latitude;
         user.Longitude = request.Longitude ?? user.Longitude;
 
@@ -136,6 +160,41 @@ public class MeController : ControllerBase
                 if (request.OpeningTime != null) shop.OpeningTime = request.OpeningTime;
                 if (request.ClosingTime != null) shop.ClosingTime = request.ClosingTime;
             }
+        }
+
+        // Sync updated address into UserAddresses table so Checkout stays in sync
+        var defaultAddr = await _db.UserAddresses.FirstOrDefaultAsync(a => a.UserId == user.Id && a.IsDefault);
+        if (defaultAddr != null)
+        {
+            defaultAddr.Street = user.Street;
+            defaultAddr.BuildingNumber = user.BuildingNumber;
+            defaultAddr.City = user.City;
+            defaultAddr.PostalCode = user.PostalCode;
+            defaultAddr.District = user.District;
+            defaultAddr.Neighborhood = user.Neighborhood;
+            defaultAddr.Floor = user.Floor;
+            defaultAddr.ApartmentNo = user.ApartmentNo;
+            defaultAddr.Latitude = user.Latitude;
+            defaultAddr.Longitude = user.Longitude;
+        }
+        else if (!string.IsNullOrWhiteSpace(user.Street))
+        {
+            _db.UserAddresses.Add(new OnlineStore.Domain.Entities.UserAddress
+            {
+                UserId = user.Id,
+                Title = "Home",
+                Street = user.Street,
+                BuildingNumber = user.BuildingNumber,
+                City = user.City,
+                PostalCode = user.PostalCode,
+                District = user.District,
+                Neighborhood = user.Neighborhood,
+                Floor = user.Floor,
+                ApartmentNo = user.ApartmentNo,
+                Latitude = user.Latitude,
+                Longitude = user.Longitude,
+                IsDefault = true
+            });
         }
 
         var result = await _userManager.UpdateAsync(user);
@@ -176,6 +235,10 @@ public class MeController : ControllerBase
                     BuildingNumber = user.BuildingNumber,
                     City = user.City,
                     PostalCode = user.PostalCode,
+                    District = user.District,
+                    Neighborhood = user.Neighborhood,
+                    Floor = user.Floor,
+                    ApartmentNo = user.ApartmentNo,
                     Latitude = user.Latitude,
                     Longitude = user.Longitude,
                     IsDefault = true
@@ -206,6 +269,10 @@ public class MeController : ControllerBase
             BuildingNumber = req.BuildingNumber,
             City = req.City,
             PostalCode = req.PostalCode,
+            District = req.District,
+            Neighborhood = req.Neighborhood,
+            Floor = req.Floor,
+            ApartmentNo = req.ApartmentNo,
             Latitude = req.Latitude,
             Longitude = req.Longitude,
             IsDefault = isFirst || req.IsDefault
@@ -238,6 +305,10 @@ public class MeController : ControllerBase
         address.BuildingNumber = req.BuildingNumber ?? address.BuildingNumber;
         address.City = req.City ?? address.City;
         address.PostalCode = req.PostalCode ?? address.PostalCode;
+        address.District = req.District ?? address.District;
+        address.Neighborhood = req.Neighborhood ?? address.Neighborhood;
+        address.Floor = req.Floor ?? address.Floor;
+        address.ApartmentNo = req.ApartmentNo ?? address.ApartmentNo;
         address.Latitude = req.Latitude ?? address.Latitude;
         address.Longitude = req.Longitude ?? address.Longitude;
 

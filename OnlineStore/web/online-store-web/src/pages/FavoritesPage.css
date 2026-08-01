@@ -1,0 +1,238 @@
+/* ═══════════════════════════════════════════════════════════
+   FavoritesPage CSS — Stitch Wishlist Redesign
+   ═══════════════════════════════════════════════════════════ */
+
+.favorites-page {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--on-surface);
+  display: flex;
+  flex-direction: column;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  padding-bottom: 60px;
+}
+
+.favorites-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px var(--screen-pad);
+  background: var(--surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--outline-variant);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-left h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.favorites-subtitle {
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  margin: 2px 0 0;
+}
+
+.count-highlight {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.add-all-btn {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+.favorites-content {
+  flex: 1;
+  max-width: var(--container-max);
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px var(--screen-pad);
+}
+
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 20px;
+}
+
+@media (min-width: 480px) {
+  .favorites-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 840px) {
+  .favorites-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .favorites-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.fav-card {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.fav-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+
+.fav-img-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 85%;
+  background: var(--surface-container-high);
+  overflow: hidden;
+}
+
+.fav-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.fav-card:hover .fav-img {
+  transform: scale(1.06);
+}
+
+.fav-img-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fav-remove-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  inset-inline-end: 12px;
+  inset-inline-start: auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.fav-remove-btn:hover {
+  background: var(--err-bg);
+  color: var(--error);
+  border-color: var(--err-border);
+  transform: scale(1.1);
+}
+
+.fav-category-tag {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  inset-inline-start: 12px;
+  inset-inline-end: auto;
+  background: rgba(186, 195, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(186, 195, 255, 0.3);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.fav-info {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.fav-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fav-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.fav-price {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.fav-old-price {
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  text-decoration: line-through;
+}
+
+.fav-add-cart-btn {
+  width: 100%;
+  margin-top: auto;
+  padding: 10px;
+  font-size: 13px;
+}

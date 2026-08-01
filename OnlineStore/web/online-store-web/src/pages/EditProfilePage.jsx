@@ -6,16 +6,13 @@ import L from 'leaflet'
 import { useTranslation } from 'react-i18next'
 import './EditProfilePage.css'
 
-// Fix for default marker icon in Leaflet
-delete L.Icon.Default.prototype._getIconUrl;
+// Fix default marker icon in Leaflet
+delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
     iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-const BackIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-const CheckIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+})
 
 function MapEvents({ onMapClick }) {
     useMapEvents({
@@ -27,7 +24,8 @@ function MapEvents({ onMapClick }) {
 }
 
 export default function EditProfilePage({ onBack, onSave }) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
+    const isRTL = i18n.language === 'ar'
     const [formData, setFormData] = useState({
         fullName: '',
         country: '',
@@ -35,6 +33,10 @@ export default function EditProfilePage({ onBack, onSave }) {
         buildingNumber: '',
         city: '',
         postalCode: '',
+        district: '',
+        neighborhood: '',
+        floor: '',
+        apartmentNo: '',
         latitude: 41.0082,
         longitude: 28.9784,
         description: '',
@@ -44,9 +46,21 @@ export default function EditProfilePage({ onBack, onSave }) {
     })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [errorModal, setErrorModal] = useState({ open: false, title: '', message: '' })
 
     useEffect(() => {
-        fetchProfile()
+        fetchProfile().then(() => {
+            if (window.location.hash === '#address') {
+                setTimeout(() => {
+                    const el = document.getElementById('address-section')
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                        const firstInput = el.querySelector('input')
+                        if (firstInput) firstInput.focus()
+                    }
+                }, 150)
+            }
+        })
     }, [])
 
     async function fetchProfile() {
@@ -60,6 +74,10 @@ export default function EditProfilePage({ onBack, onSave }) {
                 buildingNumber: data.buildingNumber || '',
                 city: data.city || '',
                 postalCode: data.postalCode || '',
+                district: data.district || '',
+                neighborhood: data.neighborhood || '',
+                floor: data.floor || '',
+                apartmentNo: data.apartmentNo || '',
                 latitude: data.latitude || 41.0082,
                 longitude: data.longitude || 28.9784,
                 description: data.description || '',
@@ -77,7 +95,6 @@ export default function EditProfilePage({ onBack, onSave }) {
     async function handleMapClick(lat, lng) {
         setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))
 
-        // Reverse geocoding using Nominatim
         try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
                 headers: { 'User-Agent': 'OnlineStoreWeb' }
@@ -107,45 +124,97 @@ export default function EditProfilePage({ onBack, onSave }) {
         e.preventDefault()
         setSaving(true)
 
-        const trimmedData = {
-            ...formData,
-            city: formData.city.trim(),
-            fullName: formData.fullName.trim(),
-            country: formData.country.trim(),
-            street: formData.street.trim(),
-            postalCode: formData.postalCode.trim()
+        // Frontend validation for Customer (User) accounts
+        if (formData.accountType === 'User') {
+            const requiredFields = [
+                { key: 'street', label: t('Address Information') },
+                { key: 'district', label: t('District') },
+                { key: 'neighborhood', label: t('Neighborhood') },
+                { key: 'buildingNumber', label: t('Building Number') },
+                { key: 'floor', label: t('Floor') },
+                { key: 'apartmentNo', label: t('Apartment No.') },
+                { key: 'city', label: t('City') },
+            ]
+            const missing = requiredFields.filter(f => !(formData[f.key] || '').trim())
+            if (missing.length > 0) {
+                setSaving(false)
+                setErrorModal({
+                    open: true,
+                    title: t('Missing Required Fields'),
+                    message: `${t('Please fill in the following fields:')}\n\n${missing.map(f => '• ' + f.label).join('\n')}`
+                })
+                return
+            }
+        }
+
+        const payload = {
+            fullName: (formData.fullName || '').trim(),
+            country: (formData.country || '').trim(),
+            street: (formData.street || '').trim(),
+            buildingNumber: (formData.buildingNumber || '').trim(),
+            city: (formData.city || '').trim(),
+            postalCode: (formData.postalCode || '').trim(),
+            district: (formData.district || '').trim(),
+            neighborhood: (formData.neighborhood || '').trim(),
+            floor: (formData.floor || '').trim(),
+            apartmentNo: (formData.apartmentNo || '').trim(),
+            latitude: formData.latitude ? parseFloat(formData.latitude) : 0,
+            longitude: formData.longitude ? parseFloat(formData.longitude) : 0,
+            description: formData.description ? formData.description.trim() : null,
+            openingTime: formData.openingTime || null,
+            closingTime: formData.closingTime || null
         }
 
         try {
-            const res = await api.put('/api/me/profile', trimmedData)
-            if (res.status === 200) {
+            await api.put('/api/me/profile', payload)
+            if (typeof onSave === 'function') {
                 onSave()
-            } else {
-                alert(t('Failed to save profile'))
+            } else if (typeof onBack === 'function') {
+                onBack()
             }
         } catch (err) {
             console.error('Save error', err)
-            alert(t('Error saving profile'))
+            const serverMsg = err?.response?.data?.error || err?.response?.data?.message || (Array.isArray(err?.response?.data?.errors) ? err.response.data.errors.join(', ') : null) || err.message || t('Unknown error occurred')
+            setErrorModal({
+                open: true,
+                title: t('Profile Update Failed'),
+                message: `${t('We could not update your profile address.')}\n\n${t('Reason:')} ${serverMsg}`
+            })
         } finally {
             setSaving(false)
         }
     }
 
-    if (loading) return <div className="edit-loading">{t('Loading...')}</div>
-
-    return (
-        <div className="edit-profile-page">
+    if (loading) return (
+        <div className="edit-profile-page page-enter" dir={isRTL ? 'rtl' : 'ltr'}>
             <header className="edit-header">
-                <button className="icon-btn" onClick={onBack}>
-                    <BackIcon />
+                <button className="back-btn-circular" onClick={onBack}>
+                    <span className="material-symbols-outlined">{isRTL ? 'arrow_forward' : 'arrow_back'}</span>
                 </button>
                 <h1>{t('Edit Profile')}</h1>
+            </header>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+                <div className="spinner" style={{ width: 40, height: 40, border: '4px solid var(--outline-variant)', borderTop: '4px solid var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            </div>
+        </div>
+    )
+
+    return (
+        <div className="edit-profile-page page-enter" dir={isRTL ? 'rtl' : 'ltr'}>
+            {/* Header */}
+            <header className="edit-header">
+                <button className="back-btn-circular" onClick={onBack} title={t('Back')}>
+                    <span className="material-symbols-outlined">{isRTL ? 'arrow_forward' : 'arrow_back'}</span>
+                </button>
+                <h1>{t('Edit Profile')}</h1>
+                <div style={{ width: 44 }} />
             </header>
 
             <main className="edit-content">
                 <form className="edit-form" onSubmit={handleSubmit}>
+                    {/* Personal Information */}
                     <div className="form-section">
-                        <h3>{t('Personal Info')}</h3>
+                        <h3>{t('Personal Information')}</h3>
                         <div className="input-group">
                             <label>{formData.accountType === 'Shop' ? t('Shop Name') : t('Full Name')}</label>
                             <input
@@ -169,9 +238,10 @@ export default function EditProfilePage({ onBack, onSave }) {
                         </div>
                     </div>
 
+                    {/* Store Information (Shop Owners Only) */}
                     {formData.accountType === 'Shop' && (
                         <div className="form-section">
-                            <h3>{t('Store Information')}</h3>
+                            <h3>{t('Store Details')}</h3>
                             <div className="input-group">
                                 <label>{t('Description')}</label>
                                 <textarea
@@ -180,7 +250,7 @@ export default function EditProfilePage({ onBack, onSave }) {
                                     onChange={handleChange}
                                     placeholder={t('Tell customers about your store...')}
                                     rows="3"
-                                    style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '15px' }}
+                                    className="edit-textarea"
                                 />
                             </div>
                             <div className="input-grid" style={{ marginTop: '12px' }}>
@@ -206,19 +276,125 @@ export default function EditProfilePage({ onBack, onSave }) {
                         </div>
                     )}
 
-                    <div className="form-section">
+                    {/* Address Details */}
+                    <div className="form-section" id="address-section">
                         <h3>{t('Address Details')}</h3>
+
+                        {/* Address Information (full width) */}
+                        <div className="input-group">
+                            <label>
+                                {t('Address Information')}
+                                {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                            </label>
+                            <input
+                                type="text"
+                                name="street"
+                                value={formData.street}
+                                onChange={handleChange}
+                                placeholder={t('Address (Street, Road, and Other Details)')}
+                                required={formData.accountType === 'User'}
+                            />
+                        </div>
+
+                        {/* District + Neighborhood */}
                         <div className="input-grid">
                             <div className="input-group">
-                                <label>{t('City')}</label>
+                                <label>
+                                    {t('District')}
+                                    {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="district"
+                                    value={formData.district}
+                                    onChange={handleChange}
+                                    placeholder={t('District')}
+                                    required={formData.accountType === 'User'}
+                                />
+                            </div>
+                            <div className="input-group">
+                                <label>
+                                    {t('Neighborhood')}
+                                    {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="neighborhood"
+                                    value={formData.neighborhood}
+                                    onChange={handleChange}
+                                    placeholder={t('Neighborhood')}
+                                    required={formData.accountType === 'User'}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Building Number + Floor */}
+                        <div className="input-grid">
+                            <div className="input-group">
+                                <label>
+                                    {t('Building Number')}
+                                    {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="buildingNumber"
+                                    value={formData.buildingNumber}
+                                    onChange={handleChange}
+                                    placeholder={t('Building Number')}
+                                    required={formData.accountType === 'User'}
+                                />
+                            </div>
+                            <div className="input-group">
+                                <label>
+                                    {t('Floor')}
+                                    {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="floor"
+                                    value={formData.floor}
+                                    onChange={handleChange}
+                                    placeholder={t('Floor')}
+                                    required={formData.accountType === 'User'}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Apartment No. + City */}
+                        <div className="input-grid">
+                            <div className="input-group">
+                                <label>
+                                    {t('Apartment No.')}
+                                    {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="apartmentNo"
+                                    value={formData.apartmentNo}
+                                    onChange={handleChange}
+                                    placeholder={t('Apartment No.')}
+                                    required={formData.accountType === 'User'}
+                                />
+                            </div>
+                            <div className="input-group">
+                                <label>
+                                    {t('City')}
+                                    {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                </label>
                                 <input
                                     type="text"
                                     name="city"
                                     value={formData.city}
                                     onChange={handleChange}
                                     onBlur={(e) => setFormData(prev => ({ ...prev, city: e.target.value.trim() }))}
+                                    placeholder={t('City')}
+                                    required={formData.accountType === 'User'}
                                 />
                             </div>
+                        </div>
+
+                        {/* Postal Code + Country */}
+                        <div className="input-grid">
                             <div className="input-group">
                                 <label>{t('Postal Code')}</label>
                                 <input
@@ -226,29 +402,23 @@ export default function EditProfilePage({ onBack, onSave }) {
                                     name="postalCode"
                                     value={formData.postalCode}
                                     onChange={handleChange}
+                                    placeholder={t('Postal Code')}
+                                />
+                            </div>
+                            <div className="input-group">
+                                <label>{t('Country')}</label>
+                                <input
+                                    type="text"
+                                    name="country"
+                                    value={formData.country}
+                                    onChange={handleChange}
+                                    placeholder={t('Country')}
                                 />
                             </div>
                         </div>
-                        <div className="input-group">
-                            <label>{t('Street')}</label>
-                            <input
-                                type="text"
-                                name="street"
-                                value={formData.street}
-                                onChange={handleChange}
-                            />
-                        </div>
-                        <div className="input-group">
-                            <label>{t('Building Number')}</label>
-                            <input
-                                type="text"
-                                name="buildingNumber"
-                                value={formData.buildingNumber}
-                                onChange={handleChange}
-                            />
-                        </div>
                     </div>
 
+                    {/* Select Location on Map */}
                     <div className="form-section">
                         <div className="section-header">
                             <h3>{t('Select Location')}</h3>
@@ -256,13 +426,13 @@ export default function EditProfilePage({ onBack, onSave }) {
                                 {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
                             </span>
                         </div>
-                        <p className="section-hint">{t('Click on the map to set your address')}</p>
+                        <p className="section-hint">{t('Click on the map to set your pin location')}</p>
 
                         <div className="map-container">
                             <MapContainer
                                 center={[formData.latitude, formData.longitude]}
                                 zoom={15}
-                                style={{ height: '300px', width: '100%', borderRadius: '12px' }}
+                                style={{ height: '300px', width: '100%', borderRadius: 'var(--radius-lg)' }}
                             >
                                 <TileLayer
                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -274,11 +444,38 @@ export default function EditProfilePage({ onBack, onSave }) {
                         </div>
                     </div>
 
-                    <button type="submit" className="save-btn" disabled={saving}>
-                        {saving ? t('Saving...') : <><CheckIcon /> {t('Save Changes')}</>}
+                    {/* Submit Button */}
+                    <button type="submit" className="primary" disabled={saving} style={{ padding: '16px', fontSize: '16px' }}>
+                        <span className="material-symbols-outlined">check</span>
+                        <span>{saving ? t('Saving...') : t('Save Changes')}</span>
                     </button>
                 </form>
             </main>
+
+            {/* Custom Failure Popup Modal (Matches Admin Delete Modal Style) */}
+            {errorModal.open && (
+                <div className="admin-modal-overlay" onClick={() => setErrorModal({ open: false, title: '', message: '' })}>
+                    <div className="admin-modal-card" onClick={e => e.stopPropagation()}>
+                        <div className="admin-modal-header">
+                            <div className="admin-modal-icon-danger">
+                                <span className="material-symbols-outlined">warning</span>
+                            </div>
+                            <h3 className="admin-modal-title">{errorModal.title}</h3>
+                        </div>
+                        <p className="admin-modal-message" style={{ whiteSpace: 'pre-line' }}>{errorModal.message}</p>
+                        <div className="admin-modal-actions">
+                            <button 
+                                type="button"
+                                className="admin-modal-confirm-btn"
+                                style={{ background: 'var(--primary)', color: 'var(--on-primary, #ffffff)', boxShadow: '0 4px 14px rgba(63, 81, 181, 0.3)' }}
+                                onClick={() => setErrorModal({ open: false, title: '', message: '' })}
+                            >
+                                {t('OK')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

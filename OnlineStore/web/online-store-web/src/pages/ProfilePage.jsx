@@ -4,14 +4,9 @@ import ProfileRippleAvatar from '../components/ProfileRippleAvatar.jsx'
 import { useTranslation } from 'react-i18next'
 import './ProfilePage.css'
 
-const UserIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-const MailIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-const MapPinIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-const HomeIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-const BackIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-
-export default function ProfilePage({ onBack, onEdit }) {
-    const { t } = useTranslation()
+export default function ProfilePage({ onBack, onEdit, onNavigateSettings, onLogout, onNavigateStore }) {
+    const { t, i18n } = useTranslation()
+    const isRTL = i18n?.language === 'ar'
     const [profile, setProfile] = useState(null)
     const [loading, setLoading] = useState(true)
 
@@ -30,61 +25,161 @@ export default function ProfilePage({ onBack, onEdit }) {
         }
     }
 
-    if (loading) return <div className="profile-loading">{t('Loading profile...')}</div>
+    if (loading) return (
+        <div className="profile-page page-enter" dir={isRTL ? 'rtl' : 'ltr'}>
+            <header className="profile-header">
+                <button className="back-btn-circular" onClick={onBack}>
+                    <span className="material-symbols-outlined">{isRTL ? 'arrow_forward' : 'arrow_back'}</span>
+                </button>
+                <h1>{t('My Profile')}</h1>
+                <div style={{ width: 44 }} />
+            </header>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+                <div className="spinner" style={{ width: 40, height: 40, border: '4px solid var(--outline-variant)', borderTop: '4px solid var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            </div>
+        </div>
+    )
 
     const displayName = profile?.shopName || profile?.fullName || t('User')
     const avatarUrl = profile?.profilePictureUrl ? `${api.defaults.baseURL}${profile.profilePictureUrl}` : null
+    const roleLabel = profile?.accountType === 'Admin' ? t('Admin') 
+        : profile?.accountType === 'Shop' ? t('Store Owner') 
+        : profile?.accountType === 'Delivery' ? t('Delivery Rider') 
+        : t('Customer')
 
     return (
-        <div className="profile-page">
+        <div className="profile-page page-enter" dir={isRTL ? 'rtl' : 'ltr'}>
+            {/* Header */}
             <header className="profile-header">
-                <button className="icon-btn" onClick={onBack}>
-                    <BackIcon />
+                <button className="back-btn-circular" onClick={onBack} title={t('Back')}>
+                    <span className="material-symbols-outlined">{isRTL ? 'arrow_forward' : 'arrow_back'}</span>
                 </button>
                 <h1>{t('My Profile')}</h1>
+                <button className="back-btn-circular" onClick={onNavigateSettings} title={t('Settings')}>
+                    <span className="material-symbols-outlined">settings</span>
+                </button>
             </header>
 
             <main className="profile-content">
-                <div className="profile-card">
-                    <div className="profile-avatar-section">
-                        <ProfileRippleAvatar src={avatarUrl} size={180} />
-                        <h2>{displayName}</h2>
-                        <p className="profile-role" style={{ textTransform: 'uppercase' }}>
-                            {profile?.accountType === 'Admin' ? t('Admin') 
-                                : profile?.accountType === 'Shop' ? t('Store Owner') 
-                                : profile?.accountType === 'Delivery' ? t('Delivery Rider') 
-                                : t('Customer')}
-                        </p>
-                    </div>
+                <div className="profile-main-container">
+                    {/* Hero Profile Section */}
+                    <div className="card profile-hero-card">
+                        <div className="profile-avatar-wrap">
+                            <ProfileRippleAvatar src={avatarUrl} size={130} />
+                        </div>
 
-                    <div className="profile-info-grid">
-                        <InfoItem icon={<MailIcon />} label={t('Email')} value={profile?.email} />
-                        {profile?.accountType !== 'Shop' && (
-                            <InfoItem icon={<UserIcon />} label={t('Full Name')} value={profile?.fullName || t('Not provided')} />
-                        )}
+                        <div className="profile-hero-text">
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <h2 className="profile-name" style={{ margin: 0 }}>{displayName}</h2>
+                                <span className="role-badge merchant" style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>verified</span>
+                                    {roleLabel}
+                                </span>
+                            </div>
+                            <p className="profile-email" style={{ marginTop: '6px' }}>{profile?.email}</p>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', width: '100%', marginTop: '20px' }}>
+                            <button className="primary" onClick={onEdit}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
+                                <span>{t('Edit Profile')}</span>
+                            </button>
+                            <button className="btn-premium secondary" onClick={onNavigateSettings}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>settings</span>
+                                <span>{t('Settings')}</span>
+                            </button>
+                        </div>
+
                         {profile?.accountType === 'Shop' && (
-                            <InfoItem icon={<HomeIcon />} label={t('Shop Name')} value={profile?.shopName || t('Not provided')} />
-                        )}
-
-                        <div className="info-divider">{t('Address Information')}</div>
-
-                        <InfoItem icon={<MapPinIcon />} label={t('City')} value={profile?.city || t('Not provided')} />
-                        <InfoItem icon={<MapPinIcon />} label={t('Street')} value={profile?.street || t('Not provided')} />
-                        <InfoItem icon={<MapPinIcon />} label={t('Building')} value={profile?.buildingNumber || t('Not provided')} />
-                        <InfoItem icon={<MapPinIcon />} label={t('Postal Code')} value={profile?.postalCode || t('Not provided')} />
-
-                        {(profile?.latitude && profile?.longitude) && (
-                            <InfoItem
-                                icon={<MapPinIcon />}
-                                label={t('Location')}
-                                value={`${profile.latitude.toFixed(4)}, ${profile.longitude.toFixed(4)}`}
-                            />
+                            <button
+                                className="primary"
+                                style={{
+                                    width: '100%',
+                                    marginTop: '12px',
+                                    padding: '14px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '10px',
+                                    background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                                    color: 'var(--on-primary)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    fontWeight: 700,
+                                    fontSize: '14px',
+                                    cursor: 'pointer',
+                                    border: 'none'
+                                }}
+                                onClick={() => {
+                                    if (onNavigateStore && profile?.id) {
+                                        onNavigateStore(profile.id)
+                                    }
+                                }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>storefront</span>
+                                <span>{t('View My Store Page')}</span>
+                            </button>
                         )}
                     </div>
 
-                    <button className="edit-profile-btn" onClick={onEdit}>
-                        {t('Edit Profile')}
-                    </button>
+                    {/* Account Information Card */}
+                    <div className="card profile-details-card">
+                        <h3 className="section-subtitle">{t('Personal Information')}</h3>
+
+                        <div className="info-grid">
+                            <InfoItem icon="mail" label={t('Email')} value={profile?.email} />
+                            {profile?.accountType !== 'Shop' && (
+                                <InfoItem icon="person" label={t('Full Name')} value={profile?.fullName || t('Not provided')} />
+                            )}
+                            {profile?.accountType === 'Shop' && (
+                                <InfoItem icon="storefront" label={t('Shop Name')} value={profile?.shopName || t('Not provided')} />
+                            )}
+                        </div>
+
+                        <div className="section-divider" />
+
+                        <h3 className="section-subtitle">{t('Default Location & Address')}</h3>
+
+                        <div className="info-grid">
+                            <InfoItem icon="location_city" label={t('City')} value={profile?.city || t('Not provided')} />
+                            <InfoItem icon="streetview" label={t('Street')} value={profile?.street || t('Not provided')} />
+                            <InfoItem icon="home" label={t('Building')} value={profile?.buildingNumber || t('Not provided')} />
+                            <InfoItem icon="markunread_mailbox" label={t('Postal Code')} value={profile?.postalCode || t('Not provided')} />
+
+                            {(profile?.latitude && profile?.longitude) && (
+                                <InfoItem
+                                    icon="my_location"
+                                    label={t('GPS Coordinates')}
+                                    value={`${profile.latitude.toFixed(4)}, ${profile.longitude.toFixed(4)}`}
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Log Out Action */}
+                    {onLogout && (
+                        <button 
+                            onClick={onLogout} 
+                            style={{
+                                width: '100%',
+                                padding: '16px',
+                                borderRadius: 'var(--radius-xl)',
+                                background: 'var(--err-bg)',
+                                border: '1px solid var(--err-border)',
+                                color: 'var(--error)',
+                                fontWeight: 700,
+                                fontSize: '15px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>logout</span>
+                            <span>{t('Log Out')}</span>
+                        </button>
+                    )}
                 </div>
             </main>
         </div>
@@ -93,11 +188,13 @@ export default function ProfilePage({ onBack, onEdit }) {
 
 function InfoItem({ icon, label, value }) {
     return (
-        <div className="info-item">
-            <div className="info-icon">{icon}</div>
-            <div className="info-text">
-                <label className="info-label">{label}</label>
-                <span className="info-value">{value}</span>
+        <div className="info-item-row">
+            <div className="info-icon-box">
+                <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--primary)' }}>{icon}</span>
+            </div>
+            <div className="info-item-content">
+                <span className="info-item-label">{label}</span>
+                <span className="info-item-value">{value}</span>
             </div>
         </div>
     )

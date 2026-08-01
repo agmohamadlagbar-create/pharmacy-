@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../apiClient.js'
 import { formatPrice } from '../utils/formatPrice.js'
+import Skeleton from '../components/Skeleton.jsx'
 import * as signalR from '@microsoft/signalr'
 import DeliverySimulationMap from '../components/DeliverySimulationMap.jsx'
+import './DeliveryJobsPage.css'
 
 const NORMALIZE_STATUS_MAP = {
     assigned: 'Assigned',
@@ -168,14 +170,6 @@ export default function DeliveryJobsPage({ onBack }) {
         }
     }
 
-    const statusColor = status => ({
-        Unassigned: '#f59e0b',
-        Assigned: '#3b82f6',
-        PickedUp: '#8b5cf6',
-        OnTheWay: '#06b6d4',
-        Delivered: '#22c55e'
-    }[status] || '#888')
-
     const nextStatus = status => ({
         Assigned: 'PickedUp',
         PickedUp: 'OnTheWay',
@@ -185,113 +179,169 @@ export default function DeliveryJobsPage({ onBack }) {
     const jobs = tab === 'available' ? availableJobs : myJobs
 
     return (
-        <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <button onClick={onBack} className="glass-btn">← {t('Back')}</button>
-                <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>{t('Delivery Jobs')}</h2>
-                <button onClick={load} className="glass-btn">↻</button>
-            </div>
-
-            <div className="seg" style={{ marginBottom: '20px' }}>
-                <button className={tab === 'available' ? 'active' : ''} onClick={() => setTab('available')}>{t('Available')}</button>
-                <button className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>{t('My Jobs')}</button>
-            </div>
-
-            {loading ? (
-                <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>{t('Loading...')}</div>
-            ) : jobs.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
-                    {tab === 'available' ? t('No grouped deliveries available right now.') : t('No assigned jobs.')}
+        <div className="delivery-jobs-page">
+            <div className="dj-container">
+                {/* Header */}
+                <div className="dj-header">
+                    <button onClick={onBack} className="dj-back-btn">
+                        <span className="material-symbols-outlined">arrow_back</span>
+                        {t('Back')}
+                    </button>
+                    <div className="dj-title-area">
+                        <span className="material-symbols-outlined dj-title-icon">local_shipping</span>
+                        <h2 className="dj-title">{t('Delivery Jobs')}</h2>
+                    </div>
+                    <button onClick={load} className="dj-refresh-btn">
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>refresh</span>
+                        {t('Refresh')}
+                    </button>
                 </div>
-            ) : (
-                <div style={{ display: 'grid', gap: '12px' }}>
-                    {jobs.map(job => {
-                        const group = job.orderGroup
-                        const stores = group?.stores || []
-                        const storeNames = stores.map(store => store.storeName || store.storeUserId).join(', ')
 
-                        return (
-                            <div key={job.id} style={{ background: 'var(--card)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '12px', padding: '16px', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: 12 }}>
-                                    <strong style={{ color: 'var(--text-primary)' }}>
-                                        {t('Job')} #{job.id} · {t('Group')} #{job.orderGroupId || group?.orderGroupId || job.orderId}
-                                    </strong>
-                                    <span style={{ fontSize: '12px', fontWeight: '600', color: statusColor(job.status), background: `${statusColor(job.status)}15`, padding: '4px 10px', borderRadius: '12px' }}>
-                                        {t(job.status)}
-                                    </span>
+                {/* Navigation Tabs */}
+                <div className="dj-tabs-row">
+                    <button className={`dj-tab-btn ${tab === 'available' ? 'active' : ''}`} onClick={() => setTab('available')}>
+                        <span>{t('Available Jobs')}</span>
+                        {tab === 'available' && <span className="dj-tab-badge">{availableJobs.length}</span>}
+                    </button>
+                    <button className={`dj-tab-btn ${tab === 'mine' ? 'active' : ''}`} onClick={() => setTab('mine')}>
+                        <span>{t('My Deliveries')}</span>
+                        {tab === 'mine' && <span className="dj-tab-badge">{myJobs.length}</span>}
+                    </button>
+                </div>
+
+                {/* Content List */}
+                {loading ? (
+                    <div className="dj-jobs-grid">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="dj-job-card">
+                                <div className="dj-job-header">
+                                    <Skeleton width="160px" height="24px" />
+                                    <Skeleton width="90px" height="24px" borderRadius="12px" />
                                 </div>
-
-                                {group && (
-                                    <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '12px', display: 'grid', gap: 6 }}>
-                                        <div>{t('{{count}} pickup stops', { count: stores.length })}</div>
-                                        <div>{t('Stores:')} {storeNames}</div>
-                                        <div>{t('Total:')} {formatPrice(group.totalAmount || 0, stores[0]?.currencyCode || 'USD')}</div>
-                                        {group.deliveryAddress && <div>{t('Customer:')} {group.deliveryAddress}</div>}
-                                    </div>
-                                )}
-
-                                {group && stores.length > 0 && (
-                                    <div style={{ display: 'grid', gap: 8, marginBottom: '12px' }}>
-                                        {stores.map(store => (
-                                            <div
-                                                key={store.orderId}
-                                                style={{
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    gap: 12,
-                                                    alignItems: 'center',
-                                                    padding: '10px 12px',
-                                                    borderRadius: 10,
-                                                    background: 'rgba(255,255,255,0.03)'
-                                                }}
-                                            >
-                                                <div>
-                                                    <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{store.storeName || store.storeUserId}</div>
-                                                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>{store.storeLocation || t('Pickup location not set')}</div>
-                                                </div>
-                                                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{t(store.status)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                    {tab === 'available' && job.status === 'Unassigned' && (
-                                        <button onClick={() => acceptJob(job.id)} className="primary">{t('Accept Job')}</button>
-                                    )}
-
-                                    {tab === 'mine' && (
-                                        <>
-                                            {(job.status === 'Assigned' || job.status === 'PickedUp' || job.status === 'OnTheWay') && (
-                                                <button
-                                                    onClick={() => setSimJob(job)}
-                                                    className="glass-btn"
-                                                    style={{ border: simJob?.id === job.id ? '1px solid #22c55e' : '1px solid var(--border)', fontWeight: 600 }}
-                                                >
-                                                    {t('Open Route Map')}
-                                                </button>
-                                            )}
-                                            {nextStatus(job.status) && (
-                                                <button onClick={() => updateStatus(job.id, nextStatus(job.status))} className="primary">
-                                                    {t('Mark as')} {t(nextStatus(job.status))}
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
+                                <Skeleton width="100%" height="60px" borderRadius="12px" />
+                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Skeleton width="120px" height="36px" borderRadius="8px" />
                                 </div>
                             </div>
-                        )
-                    })}
-                </div>
-            )}
+                        ))}
+                    </div>
+                ) : jobs.length === 0 ? (
+                    <div className="dj-empty-state">
+                        <span className="material-symbols-outlined dj-empty-icon">local_shipping</span>
+                        <div>
+                            {tab === 'available' ? t('No grouped deliveries available right now.') : t('No assigned jobs in your queue.')}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="dj-jobs-grid">
+                        {jobs.map(job => {
+                            const group = job.orderGroup
+                            const stores = group?.stores || []
+                            const storeNames = stores.map(store => store.storeName || store.storeUserId).join(', ')
 
-            {simJob && (
-                <DeliverySimulationMap
-                    order={simJob}
-                    hubConnection={trackingConnRef.current}
-                    onClose={() => setSimJob(null)}
-                />
-            )}
+                            return (
+                                <div key={job.id} className="dj-job-card">
+                                    <div className="dj-job-header">
+                                        <div className="dj-job-title-box">
+                                            <h3 className="dj-job-id">{t('Job')} #{job.id}</h3>
+                                            <span className="dj-job-sub">• {t('Group')} #{job.orderGroupId || group?.orderGroupId || job.orderId}</span>
+                                        </div>
+                                        <span className={`dj-badge dj-badge-${(job.status || 'unassigned').toLowerCase()}`}>
+                                            {t(job.status)}
+                                        </span>
+                                    </div>
+
+                                    {group && (
+                                        <div className="dj-overview-info">
+                                            <div className="dj-info-item">
+                                                <span className="dj-info-label">{t('Pickup Stops')}</span>
+                                                <span className="dj-info-value">{stores.length} {t('Stops')}</span>
+                                            </div>
+                                            <div className="dj-info-item">
+                                                <span className="dj-info-label">{t('Total Payout')}</span>
+                                                <span className="dj-info-value">{formatPrice(group.totalAmount || 0, stores[0]?.currencyCode || 'USD')}</span>
+                                            </div>
+                                            <div className="dj-info-item">
+                                                <span className="dj-info-label">{t('Stores')}</span>
+                                                <span className="dj-info-value" style={{ fontSize: '13px' }}>{storeNames || '—'}</span>
+                                            </div>
+                                            {group.deliveryAddress && (
+                                                <div className="dj-info-item" style={{ gridColumn: '1 / -1' }}>
+                                                    <span className="dj-info-label">{t('Delivery Address')}</span>
+                                                    <div className="dj-info-value" style={{ lineHeight: '1.6', fontSize: '13px', marginTop: '4px' }}>
+                                                        {group.deliveryAddress.includes(' | ') ? (
+                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px' }}>
+                                                                {group.deliveryAddress.split(' | ').map((part, idx) => (
+                                                                    <span key={idx} style={{ background: 'var(--surface-container-high)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--outline-variant)', fontSize: '12px' }}>
+                                                                        {part}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            group.deliveryAddress
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {group && stores.length > 0 && (
+                                        <div className="dj-stores-list">
+                                            {stores.map(store => (
+                                                <div key={store.orderId} className="dj-store-row">
+                                                    <div>
+                                                        <div className="dj-store-name">{store.storeName || store.storeUserId}</div>
+                                                        <div className="dj-store-loc">{store.storeLocation || t('Pickup location not set')}</div>
+                                                    </div>
+                                                    <span className="dj-badge dj-badge-assigned" style={{ fontSize: '11px' }}>{t(store.status)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="dj-card-actions">
+                                        {tab === 'available' && job.status === 'Unassigned' && (
+                                            <button onClick={() => acceptJob(job.id)} className="dj-btn-primary">
+                                                <span className="material-symbols-outlined">check_circle</span>
+                                                {t('Accept Job')}
+                                            </button>
+                                        )}
+
+                                        {tab === 'mine' && (
+                                            <>
+                                                {(job.status === 'Assigned' || job.status === 'PickedUp' || job.status === 'OnTheWay') && (
+                                                    <button
+                                                        onClick={() => setSimJob(job)}
+                                                        className="dj-btn-map"
+                                                    >
+                                                        <span className="material-symbols-outlined">map</span>
+                                                        {t('Open Route Map')}
+                                                    </button>
+                                                )}
+                                                {nextStatus(job.status) && (
+                                                    <button onClick={() => updateStatus(job.id, nextStatus(job.status))} className="dj-btn-primary">
+                                                        <span className="material-symbols-outlined">local_shipping</span>
+                                                        {t('Mark as')} {t(nextStatus(job.status))}
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+
+                {simJob && (
+                    <DeliverySimulationMap
+                        order={simJob}
+                        hubConnection={trackingConnRef.current}
+                        onClose={() => setSimJob(null)}
+                    />
+                )}
+            </div>
         </div>
     )
 }

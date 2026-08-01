@@ -27,7 +27,7 @@ bool canCancelGroupedOrder(String status) {
   return status == 'Pending' || status == 'Preparing';
 }
 
-String groupedOrderStatusHeadline(String status, int readyStores, int totalStores) {
+String groupedOrderStatusHeadline(String status, int readyStores, int totalStores, {String? cancellationReason, String? cancelledByRole}) {
   switch (status) {
     case 'Pending':
       return 'Waiting for stores to accept'.tr();
@@ -44,7 +44,14 @@ String groupedOrderStatusHeadline(String status, int readyStores, int totalStore
     case 'Delivered':
       return 'Delivered successfully'.tr();
     case 'Cancelled':
-      return 'This grouped order was cancelled'.tr();
+      if (cancelledByRole?.toLowerCase() == 'shop') {
+        return cancellationReason != null && cancellationReason.isNotEmpty
+            ? '${'Order Declined by Store:'.tr()} $cancellationReason'
+            : 'Order Declined by Store'.tr();
+      }
+      return cancellationReason != null && cancellationReason.isNotEmpty
+          ? '${'This order was cancelled:'.tr()} $cancellationReason'
+          : 'This grouped order was cancelled'.tr();
     default:
       return 'Tracking your grouped order'.tr();
   }

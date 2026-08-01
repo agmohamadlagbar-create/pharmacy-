@@ -10,7 +10,7 @@ export function countTotalItems(stores = []) {
     )
 }
 
-export function getTrackingInfo(status, readyStoreCount, storeCount) {
+export function getTrackingInfo(status, readyStoreCount, storeCount, cancellationReason = null, cancelledByRole = null) {
     switch ((status || '').toLowerCase()) {
         case 'pending':
             return { label: 'Waiting for stores', eta: '', color: '#EF9F27' }
@@ -26,8 +26,12 @@ export function getTrackingInfo(status, readyStoreCount, storeCount) {
             return { label: 'On the way', eta: 'Courier is heading to your address', color: '#06B6D4' }
         case 'delivered':
             return { label: 'Delivered', eta: 'Delivered just now', color: '#639922' }
-        case 'cancelled':
-            return { label: 'Cancelled', eta: 'Order was cancelled', color: '#E8593C' }
+        case 'cancelled': {
+            const isShop = cancelledByRole?.toLowerCase() === 'shop'
+            const title = isShop ? 'Order Declined by Store' : 'Order Cancelled'
+            const reasonText = cancellationReason ? `Reason: ${cancellationReason}` : 'Order was cancelled'
+            return { label: title, eta: reasonText, color: '#E8593C' }
+        }
         default:
             return { label: 'Processing', eta: '', color: '#999' }
     }

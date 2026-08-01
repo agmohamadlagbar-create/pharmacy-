@@ -1,9 +1,12 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useParams, useLocation, Navigate, Outlet } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './i18n'
 import CategoriesPage from './pages/CategoriesPage.jsx'
 import Skeleton from './components/Skeleton.jsx'
 import AnimationOverlay from './components/AnimationOverlay.jsx'
+import RippleAvatar from './components/RippleAvatar.jsx'
+import NavBar from './components/NavBar.jsx'
 import addToCartAnim from './assets/lottie/add-to-cart.json'
 import paymentSuccessAnim from './assets/lottie/payment-success.json'
 import { api, setAuthToken } from './apiClient.js'
@@ -12,6 +15,8 @@ import ErrorOverlay from './components/ErrorOverlay'
 import AiChatWidget from './components/AiChatWidget.jsx'
 import ShopAiChatWidget from './components/ShopAiChatWidget.jsx'
 import AdminAiChatWidget from './components/AdminAiChatWidget.jsx'
+import NotificationPermissionBanner from './components/NotificationPermissionBanner.jsx'
+import { requestNotificationPermissionAndGetToken, unregisterTokenFromBackend } from './utils/firebase'
 
 // Lazy-loaded pages for optimization
 const AuthPage = lazy(() => import('./pages/AuthPage.jsx'))
@@ -105,7 +110,7 @@ function CategoryProductsWrapper({ categoryProductsProps }) {
     return (
       <div className="category-products-container" style={{ padding: '24px' }}>
         <header className="category-page-header" style={{ marginBottom: '24px' }}>
-          <button className="back-btn-circular" onClick={() => navigate('/')}>
+          <button className="back-btn-circular" onClick={() => navigate(-1)}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -140,7 +145,7 @@ function CategoryProductsWrapper({ categoryProductsProps }) {
     <CategoryProductsPage
       categoryId={resolvedCategoryId}
       categoryName={resolvedCategoryName}
-      onBack={() => navigate('/')}
+      onBack={() => navigate(-1)}
       {...categoryProductsProps}
     />
   );
@@ -165,7 +170,7 @@ function PublicStoreWrapper({ publicStoreProps }) {
   return (
     <PublicStorePage
       storeUserId={storeId}
-      onBack={() => navigate('/')}
+      onBack={() => navigate(-1)}
       {...publicStoreProps}
     />
   );
@@ -179,7 +184,7 @@ function SearchProductsWrapper({ searchProductsProps }) {
   return (
     <SearchProductsPage
       initialQuery={q}
-      onBack={() => navigate('/')}
+      onBack={() => navigate(-1)}
       {...searchProductsProps}
     />
   );
@@ -245,6 +250,12 @@ function AppContent() {
   const [activeAnimation, setActiveAnimation] = useState(null)
   const [userLocation, setUserLocation] = useState({ country: null, city: null })
 
+  // Global Sidebar/Profile States
+  const { t } = useTranslation()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [profileData, setProfileData] = useState({ name: 'User', avatarUrl: null })
+  const fileInputRef = useRef(null)
+
   useEffect(() => {
     fetchProfile()
   }, [loggedIn])
@@ -252,14 +263,40 @@ function AppContent() {
   async function fetchProfile() {
     if (!loggedIn) {
       setUserLocation({ country: null, city: null })
+      setProfileData({ name: 'User', avatarUrl: null })
       return
     }
     try {
       const { data } = await api.get('/api/me')
       setUserLocation({ country: data.country, city: data.city })
       setCurrentUserId(data.id)
+      setProfileData({
+        name: data.fullName || data.shopName || data.email || 'User',
+        avatarUrl: data.profilePictureUrl ? `${api.defaults.baseURL}${data.profilePictureUrl}` : null
+      })
     } catch (err) {
       console.error('Failed to fetch profile', err)
+    }
+  }
+
+  function handleAvatarClick() {
+    if (fileInputRef.current) fileInputRef.current.click()
+  }
+
+  async function handleAvatarUpload(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await api.post('/api/me/profile-picture', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      const data = res.data
+      setProfileData(prev => ({
+        ...prev,
+        avatarUrl: `${api.defaults.baseURL}${data.profilePictureUrl}`
+      }))
+    } catch (err) {
+      console.error('Upload error', err)
     }
   }
 
@@ -346,6 +383,7 @@ function AppContent() {
   }
 
   async function handleLogout() {
+    await unregisterTokenFromBackend()
     const refreshToken = localStorage.getItem('refreshToken')
     if (refreshToken) {
       try { await api.post('/api/auth/logout', { refreshToken }) } catch { /* ignore */ }
@@ -374,6 +412,7 @@ function AppContent() {
       fetchCart()
     }
     fetchProfile() // Fetch location after login
+    requestNotificationPermissionAndGetToken() // Silently register device token if permission already granted
     navigate('/')
   }
 
@@ -386,6 +425,7 @@ function AppContent() {
   function handleGuestSignIn() {
     localStorage.removeItem('isGuest')
     setIsGuest(false)
+    navigate('/login')
   }
 
 
@@ -409,6 +449,7 @@ function AppContent() {
 
   const favoritesProps = {
     onSelectProduct: (p) => navigate(`/product/${p.id}`),
+    onAddToCart: addToCart,
     onToggleFavorite: toggleFavorite,
     onNavigateCart: () => navigate('/cart'),
     cartCount: cart.items.length
@@ -462,8 +503,179 @@ function AppContent() {
     onNavigateNotifications: () => navigate('/notifications')
   };
 
+  const showGlobalNav = (loggedIn || isGuest) && !['/login', '/signup'].includes(location.pathname);
+
   return (
     <>
+      {showGlobalNav && (
+        <>
+          <NavBar
+            loggedIn={loggedIn}
+            isGuest={isGuest}
+            accountType={accountType}
+            cartCount={cart.items.length}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            userLocation={userLocation}
+            onNavigateHome={() => navigate('/')}
+            onNavigateCart={() => navigate('/cart')}
+            onNavigateFavorites={() => navigate('/favorites')}
+            onNavigateProfile={() => navigate('/profile')}
+            onNavigateEditProfile={() => navigate('/edit-profile')}
+            onNavigateNotifications={() => navigate('/notifications')}
+            onNavigateSettings={() => navigate('/settings')}
+            onNavigateSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
+            onToggleSidebar={() => setSidebarOpen(true)}
+            onNavigateStoreAnalytics={() => navigate('/store-analytics')}
+            onNavigateAdmin={() => navigate('/admin')}
+            onNavigateDeliveryJobs={() => navigate('/delivery-jobs')}
+            onNavigateStoreProducts={() => navigate('/store-products')}
+            onNavigateStoreOrders={() => navigate('/store-orders')}
+            onGuestSignIn={handleGuestSignIn}
+          />
+          <NotificationPermissionBanner />
+
+          {/* Global Sidebar Overlay & Drawer */}
+          <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)} />
+          <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+              <div className="sidebar-header">
+                  {isGuest ? (
+                      <>
+                          <div style={{ width: 80, height: 80, borderRadius: '50%', border: '2px solid var(--outline-variant)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                          </div>
+                          <h3 className="sidebar-name">{t('Guest')}</h3>
+                          <span className="sidebar-role-badge">{t('Browse Only')}</span>
+                      </>
+                  ) : (
+                      <>
+                          <div style={{ position: 'relative', display: 'inline-block' }}>
+                              <RippleAvatar
+                                  src={profileData.avatarUrl}
+                                  onClick={handleAvatarClick}
+                                  title={t('Upload a picture')}
+                                  size={80}
+                                  glowThickness={3}
+                              />
+                              <button 
+                                  onClick={handleAvatarClick}
+                                  style={{
+                                      position: 'absolute',
+                                      bottom: 0,
+                                      right: 0,
+                                      background: 'var(--primary)',
+                                      color: 'var(--on-primary)',
+                                      border: '2px solid var(--surface-container)',
+                                      borderRadius: '50%',
+                                      width: 28,
+                                      height: 28,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: 'pointer',
+                                      padding: 0,
+                                      zIndex: 20,
+                                      boxShadow: 'var(--shadow-sm)'
+                                  }}
+                                  title={t('Upload a picture')}
+                              >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                              </button>
+                          </div>
+                          <input
+                              type="file"
+                              accept="image/*"
+                              ref={fileInputRef}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleAvatarUpload(file);
+                              }}
+                              style={{ display: 'none' }}
+                          />
+                          <h3 className="sidebar-name" style={{ marginTop: '12px' }}>{profileData.name}</h3>
+                          {accountType && <span className="sidebar-role-badge">{accountType}</span>}
+                      </>
+                  )}
+              </div>
+
+              <nav className="sidebar-nav">
+                  <button className={`sidebar-link ${location.pathname === '/' || location.pathname === '/categories' ? 'active' : ''}`} onClick={() => { setSidebarOpen(false); navigate('/'); }}>
+                      <span className="material-symbols-outlined">home</span> {t('Home')}
+                  </button>
+
+                  {!isGuest && (
+                      <>
+                          <button className={`sidebar-link ${location.pathname === '/profile' ? 'active' : ''}`} onClick={() => {
+                              setSidebarOpen(false)
+                              navigate('/profile')
+                          }}>
+                              <span className="material-symbols-outlined">person</span> {t('Profile')}
+                          </button>
+
+                          {accountType === 'User' && (
+                              <>
+                                  <button className={`sidebar-link ${location.pathname === '/favorites' ? 'active' : ''}`} onClick={() => {
+                                      setSidebarOpen(false)
+                                      navigate('/favorites')
+                                  }}>
+                                      <span className="material-symbols-outlined">favorite</span> {t('Favorites')}
+                                  </button>
+
+                                  <button className={`sidebar-link ${location.pathname === '/my-shops' ? 'active' : ''}`} onClick={() => {
+                                      setSidebarOpen(false)
+                                      navigate('/my-shops')
+                                  }}>
+                                      <span className="material-symbols-outlined">local_shipping</span> {t('Delivered Orders')}
+                                  </button>
+                              </>
+                          )}
+
+                          {accountType === 'Admin' && (
+                              <button className={`sidebar-link ${location.pathname === '/admin' ? 'active' : ''}`} onClick={() => { setSidebarOpen(false); navigate('/admin'); }}>
+                                  <span className="material-symbols-outlined">shield</span> {t('Admin Panel')}
+                              </button>
+                          )}
+
+                          {accountType === 'Shop' && (
+                              <>
+                                  <button className={`sidebar-link ${location.pathname === '/store-products' ? 'active' : ''}`} onClick={() => { setSidebarOpen(false); navigate('/store-products'); }}>
+                                      <span className="material-symbols-outlined">inventory_2</span> {t('My Products')}
+                                  </button>
+                                  <button className={`sidebar-link ${location.pathname === '/store-orders' ? 'active' : ''}`} onClick={() => { setSidebarOpen(false); navigate('/store-orders'); }}>
+                                      <span className="material-symbols-outlined">receipt_long</span> {t('Store Orders')}
+                                  </button>
+                                  <button className={`sidebar-link ${location.pathname === '/store-analytics' ? 'active' : ''}`} onClick={() => { setSidebarOpen(false); navigate('/store-analytics'); }}>
+                                      <span className="material-symbols-outlined">leaderboard</span> {t('Store Analytics')}
+                                  </button>
+                              </>
+                          )}
+
+                          {accountType === 'Delivery' && (
+                              <button className={`sidebar-link ${location.pathname === '/delivery-jobs' ? 'active' : ''}`} onClick={() => { setSidebarOpen(false); navigate('/delivery-jobs'); }}>
+                                  <span className="material-symbols-outlined">local_shipping</span> {t('Delivery Jobs')}
+                              </button>
+                          )}
+
+                          <button className={`sidebar-link ${location.pathname === '/notifications' ? 'active' : ''}`} onClick={() => { setSidebarOpen(false); navigate('/notifications'); }}>
+                              <span className="material-symbols-outlined">notifications</span> {t('Notifications')}
+                          </button>
+
+                          <button className={`sidebar-link ${location.pathname === '/settings' ? 'active' : ''}`} onClick={() => { setSidebarOpen(false); navigate('/settings'); }}>
+                              <span className="material-symbols-outlined">settings</span> {t('Settings')}
+                          </button>
+                      </>
+                  )}
+              </nav>
+
+              <div className="sidebar-footer">
+                  <button className="logout-btn" onClick={() => { setSidebarOpen(false); if (isGuest) { handleGuestSignIn(); } else { handleLogout(); } }}>
+                      <span className="material-symbols-outlined">logout</span> {isGuest ? t('Sign In') : t('Log out')}
+                  </button>
+              </div>
+          </aside>
+        </>
+      )}
+
       <Suspense fallback={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh' }}>
           <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--border)', borderTop: '4px solid var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
@@ -515,16 +727,16 @@ function AppContent() {
             <Route path="/:categoryName" element={<CategoryProductsWrapper categoryProductsProps={categoryProductsProps} />} />
             <Route path="/product/:id" element={<ProductInfoWrapper productInfoProps={productInfoProps} />} />
             <Route path="/store/:storeId" element={<PublicStoreWrapper publicStoreProps={publicStoreProps} />} />
-            <Route path="/favorites" element={<FavoritesPage favorites={favorites} onBack={() => navigate('/')} {...favoritesProps} />} />
-            <Route path="/my-shops" element={<MyShopsPage onBack={() => navigate('/')} {...myShopsProps} />} />
-            <Route path="/settings" element={<SettingsPage onBack={() => navigate('/')} theme={theme} toggleTheme={toggleTheme} />} />
+            <Route path="/favorites" element={<FavoritesPage favorites={favorites} onBack={() => navigate(-1)} {...favoritesProps} />} />
+            <Route path="/my-shops" element={<MyShopsPage onBack={() => navigate(-1)} {...myShopsProps} />} />
+            <Route path="/settings" element={<SettingsPage onBack={() => navigate(-1)} theme={theme} toggleTheme={toggleTheme} onLogout={handleLogout} />} />
 
             {/* Authenticated User Guarded Pages */}
             <Route path="/cart" element={
               <UserProtectedRoute loggedIn={loggedIn}>
                 <CartPage
                   cart={cart}
-                  onBack={() => navigate('/')}
+                  onBack={() => navigate(-1)}
                   onUpdateQuantity={updateCartQuantity}
                   onRemoveItem={removeFromCart}
                   onNavigateStore={(storeId) => navigate(`/store/${storeId}`)}
@@ -540,7 +752,7 @@ function AppContent() {
               <UserProtectedRoute loggedIn={loggedIn}>
                 <CheckoutPage
                   cart={cart}
-                  onBack={() => navigate('/cart')}
+                  onBack={() => navigate(-1)}
                   onProceed={(data) => {
                     setCheckoutData(data);
                     navigate('/payment');
@@ -564,9 +776,7 @@ function AppContent() {
                       });
                       await fetchProfile();
                       if (shouldRedirect) showToast(`Profile location updated to ${newCity}`);
-                    } catch (err) {
-                      console.error('Failed to update profile location', err);
-                      setUserLocation(prev => ({ ...prev, city: newCity }));
+                    } catch {
                       if (shouldRedirect) showToast(`Location updated to ${newCity} (locally)`);
                     }
                     if (shouldRedirect) {
@@ -574,6 +784,7 @@ function AppContent() {
                     }
                   }}
                   showToast={showToast}
+                  onNavigateEditProfile={() => navigate('/edit-profile#address')}
                 />
               </UserProtectedRoute>
             } />
@@ -583,7 +794,7 @@ function AppContent() {
                 <PaymentPage
                   cart={cart}
                   checkoutData={checkoutData}
-                  onBack={() => navigate('/checkout')}
+                  onBack={() => navigate(-1)}
                   onSuccess={async () => {
                     setActiveAnimation('payment');
                     await fetchCart();
@@ -595,38 +806,51 @@ function AppContent() {
 
             <Route path="/profile" element={
               <UserProtectedRoute loggedIn={loggedIn}>
-                <ProfilePage onBack={() => navigate('/')} onEdit={() => navigate('/edit-profile')} />
+                <ProfilePage 
+                  onBack={() => navigate(-1)} 
+                  onEdit={() => navigate('/edit-profile')} 
+                  onNavigateSettings={() => navigate('/settings')}
+                  onLogout={handleLogout}
+                  onNavigateStore={(storeId) => navigate(`/store/${storeId}`)}
+                />
               </UserProtectedRoute>
             } />
 
             <Route path="/edit-profile" element={
               <UserProtectedRoute loggedIn={loggedIn}>
-                <EditProfilePage onBack={() => navigate('/profile')} />
+                 <EditProfilePage 
+                   onBack={() => navigate(-1)} 
+                   onSave={async () => {
+                     await fetchProfile();
+                     showToast(t('Profile updated successfully!'));
+                     navigate(-1);
+                   }}
+                 />
               </UserProtectedRoute>
             } />
 
             <Route path="/notifications" element={
               <UserProtectedRoute loggedIn={loggedIn}>
-                <NotificationsPage onBack={() => navigate('/')} />
+                 <NotificationsPage onBack={() => navigate(-1)} />
               </UserProtectedRoute>
             } />
 
             {/* Shop Owner Guarded Pages */}
             <Route path="/store-products" element={
               <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Shop">
-                <StoreProductsPage onBack={() => navigate('/')} />
+                <StoreProductsPage onBack={() => navigate(-1)} />
               </RoleProtectedRoute>
             } />
 
             <Route path="/store-orders" element={
               <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Shop">
-                <StoreOrdersPage onBack={() => navigate('/')} />
+                <StoreOrdersPage onBack={() => navigate(-1)} />
               </RoleProtectedRoute>
             } />
 
             <Route path="/store-analytics" element={
               <RoleProtectedRoute loggedIn={loggedIn} accountType={accountType} requiredRole="Shop">
-                <StoreAnalyticsPage onBack={() => navigate('/')} />
+                <StoreAnalyticsPage onBack={() => navigate(-1)} />
               </RoleProtectedRoute>
             } />
 

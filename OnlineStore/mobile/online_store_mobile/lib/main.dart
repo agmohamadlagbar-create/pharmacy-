@@ -25,6 +25,7 @@ import 'search_products_page.dart';
 import 'favorites_page.dart';
 import 'delivered_orders_page.dart';
 import 'active_orders_page.dart';
+import 'push_notification_service.dart';
 
 enum AccountType { user, shop, delivery }
 
@@ -132,6 +133,7 @@ enum AuthMode { login, signup }
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
+  PushNotificationService().initializeAndRegisterToken();
 
   runApp(
     EasyLocalization(

@@ -324,7 +324,13 @@ class _ActiveOrdersPageState extends State<ActiveOrdersPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          groupedOrderStatusHeadline(status, readyStores, stores.length),
+                          groupedOrderStatusHeadline(
+                            status,
+                            readyStores,
+                            stores.length,
+                            cancellationReason: order['cancellationReason']?.toString(),
+                            cancelledByRole: order['cancelledByRole']?.toString(),
+                          ),
                           style: GoogleFonts.dmSans(
                             fontWeight: FontWeight.w700,
                             fontSize: 15,

@@ -1,0 +1,358 @@
+/* DeliveryJobsPage.css — Stitch Design System for Delivery Driver Dashboard */
+
+.delivery-jobs-page {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--on-surface);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  box-sizing: border-box;
+}
+
+.dj-container {
+  max-width: var(--container-max, 1040px);
+  margin: 0 auto;
+  padding: 40px var(--screen-pad, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg, 24px);
+}
+
+/* Header */
+.dj-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.dj-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  padding: 10px 18px;
+  border-radius: var(--radius-lg, 12px);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dj-back-btn:hover {
+  background: var(--surface-container-high);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.dj-title-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dj-title-icon {
+  font-size: 32px;
+  color: var(--tertiary, #f59e0b);
+}
+
+.dj-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--on-surface);
+}
+
+.dj-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  padding: 10px 18px;
+  border-radius: var(--radius-lg, 12px);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dj-refresh-btn:hover {
+  color: var(--on-surface);
+  border-color: var(--primary);
+  background: var(--surface-container-high);
+}
+
+/* Tabs Bar */
+.dj-tabs-row {
+  display: flex;
+  gap: 8px;
+  background: var(--surface-container-low, var(--surface-container));
+  border: 1px solid var(--outline-variant);
+  padding: 6px;
+  border-radius: var(--radius-xl, 16px);
+  width: fit-content;
+}
+
+.dj-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius-lg, 12px);
+  border: none;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dj-tab-btn:hover {
+  color: var(--on-surface);
+  background: var(--surface-container-high);
+}
+
+.dj-tab-btn.active {
+  background: var(--primary);
+  color: var(--on-primary, #ffffff);
+  box-shadow: 0 4px 14px rgba(63, 81, 181, 0.35);
+}
+
+.dj-tab-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Jobs Grid & Card */
+.dj-jobs-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dj-job-card {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-xl, 16px);
+  padding: 22px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.dj-job-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.dj-job-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.dj-job-title-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dj-job-id {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.dj-job-sub {
+  font-size: 13px;
+  color: var(--on-surface-variant);
+}
+
+/* Status Badges */
+.dj-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dj-badge-unassigned {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.dj-badge-assigned {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.dj-badge-pickedup {
+  background: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.dj-badge-ontheway {
+  background: rgba(6, 182, 212, 0.15);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.dj-badge-delivered {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* Overview Info Grid */
+.dj-overview-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  background: var(--surface-container-low, var(--background));
+  padding: 14px 18px;
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--outline-variant);
+}
+
+.dj-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dj-info-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dj-info-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+/* Pickup Stops List */
+.dj-stores-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dj-store-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md, 8px);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+}
+
+.dj-store-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.dj-store-loc {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+/* Actions Footer */
+.dj-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.dj-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--primary);
+  color: var(--on-primary, #ffffff);
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-lg, 12px);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(63, 81, 181, 0.25);
+  transition: all 0.2s ease;
+}
+
+.dj-btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.dj-btn-map {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  padding: 10px 18px;
+  border-radius: var(--radius-lg, 12px);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dj-btn-map:hover {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+/* Empty State */
+.dj-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: var(--surface-container);
+  border: 1px dashed var(--outline-variant);
+  border-radius: var(--radius-xl, 16px);
+  color: var(--on-surface-variant);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.dj-empty-icon {
+  font-size: 48px;
+  color: var(--on-surface-variant);
+}

@@ -1,89 +1,134 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { api } from '../apiClient.js';
-import { formatPrice } from '../utils/formatPrice.js';
-import CartIconButton from '../components/CartIconButton';
-import '../pages/CategoryProductsPage.css'; // Reusing the same grid styles or we'll refine them
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { api } from '../apiClient.js'
+import { formatPrice } from '../utils/formatPrice.js'
+import './FavoritesPage.css'
 
-const FavoritesPage = ({ favorites, onBack, onSelectProduct, onToggleFavorite, onNavigateCart, cartCount }) => {
-    const { t } = useTranslation();
-    
+export default function FavoritesPage({
+    favorites = [],
+    onBack,
+    onSelectProduct,
+    onToggleFavorite,
+    onAddToCart,
+    onNavigateCart,
+    cartCount = 0
+}) {
+    const { t, i18n } = useTranslation()
+    const isRTL = i18n?.language === 'ar'
+
     function imageUrl(p) {
-        if (!p.imageUrl) return null;
-        if (p.imageUrl.startsWith('http')) return p.imageUrl;
-        return `${api.defaults.baseURL}${p.imageUrl}`;
+        if (!p.imageUrl) return null
+        if (p.imageUrl.startsWith('http')) return p.imageUrl
+        return `${api.defaults.baseURL}${p.imageUrl}`
+    }
+
+    const handleAddAllToCart = () => {
+        if (!onAddToCart || favorites.length === 0) return
+        favorites.forEach(product => {
+            onAddToCart(product.id, 1)
+        })
     }
 
     return (
-        <div className="category-products-container">
-            <header className="category-page-header">
-                <button className="back-btn-circular" onClick={onBack}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
-                </button>
-                <h1>{t('Favorites')}</h1>
-                <CartIconButton cartCount={cartCount} onClick={onNavigateCart} />
+        <div className="favorites-page page-enter" dir={isRTL ? 'rtl' : 'ltr'}>
+            {/* Sticky Glass Header */}
+            <header className="favorites-header">
+                <div className="header-left">
+                    <button className="back-btn-circular" onClick={onBack} title={t('Back')}>
+                        <span className="material-symbols-outlined">{isRTL ? 'arrow_forward' : 'arrow_back'}</span>
+                    </button>
+                    <div>
+                        <h1>{t('Your Saved Items')}</h1>
+                        <p className="favorites-subtitle">
+                            <span className="count-highlight">{favorites.length}</span> {t('items found in your wishlist')}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="header-right">
+                    {favorites.length > 0 && (
+                        <button className="primary add-all-btn" onClick={handleAddAllToCart}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>shopping_cart</span>
+                            <span>{t('Add All to Cart')}</span>
+                        </button>
+                    )}
+                </div>
             </header>
 
-            <main className="products-grid">
+            <main className="favorites-content">
                 {favorites.length > 0 ? (
-                    favorites.map(product => (
-                        <div key={product.id} className="product-card-web" onClick={() => onSelectProduct && onSelectProduct(product)}>
-                            <div className="product-img-wrapper">
-                                <button 
-                                    className="fav-btn active" 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onToggleFavorite(product);
-                                    }}
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#E06C38" stroke="#E06C38" strokeWidth="2">
-                                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.89-8.89 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                                    </svg>
-                                </button>
-                                <span className="product-price-tag">{formatPrice(product.price, product.currencyCode)}</span>
-                                {imageUrl(product) ? (
-                                    <img src={imageUrl(product)} alt={product.name} />
-                                ) : (
-                                    <div className="product-img-placeholder">
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3">
-                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                            <polyline points="21 15 16 10 5 21"></polyline>
-                                        </svg>
+                    <div className="favorites-grid">
+                        {favorites.map(product => (
+                            <div
+                                key={product.id}
+                                className="fav-card"
+                                onClick={() => onSelectProduct && onSelectProduct(product)}
+                            >
+                                <div className="fav-img-wrapper">
+                                    {imageUrl(product) ? (
+                                        <img src={imageUrl(product)} alt={product.name} className="fav-img" />
+                                    ) : (
+                                        <div className="fav-img-placeholder">
+                                            <span className="material-symbols-outlined" style={{ fontSize: 44, color: 'var(--outline-variant)' }}>image</span>
+                                        </div>
+                                    )}
+
+                                    {/* Remove button */}
+                                    <button
+                                        className="fav-remove-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            onToggleFavorite(product)
+                                        }}
+                                        title={t('Remove from favorites')}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+                                    </button>
+
+                                    {/* Category tag */}
+                                    {product.categoryName && (
+                                        <div className="fav-category-tag">
+                                            <span>{product.categoryName}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="fav-info">
+                                    <h3 className="fav-title">{product.name}</h3>
+                                    <div className="fav-price-row">
+                                        <span className="fav-price">{formatPrice(product.price, product.currencyCode)}</span>
+                                        {product.oldPrice && product.oldPrice > product.price && (
+                                            <span className="fav-old-price">{formatPrice(product.oldPrice, product.currencyCode)}</span>
+                                        )}
                                     </div>
-                                )}
+
+                                    <button
+                                        className="primary fav-add-cart-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            if (onAddToCart) onAddToCart(product.id, 1)
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>shopping_cart</span>
+                                        <span>{t('Add to Cart')}</span>
+                                    </button>
+                                </div>
                             </div>
-                            <div className="product-info-web">
-                                <h3>{product.name}</h3>
-                                {product.description && <p>{product.description}</p>}
-                                <button
-                                    className="add-to-cart-btn-outline"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        // Need to pass onAddToCart if we want it here
-                                    }}
-                                >
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <circle cx="9" cy="21" r="1"></circle>
-                                        <circle cx="20" cy="21" r="1"></circle>
-                                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                                    </svg>
-                                    {t('Add to Cart')}
-                                </button>
-                            </div>
-                        </div>
-                    ))
+                        ))}
+                    </div>
                 ) : (
-                    <div className="no-favorites">
-                        <p>{t("You haven't added any favorites yet.")}</p>
-                        <button className="primary" onClick={onBack} style={{ marginTop: '20px' }}>{t('Start Shopping')}</button>
+                    <div className="empty-cart-container" style={{ margin: '60px 0', padding: '60px 24px' }}>
+                        <div className="empty-cart-icon-bg" style={{ width: 80, height: 80 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 40, color: 'var(--primary)' }}>favorite</span>
+                        </div>
+                        <h2 className="empty-cart-title">{t('Your Wishlist is Empty')}</h2>
+                        <p className="empty-cart-subtitle">{t('Save items you love by tapping the heart icon while exploring.')}</p>
+                        <button className="primary" onClick={onBack} style={{ marginTop: '20px', padding: '12px 32px' }}>
+                            {t('Start Shopping')}
+                        </button>
                     </div>
                 )}
             </main>
         </div>
-    );
-};
-
-export default FavoritesPage;
+    )
+}

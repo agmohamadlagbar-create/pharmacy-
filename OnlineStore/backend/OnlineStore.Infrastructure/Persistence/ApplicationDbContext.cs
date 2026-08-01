@@ -19,6 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
     public DbSet<DeliveryJob> DeliveryJobs => Set<DeliveryJob>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<UserDeviceToken> UserDeviceTokens => Set<UserDeviceToken>();
     public DbSet<AdBanner> AdBanners => Set<AdBanner>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Cart> Carts => Set<Cart>();
@@ -189,6 +190,17 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
             b.HasIndex(x => x.UserId);
             b.HasIndex(x => new { x.UserId, x.IsRead });
             b.HasIndex(x => x.CreatedAtUtc);
+        });
+
+        // UserDeviceToken
+        builder.Entity<UserDeviceToken>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            b.Property(x => x.DeviceToken).HasMaxLength(500).IsRequired();
+            b.Property(x => x.Platform).HasMaxLength(50).HasDefaultValue("Web");
+            b.HasIndex(x => x.UserId);
+            b.HasIndex(x => new { x.UserId, x.DeviceToken }).IsUnique();
         });
 
         // AdBanner

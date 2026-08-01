@@ -75,10 +75,10 @@ describe('CartPage', () => {
     const image = screen.getByRole('img', { name: 'Fresh Tomatoes' })
     expect(image).toHaveAttribute('src', 'https://api.example.com/uploads/tomatoes.png')
 
-    await user.click(screen.getByText('from Green Market'))
+    await user.click(container.querySelector('.store-link'))
     expect(onNavigateStore).toHaveBeenCalledWith('store-9')
 
-    const quantityButtons = container.querySelectorAll('.quantity-controls .qty-btn')
+    const quantityButtons = container.querySelectorAll('.qty-picker button')
     expect(quantityButtons).toHaveLength(2)
 
     await user.click(quantityButtons[0])
@@ -92,7 +92,7 @@ describe('CartPage', () => {
     await user.click(removeButton)
     expect(onRemoveItem).toHaveBeenCalledWith(101)
 
-    await user.click(screen.getByRole('button', { name: 'Proceed to Checkout' }))
+    await user.click(screen.getByRole('button', { name: /Proceed to Checkout/i }))
     expect(onCheckout).toHaveBeenCalledTimes(1)
   })
 })

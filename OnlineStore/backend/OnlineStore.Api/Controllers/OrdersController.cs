@@ -26,8 +26,9 @@ public class OrdersController : ControllerBase
     private readonly Microsoft.AspNetCore.SignalR.IHubContext<OnlineStore.Api.Hubs.TrackingHub> _trackingHub;
     private readonly ILogger<OrdersController> _logger;
     private readonly ICacheService _cache;
+    private readonly INotificationQueue _notifQueue;
 
-    public OrdersController(ApplicationDbContext db, UserManager<AppUser> userManager, INotificationService notif, Microsoft.AspNetCore.SignalR.IHubContext<OnlineStore.Api.Hubs.TrackingHub> trackingHub, ILogger<OrdersController> logger, ICacheService cache)
+    public OrdersController(ApplicationDbContext db, UserManager<AppUser> userManager, INotificationService notif, Microsoft.AspNetCore.SignalR.IHubContext<OnlineStore.Api.Hubs.TrackingHub> trackingHub, ILogger<OrdersController> logger, ICacheService cache, INotificationQueue notifQueue)
     {
         _db = db;
         _userManager = userManager;
@@ -35,6 +36,7 @@ public class OrdersController : ControllerBase
         _trackingHub = trackingHub;
         _logger = logger;
         _cache = cache;
+        _notifQueue = notifQueue;
     }
 
     /// <summary>User – place an order.</summary>
@@ -270,6 +272,14 @@ public class OrdersController : ControllerBase
         {
             try
             {
+                if (userEntity != null && string.IsNullOrEmpty(userEntity.StripeCustomerId))
+                {
+                    var custService = new CustomerService();
+                    var customer = await custService.CreateAsync(new CustomerCreateOptions { Email = userEntity.Email, Name = userEntity.FullName });
+                    userEntity.StripeCustomerId = customer.Id;
+                    await _db.SaveChangesAsync();
+                }
+
                 var options = new PaymentIntentCreateOptions
                 {
                     Amount = (long)(totalAmount * 100),
@@ -307,7 +317,14 @@ public class OrdersController : ControllerBase
                 RestoreCartStock(cart);
                 CancelOrders(orders);
                 await _db.SaveChangesAsync();
-                return BadRequest(new { error = e.StripeError.Message });
+                return BadRequest(new { error = e.StripeError?.Message ?? e.Message });
+            }
+            catch (Exception ex)
+            {
+                RestoreCartStock(cart);
+                CancelOrders(orders);
+                await _db.SaveChangesAsync();
+                return BadRequest(new { error = "Payment failed: " + ex.Message });
             }
         }
 
@@ -426,7 +443,9 @@ public class OrdersController : ControllerBase
                 o.CreatedAtUtc,
                 o.UpdatedAtUtc,
                 o.OrderGroupId,
-                StoreCountry = _db.Users.Where(u => u.Id == o.StoreUserId).Select(u => u.Country).FirstOrDefault()
+                StoreCountry = _db.Users.Where(u => u.Id == o.StoreUserId).Select(u => u.Country).FirstOrDefault(),
+                CustomerName = _db.Users.Where(u => u.Id == o.UserId).Select(u => u.FullName).FirstOrDefault(),
+                CustomerAvatarUrl = _db.Users.Where(u => u.Id == o.UserId).Select(u => u.ProfilePictureUrl).FirstOrDefault()
             })
             .ToListAsync();
 
@@ -455,7 +474,9 @@ public class OrdersController : ControllerBase
                 o.UpdatedAtUtc,
                 o.OrderGroupId,
                 null, null, null, null,
-                currencyCode
+                currencyCode,
+                o.CustomerName,
+                o.CustomerAvatarUrl
             );
         }).ToList();
 
@@ -465,6 +486,37 @@ public class OrdersController : ControllerBase
             await _cache.SetAsync(cacheKey, result, absoluteExpiration: TimeSpan.FromSeconds(30));
         }
         return Ok(result);
+    }
+
+    /// <summary>Get store order stats (Today's Revenue and Active Orders Count).</summary>
+    [Authorize(Roles = "Shop,Admin")]
+    [HttpGet("stats")]
+    public async Task<ActionResult<OrderStatsDto>> GetOrderStats([FromQuery(Name = "_")] string? cacheBust = null)
+    {
+        var userId = User.GetAuthenticatedUserId();
+        if (userId is null) return Unauthorized();
+
+        IQueryable<Order> query = _db.Orders.AsNoTracking();
+
+        if (User.IsInRole("Shop"))
+        {
+            query = query.Where(o => o.StoreUserId == userId);
+        }
+
+        var todayUtcStart = DateTime.UtcNow.Date;
+
+        var revenueStatuses = new[] { OrderStatus.Delivered, OrderStatus.PickedUp, OrderStatus.OnTheWay };
+        var activeStatuses = new[] { OrderStatus.Pending, OrderStatus.Preparing, OrderStatus.ReadyForPickup };
+
+        var todayRevenue = await query
+            .Where(o => revenueStatuses.Contains(o.Status) && o.CreatedAtUtc >= todayUtcStart)
+            .SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+
+        var activeCount = await query
+            .Where(o => activeStatuses.Contains(o.Status))
+            .CountAsync();
+
+        return Ok(new OrderStatsDto(todayRevenue, activeCount, "14m", "0.4%"));
     }
 
     /// <summary>Get active grouped orders for customer home page tracking.</summary>
@@ -572,41 +624,19 @@ public class OrdersController : ControllerBase
 
         order.Status = newStatus;
         order.UpdatedAtUtc = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
 
-        // Notify user of status change
-        await _notif.NotifyUserAsync(order.UserId, "Order Update", $"Your order #{order.Id} is now {newStatus}.");
-        await _notif.NotifyOrderStatusChangedAsync(order.UserId, order.Id, newStatus.ToString());
-
-        _logger.LogDebug("[SignalR] Sending order:status_updated → group: order_{OrderId}, status: {NewStatus}", order.Id, newStatus);
-        await _trackingHub.Clients.Group($"order_{order.Id}")
-            .SendAsync("order:status_updated", new {
-                orderId = order.Id,
-                orderGroupId = OrderGroupHelper.ResolveGroupId(order),
-                status = newStatus.ToString()
-            });
-
-        // When ReadyForPickup → create delivery job and notify available drivers
         DeliveryJob? deliveryJob = null;
-        var groupedOrders = new List<Order> { order };
-
-        if (!string.IsNullOrWhiteSpace(order.OrderGroupId))
-        {
-            groupedOrders = await _db.Orders
-                .AsNoTracking()
-                .Include(o => o.Items)
-                .ThenInclude(i => i.Product)
-                .Where(o => o.OrderGroupId == order.OrderGroupId)
-                .ToListAsync();
-        }
-
         if (newStatus == OrderStatus.ReadyForPickup)
         {
             var orderGroupId = OrderGroupHelper.ResolveGroupId(order);
+            var groupedOrders = await _db.Orders
+                .AsNoTracking()
+                .Where(o => o.OrderGroupId == order.OrderGroupId)
+                .ToListAsync();
+
             var allReadyForPickup = groupedOrders.Count > 0 && groupedOrders.All(o => o.Status == OrderStatus.ReadyForPickup);
             var existingJob = await _db.DeliveryJobs
                 .AsNoTracking()
-                .Include(j => j.Order)
                 .AnyAsync(j => j.Order.OrderGroupId == order.OrderGroupId);
 
             if (allReadyForPickup && !existingJob)
@@ -616,22 +646,27 @@ public class OrdersController : ControllerBase
                     .ThenBy(o => o.Id)
                     .First();
 
-                var job = new DeliveryJob
+                deliveryJob = new DeliveryJob
                 {
                     OrderId = representativeOrder.Id,
                     Status = DeliveryStatus.Unassigned,
                     CreatedAtUtc = DateTime.UtcNow
                 };
-                _db.DeliveryJobs.Add(job);
-                await _db.SaveChangesAsync();
-                deliveryJob = job;
-
-                await _notif.NotifyUserAsync(order.UserId, "Order Ready", $"All stores in order #{orderGroupId} are ready. Waiting for a driver to accept the delivery.");
-                await _notif.NotifyAvailableDriversAsync("New Delivery Available", $"Order #{orderGroupId} from {groupedOrders.Count} stores is ready for pickup.");
+                _db.DeliveryJobs.Add(deliveryJob);
             }
         }
 
-        await BroadcastGroupedOrderStatusAsync(groupedOrders, deliveryJob);
+        await _db.SaveChangesAsync();
+
+        // Enqueue notifications out-of-band for instant HTTP response (<50ms)
+        await _notifQueue.QueueNotificationAsync(new NotificationWorkItem(
+            NotificationTaskType.StoreOrderStatusUpdate,
+            order.Id,
+            order.OrderGroupId,
+            order.UserId,
+            newStatus.ToString(),
+            deliveryJob?.Id
+        ));
 
         return Ok(new MessageResponse($"Order status updated to {newStatus}"));
     }
@@ -755,6 +790,9 @@ public class OrdersController : ControllerBase
                     }
 
                     groupedOrder.Status = OrderStatus.Cancelled;
+                    groupedOrder.CancellationReason = "Cancelled by customer";
+                    groupedOrder.CancelledByRole = "Customer";
+                    groupedOrder.CancelledAtUtc = DateTime.UtcNow;
                     groupedOrder.UpdatedAtUtc = DateTime.UtcNow;
                 }
 
@@ -783,13 +821,158 @@ public class OrdersController : ControllerBase
                 {
                     orderId = groupedOrder.Id,
                     orderGroupId,
-                    status = "Cancelled"
+                    status = "Cancelled",
+                    cancellationReason = "Cancelled by customer",
+                    cancelledByRole = "Customer"
                 });
         }
 
         await BroadcastGroupedOrderStatusAsync(groupedOrders);
 
         return Ok(new MessageResponse("Order cancelled successfully"));
+    }
+
+    /// <summary>Store - decline/cancel an order during Pending status.</summary>
+    [Authorize(Roles = "Shop")]
+    [HttpPut("{id:int}/shop-cancel")]
+    public async Task<IActionResult> ShopCancelOrder(int id, [FromBody] ShopCancelRequest req)
+    {
+        var userId = User.GetAuthenticatedUserId();
+        if (userId is null) return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(req.CancellationReason))
+            return BadRequest(new { error = "Cancellation reason is required." });
+
+        var order = await _db.Orders
+            .AsTracking()
+            .Include(o => o.Items)
+            .ThenInclude(i => i.Product)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (order is null) return NotFound();
+        if (order.StoreUserId != userId) return Forbid();
+
+        if (order.Status != OrderStatus.Pending)
+            return BadRequest(new { error = "Orders can only be declined by the store while in Pending status." });
+
+        var orderGroupId = OrderGroupHelper.ResolveGroupId(order);
+        var refundAmount = order.TotalAmount;
+
+        var strategy = _db.Database.CreateExecutionStrategy();
+        string? stripeError = null;
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            using var transaction = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                if (order.PaymentMethod == "Credit Card" || order.PaymentMethod == "Credit/Debit Card")
+                {
+                    try
+                    {
+                        var userEntity = await _db.Users.FindAsync(order.UserId);
+                        if (userEntity != null && !string.IsNullOrEmpty(userEntity.StripeCustomerId))
+                        {
+                            var service = new PaymentIntentService();
+                            var piOptions = new PaymentIntentListOptions { Customer = userEntity.StripeCustomerId };
+                            var paymentIntents = await service.ListAsync(piOptions);
+
+                            var pi = paymentIntents.FirstOrDefault(p =>
+                                (p.Metadata.ContainsKey("OrderId") && p.Metadata["OrderId"] == order.Id.ToString()) ||
+                                (p.Metadata.ContainsKey("OrderIds") && p.Metadata["OrderIds"].Split(',').Contains(order.Id.ToString()))
+                            );
+
+                            if (pi != null && pi.Status == "succeeded")
+                            {
+                                var refundService = new RefundService();
+                                var refundOptions = new RefundCreateOptions
+                                {
+                                    PaymentIntent = pi.Id,
+                                    Amount = (long)(refundAmount * 100) // 100% full refund for store decline
+                                };
+                                await refundService.CreateAsync(refundOptions);
+                            }
+                        }
+                    }
+                    catch (StripeException e)
+                    {
+                        await transaction.RollbackAsync();
+                        stripeError = "Failed to process refund: " + e.StripeError.Message;
+                        return;
+                    }
+                }
+
+                // Batch-load stock products
+                var itemProductIds = order.Items
+                    .Where(i => i.ProductId.HasValue)
+                    .Select(i => i.ProductId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var productsDict = await _db.Products
+                    .AsTracking()
+                    .Where(p => itemProductIds.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id);
+
+                foreach (var item in order.Items)
+                {
+                    if (!item.ProductId.HasValue) continue;
+                    if (productsDict.TryGetValue(item.ProductId.Value, out var product))
+                    {
+                        product.StockQuantity += item.Quantity;
+                        product.UpdatedAtUtc = DateTime.UtcNow;
+                    }
+                }
+
+                order.Status = OrderStatus.Cancelled;
+                order.CancellationReason = req.CancellationReason;
+                order.CancelledByRole = "Shop";
+                order.CancelledAtUtc = DateTime.UtcNow;
+                order.UpdatedAtUtc = DateTime.UtcNow;
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
+
+        if (stripeError != null) return BadRequest(new { error = stripeError });
+
+        // Notify customer
+        await _notif.NotifyUserAsync(order.UserId, "Order Declined", $"Your order #{order.Id} was declined by the store. Reason: {req.CancellationReason}");
+        await _notif.NotifyOrderStatusChangedAsync(order.UserId, order.Id, "Cancelled");
+
+        // Broadcast SignalR
+        await _trackingHub.Clients.Group($"order_{order.Id}")
+            .SendAsync("order:status_updated", new
+            {
+                orderId = order.Id,
+                orderGroupId,
+                status = "Cancelled",
+                cancellationReason = req.CancellationReason,
+                cancelledByRole = "Shop"
+            });
+
+        List<Order> groupedOrders;
+        if (!string.IsNullOrWhiteSpace(order.OrderGroupId))
+        {
+            groupedOrders = await _db.Orders
+                .AsNoTracking()
+                .Where(o => o.OrderGroupId == order.OrderGroupId)
+                .ToListAsync();
+        }
+        else
+        {
+            groupedOrders = new List<Order> { order };
+        }
+
+        await BroadcastGroupedOrderStatusAsync(groupedOrders);
+
+        return Ok(new MessageResponse("Order declined successfully"));
     }
 
     private Task<bool> CanDeliveryDriverAccessOrderAsync(string deliveryUserId, int orderId, string? orderGroupId)
@@ -862,6 +1045,7 @@ public class OrdersController : ControllerBase
 
         var orderGroupId = OrderGroupHelper.ResolveGroupId(groupedOrders.First());
         var status = OrderGroupHelper.ComputeGroupedStatus(groupedOrders, deliveryJob?.Status);
+        var cancelledOrderWithReason = groupedOrders.FirstOrDefault(o => !string.IsNullOrEmpty(o.CancellationReason));
 
         await _trackingHub.Clients.Group(OrderGroupHelper.BuildTrackingGroupName(orderGroupId))
             .SendAsync("order:status_updated", new
@@ -869,7 +1053,9 @@ public class OrdersController : ControllerBase
                 orderGroupId,
                 status,
                 deliveryJobId = deliveryJob?.Id,
-                deliveryStatus = deliveryJob?.Status.ToString()
+                deliveryStatus = deliveryJob?.Status.ToString(),
+                cancellationReason = cancelledOrderWithReason?.CancellationReason ?? groupedOrders.First().CancellationReason,
+                cancelledByRole = cancelledOrderWithReason?.CancelledByRole ?? groupedOrders.First().CancelledByRole
             });
     }
 
@@ -892,10 +1078,10 @@ public class OrdersController : ControllerBase
         users.TryGetValue(order.UserId, out var user);
         users.TryGetValue(order.StoreUserId, out var storeUser);
 
-        return MapOrderDto(order, shop?.ShopName, user?.Latitude, user?.Longitude, storeUser?.Latitude, storeUser?.Longitude, storeUser?.Country);
+        return MapOrderDto(order, shop?.ShopName, user?.Latitude, user?.Longitude, storeUser?.Latitude, storeUser?.Longitude, storeUser?.Country, user?.FullName, user?.ProfilePictureUrl);
     }
 
-    private static OrderDto MapOrderDto(Order o, string? storeName, double? custLat = null, double? custLng = null, double? storeLat = null, double? storeLng = null, string? storeCountry = null)
+    private static OrderDto MapOrderDto(Order o, string? storeName, double? custLat = null, double? custLng = null, double? storeLat = null, double? storeLng = null, string? storeCountry = null, string? customerName = null, string? customerAvatarUrl = null)
     {
         var currencyCode = Helpers.CurrencyHelper.GetCurrencyCode(storeCountry);
         return new(
@@ -904,7 +1090,12 @@ public class OrdersController : ControllerBase
             o.Items.Select(i => new OrderItemDto(i.Id, i.ProductId, i.Product?.Name ?? "", i.Quantity, i.UnitPrice, i.Product?.StoreUserId ?? o.StoreUserId, currencyCode)).ToList(),
             o.CreatedAtUtc, o.UpdatedAtUtc, o.OrderGroupId,
             custLat, custLng, storeLat, storeLng,
-            currencyCode
+            currencyCode,
+            customerName,
+            customerAvatarUrl,
+            o.CancellationReason,
+            o.CancelledByRole,
+            o.CancelledAtUtc
         );
     }
 }

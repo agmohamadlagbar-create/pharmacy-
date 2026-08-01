@@ -6,6 +6,9 @@ export default defineConfig({
   build: {
     outDir: '../../backend/OnlineStore.Api/wwwroot',
     emptyOutDir: true,
+    cssCodeSplit: true,
+    target: 'esnext',
+    chunkSizeWarningLimit: 3000,
   },
   server: {
     port: 5175,

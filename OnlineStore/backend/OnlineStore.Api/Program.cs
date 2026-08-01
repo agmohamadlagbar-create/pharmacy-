@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Serilog;
 using QuestPDF.Infrastructure;
+using StackExchange.Redis;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -149,15 +150,43 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<OnlineStore.Api.Services.IJwtTokenService, OnlineStore.Api.Services.JwtTokenService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IEmailService, OnlineStore.Api.Services.SmtpEmailService>();
 builder.Services.AddSingleton<OnlineStore.Api.Services.IVerificationCodeStore, OnlineStore.Api.Services.InMemoryVerificationCodeStore>();
+builder.Services.AddHttpClient<OnlineStore.Api.Services.IFcmService, OnlineStore.Api.Services.FcmService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.INotificationService, OnlineStore.Api.Services.NotificationService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IFileStorageService, OnlineStore.Api.Services.FileStorageService>();
 builder.Services.AddSingleton<OnlineStore.Api.Services.IImageProcessingQueue, OnlineStore.Api.Services.ImageProcessingQueue>();
 builder.Services.AddHostedService<OnlineStore.Api.Services.ImageProcessingBackgroundService>();
+builder.Services.AddSingleton<OnlineStore.Api.Services.INotificationQueue, OnlineStore.Api.Services.NotificationQueue>();
+builder.Services.AddHostedService<OnlineStore.Api.Services.NotificationBackgroundService>();
 builder.Services.AddHostedService<OnlineStore.Api.Services.NotificationCleanupService>();
 builder.Services.AddHostedService<OnlineStore.Api.Services.DeliveredOrderCleanupService>();
 builder.Services.AddHostedService<OnlineStore.Api.Services.AnalyticsAggregationBackgroundService>();
 builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<OnlineStore.Api.Services.ICacheService, OnlineStore.Api.Services.LocalCacheService>();
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Program>>();
+    var redisConnString = builder.Configuration["Redis:ConnectionString"];
+    if (string.IsNullOrWhiteSpace(redisConnString))
+    {
+        logger.LogWarning("Redis ConnectionString is empty. Using LocalCacheService fallback.");
+        return null!;
+    }
+
+    try
+    {
+        var configOptions = ConfigurationOptions.Parse(redisConnString);
+        configOptions.AbortOnConnectFail = false;
+        configOptions.ConnectTimeout = 5000;
+        var muxer = ConnectionMultiplexer.Connect(configOptions);
+        logger.LogInformation("Connected to Redis server at {Endpoint}", configOptions.EndPoints.FirstOrDefault());
+        return muxer;
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to connect to Redis. Falling back to memory cache.");
+        return null!;
+    }
+});
+builder.Services.AddSingleton<OnlineStore.Api.Services.ICacheService, OnlineStore.Api.Services.RedisCacheService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IStoreCacheService, OnlineStore.Api.Services.StoreCacheService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IProductSearchService, OnlineStore.Api.Services.ProductSearchService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.ICartService, OnlineStore.Api.Services.CartService>();
@@ -418,15 +447,8 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/media",
     OnPrepareResponse = ctx =>
     {
-        if (app.Environment.IsDevelopment())
-        {
-            ctx.Context.Response.Headers.Append("Cache-Control", "no-store");
-        }
-        else
-        {
-            // Cache media resources (like images) for 1 day in production
-            ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=86400");
-        }
+        // Cache media resources (images, WebP) for 1 year immutable for maximum cache efficiency
+        ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=31536000, immutable");
     }
 });
 

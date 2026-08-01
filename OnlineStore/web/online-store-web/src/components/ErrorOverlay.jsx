@@ -25,25 +25,32 @@ const ErrorOverlay = () => {
             )}
 
             {/* 2. Toast Notification */}
-            {toast && (
-                <div className="error-toast-container">
-                    <div className="error-toast">
-                        <div className="error-toast-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {toast && (() => {
+                const isSuccess = toast.type === 'success' || (toast.type !== 'error' && (toast.message?.includes('success') || toast.message?.includes('✅') || toast.message?.includes('updated') || toast.message?.includes('Profile updated')));
+                return (
+                    <div className="error-toast-container">
+                        <div className={`error-toast ${isSuccess ? 'success' : ''}`}>
+                            <div className="error-toast-icon">
+                                {isSuccess ? (
+                                    <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#22c55e' }}>check_circle</span>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                )}
+                            </div>
+                            <span style={{ fontWeight: isSuccess ? '600' : '500' }}>{toast.message}</span>
+                            {toast.actionText && (
+                                <a href="#" className="error-toast-action" onClick={(e) => {
+                                    e.preventDefault();
+                                    if (toast.onAction) toast.onAction();
+                                    setToast(null);
+                                }}>
+                                    {toast.actionText}
+                                </a>
+                            )}
                         </div>
-                        <span>{toast.message}</span>
-                        {toast.actionText && (
-                            <a href="#" className="error-toast-action" onClick={(e) => {
-                                e.preventDefault();
-                                if (toast.onAction) toast.onAction();
-                                setToast(null);
-                            }}>
-                                {toast.actionText}
-                            </a>
-                        )}
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* 5. Error Modal / Dialog */}
             {modal && (

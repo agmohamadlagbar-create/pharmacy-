@@ -21,6 +21,71 @@ export default function StoreProductsPage({ onBack }) {
     const [statusFilter, setStatusFilter] = useState('All')
     const [uploading, setUploading] = useState(false)
     const [searchDebounced, setSearchDebounced] = useState('')
+    const [errors, setErrors] = useState({})
+    const [touched, setTouched] = useState({})
+
+    const validateField = useCallback((fieldName, value) => {
+        let err = ''
+        if (fieldName === 'name') {
+            if (!value || !value.trim()) {
+                err = t('Please enter a product name')
+            }
+        } else if (fieldName === 'price') {
+            if (!value || isNaN(parseFloat(value)) || parseFloat(value) <= 0) {
+                err = t('Please enter a valid price greater than 0')
+            }
+        } else if (fieldName === 'stockQuantity') {
+            if (value === '' || value === undefined || value === null) {
+                err = t('Please enter the stock quantity')
+            } else if (isNaN(parseInt(value)) || parseInt(value) < 0) {
+                err = t('Stock quantity cannot be negative')
+            }
+        } else if (fieldName === 'categoryId') {
+            if (!value) {
+                err = t('Please select a category for the product')
+            }
+        }
+        return err
+    }, [t])
+
+    const validateForm = useCallback(() => {
+        const newErrors = {}
+        const nameErr = validateField('name', form.name)
+        if (nameErr) newErrors.name = nameErr
+
+        const priceErr = validateField('price', form.price)
+        if (priceErr) newErrors.price = priceErr
+
+        const stockErr = validateField('stockQuantity', form.stockQuantity)
+        if (stockErr) newErrors.stockQuantity = stockErr
+
+        const catErr = validateField('categoryId', form.categoryId)
+        if (catErr) newErrors.categoryId = catErr
+
+        if (form.images.length === 0) {
+            newErrors.images = t('Please upload at least one image')
+        }
+
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
+    }, [form, validateField, t])
+
+    const handleFieldChange = (fieldName, value) => {
+        setForm(prev => {
+            const next = { ...prev, [fieldName]: value }
+            if (touched[fieldName]) {
+                const err = validateField(fieldName, value)
+                setErrors(e => ({ ...e, [fieldName]: err }))
+            }
+            return next
+        })
+    }
+
+    const handleFieldBlur = (fieldName) => {
+        setTouched(prev => ({ ...prev, [fieldName]: true }))
+        const err = validateField(fieldName, form[fieldName])
+        setErrors(e => ({ ...e, [fieldName]: err }))
+    }
 
     // Debounce search query
     useEffect(() => {
@@ -79,6 +144,7 @@ export default function StoreProductsPage({ onBack }) {
         const toUpload = files.slice(0, remaining)
         setUploading(true)
         setMsg(null)
+        setTouched(prev => ({ ...prev, images: true }))
         
         try {
             for (const file of toUpload) {
@@ -110,6 +176,17 @@ export default function StoreProductsPage({ onBack }) {
     async function handleSubmit(e) {
         e.preventDefault()
         setMsg(null)
+
+        // Touch all inputs so that skipping shows errors
+        const allTouched = { name: true, price: true, stockQuantity: true, categoryId: true, images: true }
+        setTouched(allTouched)
+
+        const isValid = validateForm()
+        if (!isValid) {
+            setMsg({ type: 'error', text: t('Please check the form for fields with errors.') })
+            return
+        }
+
         try {
             const finalCategoryId = form.subcategoryId ? parseInt(form.subcategoryId) : parseInt(form.categoryId)
             const mainImage = form.images[0] || null
@@ -139,6 +216,8 @@ export default function StoreProductsPage({ onBack }) {
             setEditingId(null)
             setForm({ name: '', description: '', price: '', images: [], categoryId: '', subcategoryId: '', stockQuantity: '0' })
             setSubcategories([])
+            setErrors({})
+            setTouched({})
             reset()
         } catch (err) {
             setMsg({ type: 'error', text: err?.response?.data?.error || err.message })
@@ -159,6 +238,8 @@ export default function StoreProductsPage({ onBack }) {
             subcategoryId: '',
             stockQuantity: (p.stockQuantity || 0).toString()
         })
+        setErrors({})
+        setTouched({})
         setEditingId(p.id)
         setShowForm(true)
         fetchSubcategories(p.categoryId)
@@ -213,6 +294,14 @@ export default function StoreProductsPage({ onBack }) {
         }
     }, [showForm])
 
+    // Auto-dismiss page/submit notification messages after 5 seconds
+    useEffect(() => {
+        if (msg) {
+            const timer = setTimeout(() => setMsg(null), 5000)
+            return () => clearTimeout(timer)
+        }
+    }, [msg])
+
     async function handleDelete(id) {
         if (!confirm(t('Delete this product?'))) return
         try {
@@ -229,11 +318,24 @@ export default function StoreProductsPage({ onBack }) {
         return `${api.defaults.baseURL}${url}`;
     }
 
+    function handleBackClick() {
+        if (showForm) {
+            setShowForm(false)
+            setEditingId(null)
+            setForm({ name: '', description: '', price: '', images: [], categoryId: '', subcategoryId: '', stockQuantity: '0' })
+            setSubcategories([])
+            setErrors({})
+            setTouched({})
+        } else {
+            onBack()
+        }
+    }
+
     // Skeleton card matching the real product card layout
     const SkeletonCard = () => (
         <div className="sp-glass-card sp-product-card">
-            <div className="sp-product-image" style={{ padding: 0 }}>
-                <Skeleton width="100%" height="100%" borderRadius="16px 16px 0 0" />
+            <div className="sp-product-image">
+                <Skeleton width="100%" height="100%" />
             </div>
             <div className="sp-product-content">
                 <div className="sp-product-header">
@@ -244,8 +346,8 @@ export default function StoreProductsPage({ onBack }) {
                     <Skeleton width="40%" height="16px" />
                 </div>
                 <div className="sp-product-actions" style={{ marginTop: '16px' }}>
-                    <Skeleton width="45%" height="32px" borderRadius="8px" />
-                    <Skeleton width="45%" height="32px" borderRadius="8px" />
+                    <Skeleton width="80px" height="32px" borderRadius="8px" />
+                    <Skeleton width="80px" height="32px" borderRadius="8px" />
                 </div>
             </div>
         </div>
@@ -254,35 +356,104 @@ export default function StoreProductsPage({ onBack }) {
     return (
         <div className="store-products-page">
             <div className="sp-container">
+                {/* Header */}
                 <div className="sp-header">
-                    <button onClick={onBack} className="sp-back-btn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                        {t('Back')}
+                    <button onClick={handleBackClick} className="sp-back-btn">
+                        <span className="material-symbols-outlined">arrow_back</span>
+                        {!showForm && t('Back')}
                     </button>
                     <h2 className="sp-title">{t('My Products')}</h2>
-                    <button onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: '', description: '', price: '', images: [], categoryId: '', subcategoryId: '', stockQuantity: '0' }); setSubcategories([]); }}
-                        className="sp-btn-gradient">
-                        {showForm ? t('Cancel') : '+ ' + t('Add Product')}
-                    </button>
+                    {!showForm && (
+                        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', description: '', price: '', images: [], categoryId: '', subcategoryId: '', stockQuantity: '0' }); setSubcategories([]); }}
+                            className="sp-btn-gradient">
+                            + {t('Add Product')}
+                        </button>
+                    )}
                 </div>
 
-                {msg && <div className={`msg ${msg.type}`} style={{ marginBottom: '16px' }}>{msg.text}</div>}
+                {msg && (
+                    <div className={`msg ${msg.type} ${msg.type === 'ok' ? 'msg-floating' : ''}`} style={{ marginBottom: '16px' }}>
+                        {msg.type === 'ok' && <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--primary)' }}>check_circle</span>}
+                        <span>{msg.text}</span>
+                    </div>
+                )}
+
+                {/* Bento Stats Grid */}
+                {!showForm && (
+                    <div className="sp-bento-grid">
+                        <div className="sp-bento-card">
+                            <div className="sp-bento-icon-wrapper">
+                                <span className="material-symbols-outlined">inventory</span>
+                            </div>
+                            <div className="sp-bento-info">
+                                <span className="sp-bento-label">{t('Total Products')}</span>
+                                <span className="sp-bento-value">{total ?? products.length}</span>
+                                <span className="sp-bento-subtext">{t('Items in Catalog')}</span>
+                            </div>
+                        </div>
+                        <div className="sp-bento-card">
+                            <div className="sp-bento-icon-wrapper">
+                                <span className="material-symbols-outlined">check_circle</span>
+                            </div>
+                            <div className="sp-bento-info">
+                                <span className="sp-bento-label">{t('Active')}</span>
+                                <span className="sp-bento-value">
+                                    {products.filter(p => p.status === 'Approved').length}
+                                </span>
+                                <span className="sp-bento-subtext">{t('Live Products')}</span>
+                            </div>
+                        </div>
+                        <div className="sp-bento-card">
+                            <div className="sp-bento-icon-wrapper low-stock">
+                                <span className="material-symbols-outlined">warning</span>
+                            </div>
+                            <div className="sp-bento-info">
+                                <span className="sp-bento-label">{t('Low Stock')}</span>
+                                <span className="sp-bento-value">
+                                    {products.filter(p => p.stockQuantity < 10).length}
+                                </span>
+                                <span className="sp-bento-subtext low-stock">{t('Items low in stock')}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {showForm && (
-                    <form onSubmit={handleSubmit} className="sp-glass-card sp-form">
-                        <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)' }}>{editingId ? t('Edit Product') : t('Create New Product')}</h3>
+                    <form onSubmit={handleSubmit} className="sp-glass-card sp-form" noValidate>
+                        <h3 style={{ margin: '0 0 16px', color: 'var(--on-surface)' }}>{editingId ? t('Edit Product') : t('Create New Product')}</h3>
                         <div className="sp-form-grid">
                             <div className="field">
                                 <label>{t('Name')}</label>
-                                <input className="sp-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+                                <input 
+                                    className={`sp-input ${errors.name && touched.name ? 'input-error' : ''}`} 
+                                    value={form.name} 
+                                    onChange={e => handleFieldChange('name', e.target.value)} 
+                                    onBlur={() => handleFieldBlur('name')}
+                                />
+                                {errors.name && touched.name && <span className="sp-error-text">{errors.name}</span>}
                             </div>
                             <div className="field">
                                 <label>{t('Price')}</label>
-                                <input className="sp-input" type="number" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} required />
+                                <input 
+                                    className={`sp-input ${errors.price && touched.price ? 'input-error' : ''}`} 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={form.price} 
+                                    onChange={e => handleFieldChange('price', e.target.value)} 
+                                    onBlur={() => handleFieldBlur('price')}
+                                />
+                                {errors.price && touched.price && <span className="sp-error-text">{errors.price}</span>}
                             </div>
                             <div className="field">
                                 <label>{t('Stock Quantity')}</label>
-                                <input className="sp-input" type="number" value={form.stockQuantity} onChange={e => setForm({ ...form, stockQuantity: e.target.value })} required />
+                                <input 
+                                    className={`sp-input ${errors.stockQuantity && touched.stockQuantity ? 'input-error' : ''}`} 
+                                    type="number" 
+                                    value={form.stockQuantity} 
+                                    onChange={e => handleFieldChange('stockQuantity', e.target.value)} 
+                                    onBlur={() => handleFieldBlur('stockQuantity')}
+                                />
+                                {errors.stockQuantity && touched.stockQuantity && <span className="sp-error-text">{errors.stockQuantity}</span>}
                             </div>
                             <div className="field" style={{ gridColumn: '1 / -1' }}>
                                 <label>{t('Description')}</label>
@@ -290,35 +461,45 @@ export default function StoreProductsPage({ onBack }) {
                             </div>
                             <div className="field" style={{ gridColumn: '1 / -1' }}>
                                 <label>{t('Product Images')} ({form.images.length}/5)</label>
-                                <div className="sp-image-upload-area" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', border: 'none', padding: 0 }}>
+                                <div className="sp-image-upload-area">
                                     {form.images.map((img, idx) => (
-                                        <div key={idx} className="sp-image-preview-wrapper" style={{ width: '100px', height: '100px', margin: 0 }}>
-                                            <img src={getImageUrl(img)} alt="Preview" className="sp-image-preview" style={{ borderRadius: '8px' }} />
-                                            <button type="button" className="sp-image-remove-btn" onClick={() => setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}>✕</button>
+                                        <div key={idx} className="sp-image-preview-wrapper">
+                                            <img src={getImageUrl(img)} alt="Preview" className="sp-image-preview" />
+                                            <button type="button" className="sp-image-remove-btn" onClick={() => {
+                                                setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))
+                                                setTouched(prev => ({ ...prev, images: true }))
+                                            }}>✕</button>
                                         </div>
                                     ))}
                                     {form.images.length < 5 && (
-                                        <label className="sp-image-upload-label" style={{ width: '100px', height: '100px', margin: 0 }}>
+                                        <label className="sp-image-upload-label">
                                             <input type="file" accept="image/*" multiple onChange={handleImageUpload} style={{ display: 'none' }} />
-                                            <div className="sp-image-upload-placeholder" style={{ padding: '10px' }}>
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                                                <span style={{ fontSize: '10px' }}>{uploading ? t('...') : t('Add')}</span>
+                                            <div className="sp-image-upload-placeholder">
+                                                <span className="material-symbols-outlined" style={{ fontSize: 24 }}>add_photo_alternate</span>
+                                                <span>{uploading ? t('...') : t('Add')}</span>
                                             </div>
                                         </label>
                                     )}
                                 </div>
-                                {form.images.length === 0 && <div style={{ fontSize: '12px', color: '#f87171', marginTop: '5px' }}>{t('At least 1 image is required.')}</div>}
+                                {touched.images && form.images.length === 0 && <span className="sp-error-text">{t('Please upload at least one image')}</span>}
                             </div>
                             <div className="field">
                                 <label>{t('Category')}</label>
-                                <select className="sp-input" value={form.categoryId} onChange={e => {
-                                    setForm({ ...form, categoryId: e.target.value, subcategoryId: '' })
-                                    if (e.target.value) fetchSubcategories(e.target.value)
-                                    else setSubcategories([])
-                                }} required>
+                                <select 
+                                    className={`sp-input ${errors.categoryId && touched.categoryId ? 'input-error' : ''}`} 
+                                    value={form.categoryId} 
+                                    onChange={e => {
+                                        handleFieldChange('categoryId', e.target.value)
+                                        setForm(f => ({ ...f, subcategoryId: '' }))
+                                        if (e.target.value) fetchSubcategories(e.target.value)
+                                        else setSubcategories([])
+                                    }}
+                                    onBlur={() => handleFieldBlur('categoryId')}
+                                >
                                     <option value="">{t('Select category')}</option>
                                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
+                                {errors.categoryId && touched.categoryId && <span className="sp-error-text">{errors.categoryId}</span>}
                             </div>
                             {subcategories.length > 0 && (
                                 <div className="field">
@@ -330,7 +511,7 @@ export default function StoreProductsPage({ onBack }) {
                                 </div>
                             )}
                         </div>
-                        <button type="submit" className="sp-btn-gradient" style={{ marginTop: '20px', width: '100%', justifyContent: 'center' }}>
+                        <button type="submit" className="sp-btn-gradient" style={{ marginTop: '24px', width: '100%' }}>
                             {editingId ? t('Update Product') : t('Create Product')}
                         </button>
                     </form>
@@ -339,7 +520,7 @@ export default function StoreProductsPage({ onBack }) {
                 {!showForm && (
                     <div className="sp-filters-row">
                         <div className="sp-search-wrapper">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <span className="material-symbols-outlined">search</span>
                             <input
                                 className="sp-input sp-search-input"
                                 placeholder={t('Search products...')}
@@ -361,79 +542,83 @@ export default function StoreProductsPage({ onBack }) {
                     </div>
                 )}
 
-                {initialLoad ? (
-                    <div className="sp-products-grid">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                            <SkeletonCard key={i} />
-                        ))}
-                    </div>
-                ) : products.length === 0 && !isLoading ? (
-                    <div className="sp-empty-state">
-                        {searchQuery || statusFilter !== 'All' 
-                            ? t('No products match your search/filters.') 
-                            : t('No products yet. Add your first product!')
-                        }
-                    </div>
-                ) : (
-                    <div className="sp-products-grid">
-                        {products.map(p => (
-                            <div key={p.id} className="sp-glass-card sp-product-card">
-                                <div className="sp-product-image">
-                                    {getImageUrl(p.imageUrl) ? (
-                                        <img src={getImageUrl(p.imageUrl)} alt={p.name} />
-                                    ) : (
-                                        <div className="sp-product-img-placeholder">
-                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="sp-product-content">
-                                    <div className="sp-product-header">
-                                        <div className="sp-product-name">{p.name}</div>
-                                        <span className={`sp-badge sp-badge-${p.status.toLowerCase()}`}>
-                                            {t(p.status)}
-                                        </span>
-                                    </div>
-                                    <div className="sp-product-meta">
-                                        <span className="sp-product-price">{formatPrice(p.price, p.currencyCode)}</span>
-                                        <span className="sp-product-dot">•</span>
-                                        <span className="sp-product-category">{p.categoryName || t('No category')}</span>
-                                    </div>
-                                    {p.rejectionReason && <div className="sp-product-reason">{t('Reason:')} {p.rejectionReason}</div>}
-                                    <div className="sp-product-actions">
-                                        <button className="sp-btn-edit" onClick={() => startEdit(p)}>{t('Edit')}</button>
-                                        <button className="sp-btn-delete" onClick={() => handleDelete(p.id)}>{t('Delete')}</button>
-                                    </div>
-                                </div>
+                {!showForm && (
+                    <>
+                        {initialLoad ? (
+                            <div className="sp-products-grid">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <SkeletonCard key={i} />
+                                ))}
                             </div>
-                        ))}
-                        {/* Loading more skeleton cards */}
-                        {isLoading && !initialLoad && (
-                            Array.from({ length: 3 }).map((_, i) => (
-                                <SkeletonCard key={`skeleton-more-${i}`} />
-                            ))
+                        ) : products.length === 0 && !isLoading ? (
+                            <div className="sp-empty-state">
+                                {searchQuery || statusFilter !== 'All' 
+                                    ? t('No products match your search/filters.') 
+                                    : t('No products yet. Add your first product!')
+                                }
+                            </div>
+                        ) : (
+                            <div className="sp-products-grid">
+                                {products.map(p => (
+                                    <div key={p.id} className="sp-glass-card sp-product-card">
+                                        <div className="sp-product-image">
+                                            {getImageUrl(p.imageUrl) ? (
+                                                <img src={getImageUrl(p.imageUrl)} alt={p.name} />
+                                            ) : (
+                                                <div className="sp-product-img-placeholder">
+                                                    <span className="material-symbols-outlined" style={{ fontSize: 32 }}>image</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="sp-product-content">
+                                            <div className="sp-product-header">
+                                                <div className="sp-product-name">{p.name}</div>
+                                                <span className={`sp-badge sp-badge-${p.status.toLowerCase()}`}>
+                                                    {t(p.status)}
+                                                </span>
+                                            </div>
+                                            <div className="sp-product-meta">
+                                                <span className="sp-product-price">{formatPrice(p.price, p.currencyCode)}</span>
+                                                <span className="sp-product-dot">•</span>
+                                                <span className="sp-product-category">{p.categoryName || t('No category')}</span>
+                                            </div>
+                                            {p.rejectionReason && <div className="sp-product-reason">{t('Reason:')} {p.rejectionReason}</div>}
+                                            <div className="sp-product-actions">
+                                                <button className="sp-btn-edit" onClick={() => startEdit(p)}>{t('Edit')}</button>
+                                                <button className="sp-btn-delete" onClick={() => handleDelete(p.id)}>{t('Delete')}</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {/* Loading more skeleton cards */}
+                                {isLoading && !initialLoad && (
+                                    Array.from({ length: 3 }).map((_, i) => (
+                                        <SkeletonCard key={`skeleton-more-${i}`} />
+                                    ))
+                                )}
+                            </div>
                         )}
-                    </div>
-                )}
 
-                {/* Sentinel for IntersectionObserver */}
-                {hasMore && !initialLoad && <div ref={sentinelRef} style={{ height: '1px', width: '100%' }} />}
+                        {/* Sentinel for IntersectionObserver */}
+                        {hasMore && !initialLoad && <div ref={sentinelRef} style={{ height: '1px', width: '100%' }} />}
 
-                {/* End of list message */}
-                {!hasMore && products.length > 0 && (
-                    <div style={{ textAlign: 'center', color: 'var(--muted, #888)', padding: '24px 0 48px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                        <span style={{ flex: 1, maxWidth: '60px', height: '1px', background: 'var(--border, rgba(255,255,255,0.1))' }} />
-                        {t('No more products')}
-                        <span style={{ flex: 1, maxWidth: '60px', height: '1px', background: 'var(--border, rgba(255,255,255,0.1))' }} />
-                    </div>
-                )}
+                        {/* End of list message */}
+                        {!hasMore && products.length > 0 && (
+                            <div style={{ textAlign: 'center', color: 'var(--on-surface-variant)', opacity: 0.6, padding: '24px 0 48px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                                <span style={{ flex: 1, maxWidth: '60px', height: '1px', background: 'var(--outline-variant)' }} />
+                                {t('No more products')}
+                                <span style={{ flex: 1, maxWidth: '60px', height: '1px', background: 'var(--outline-variant)' }} />
+                            </div>
+                        )}
 
-                {/* Error retry */}
-                {error && products.length > 0 && (
-                    <div style={{ textAlign: 'center', padding: '16px', color: 'var(--muted, #888)' }}>
-                        <p style={{ marginBottom: '8px' }}>{t('Failed to load more products.')}</p>
-                        <button className="sp-btn-gradient" onClick={retry} style={{ display: 'inline-flex', padding: '8px 20px' }}>{t('Retry')}</button>
-                    </div>
+                        {/* Error retry */}
+                        {error && products.length > 0 && (
+                            <div style={{ textAlign: 'center', padding: '16px', color: 'var(--on-surface-variant)' }}>
+                                <p style={{ marginBottom: '8px' }}>{t('Failed to load more products.')}</p>
+                                <button className="sp-btn-gradient" onClick={retry} style={{ display: 'inline-flex', padding: '8px 20px' }}>{t('Retry')}</button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>

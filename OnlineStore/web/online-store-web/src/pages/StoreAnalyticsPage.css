@@ -5,9 +5,9 @@
 .analytics-page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px var(--screen-pad);
   min-height: 100vh;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 /* ── Header ── */
@@ -24,25 +24,25 @@
   margin: 0;
   font-size: 1.8rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--on-surface);
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .analytics-header h1 svg {
-  color: #6366f1;
+  color: var(--primary);
 }
 
 .analytics-back-btn {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
   padding: 8px 18px;
-  color: var(--text);
+  color: var(--on-surface);
   cursor: pointer;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -51,7 +51,7 @@
 
 .analytics-back-btn:hover {
   background: var(--primary);
-  color: white;
+  color: var(--on-primary);
   border-color: var(--primary);
   transform: translateY(-1px);
 }
@@ -64,42 +64,42 @@
   margin-bottom: 28px;
   flex-wrap: wrap;
   padding: 12px 16px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-xl);
   backdrop-filter: blur(20px);
 }
 
 .date-range-bar label {
   font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 700;
+  color: var(--on-surface);
   white-space: nowrap;
 }
 
 .date-preset-btn {
   padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--outline-variant);
   background: transparent;
-  color: var(--text);
+  color: var(--on-surface-variant);
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .date-preset-btn:hover {
-  border-color: #6366f1;
-  color: #6366f1;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .date-preset-btn.active {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
+  background: var(--primary);
+  color: var(--on-primary);
   border-color: transparent;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .date-range-inputs {
@@ -111,17 +111,17 @@
 
 .date-range-inputs input[type="date"] {
   padding: 6px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
   font-size: 0.8rem;
   outline: none;
   transition: border-color 0.2s;
 }
 
 .date-range-inputs input[type="date"]:focus {
-  border-color: #6366f1;
+  border-color: var(--primary);
 }
 
 /* ── Section Layout ── */

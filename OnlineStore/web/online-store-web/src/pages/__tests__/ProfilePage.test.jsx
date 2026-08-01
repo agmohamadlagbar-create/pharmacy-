@@ -50,15 +50,13 @@ describe('ProfilePage', () => {
 
     render(<ProfilePage onBack={vi.fn()} onEdit={vi.fn()} />)
 
-    expect(screen.getByText('Loading profile...')).toBeInTheDocument()
-
     await waitFor(() => {
       expect(mocks.get).toHaveBeenCalledWith('/api/me')
     })
 
     expect(await screen.findByText('My Profile')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Lina Baran' })).toBeInTheDocument()
-    expect(screen.getByText('lina@example.com')).toBeInTheDocument()
+    expect(screen.getAllByText('lina@example.com')[0]).toBeInTheDocument()
     expect(screen.getByText('41.0082, 28.9784')).toBeInTheDocument()
     expect(screen.getByTestId('profile-avatar')).toHaveAttribute(
       'data-src',
@@ -86,7 +84,7 @@ describe('ProfilePage', () => {
     await user.click(buttons[0])
     expect(onBack).toHaveBeenCalledTimes(1)
 
-    await user.click(screen.getByRole('button', { name: 'Edit Profile' }))
+    await user.click(screen.getByRole('button', { name: /Edit Profile/i }))
     expect(onEdit).toHaveBeenCalledTimes(1)
   })
 })

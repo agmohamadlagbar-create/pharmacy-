@@ -1,10 +1,12 @@
-/* PaymentPage Premium Overhaul */
+/* PaymentPage.css — Stitch Design System */
 
 .payment-page-container {
-    background: var(--bg);
+    background: var(--background);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    color: var(--on-surface);
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .payment-appbar {
@@ -12,49 +14,51 @@
     align-items: center;
     gap: 16px;
     padding: 16px 24px;
+    border-bottom: 1px solid var(--outline-variant);
 }
 
 .icon-btn-round {
-    background: transparent;
-    border: 1px solid var(--border);
+    background: var(--surface-container);
+    border: 1px solid var(--outline-variant);
     border-radius: 50%;
     width: 40px;
     height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-primary);
+    color: var(--on-surface);
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
 }
 
 .icon-btn-round:hover {
-    background: var(--surface);
+    background: var(--surface-container-high);
+    border-color: var(--primary);
 }
 
 .payment-appbar h2 {
-    font-size: 20px;
-    font-family: 'Playfair Display', serif;
-    font-weight: 600;
+    font-size: 22px;
+    font-weight: 800;
     margin: 0;
-    color: var(--text-primary);
+    color: var(--on-surface);
 }
 
 .payment-body {
     flex: 1;
     display: flex;
     justify-content: center;
-    padding: 24px;
+    padding: 32px 24px;
 }
 
 .payment-box {
     width: 100%;
-    max-width: 450px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 24px;
+    max-width: 480px;
+    background: var(--surface-container);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-xl, 16px);
     padding: 32px 24px;
     box-sizing: border-box;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .payment-order-top {
@@ -66,18 +70,19 @@
     font-size: 12px;
     letter-spacing: 1.5px;
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--on-surface-variant);
     margin-bottom: 8px;
+    text-transform: uppercase;
 }
 
 .order-total-value {
-    font-size: 44px;
-    font-family: 'Playfair Display', serif;
-    font-weight: 700;
-    color: var(--text-primary);
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--primary);
 }
 
-.payment-method-row, .payment-deliver-row {
+.payment-method-row,
+.payment-deliver-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -85,27 +90,30 @@
 }
 
 .row-label {
-    color: var(--text-muted);
+    color: var(--on-surface-variant);
     font-size: 14px;
+    font-weight: 600;
 }
 
 .method-chip {
     display: flex;
     align-items: center;
     gap: 8px;
-    border: 1px solid var(--border);
-    padding: 6px 12px;
-    border-radius: 16px;
+    border: 1px solid var(--outline-variant);
+    background: var(--surface-container-high);
+    padding: 6px 14px;
+    border-radius: 20px;
 }
 
 .chip-icon {
-    font-size: 14px;
+    font-size: 16px;
+    color: var(--primary);
 }
 
 .chip-text {
     font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 700;
+    color: var(--on-surface);
 }
 
 .deliver-address {
@@ -119,22 +127,20 @@
 
 .address-text {
     font-size: 14px;
-    color: var(--text-primary);
-    opacity: 0.9;
+    color: var(--on-surface);
 }
 
 .divider-line {
     height: 1px;
-    background: var(--border);
+    background: var(--outline-variant);
     margin: 24px 0;
 }
 
 .section-title {
-    font-family: 'Playfair Display', serif;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 700;
     margin: 0 0 16px 0;
-    color: var(--text-primary);
+    color: var(--on-surface);
 }
 
 /* Spline 3D Card Integration */
@@ -146,26 +152,19 @@
     overflow: hidden;
     margin-bottom: 24px;
     background: transparent;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .spline-mockup-wrapper canvas {
-    /* Zoom in the 3D scene to appear closer */
     transform: scale(1.65);
     transform-origin: center center;
-    
-    /* Clean, premium warm color adjustment (no muddy overlays) */
     filter: sepia(0.2) saturate(1.1) brightness(1.05) contrast(1.1) hue-rotate(-5deg);
     transition: transform 0.3s ease, filter 0.3s ease;
     width: 100% !important;
     height: 100% !important;
-}
-
-.spline-tint-overlay {
-    display: none; /* Removing the overlay since it was making the lighting muddy */
 }
 
 /* Form Styles */
@@ -175,31 +174,33 @@
 
 .custom-label {
     display: block;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 1px;
-    color: var(--text-muted);
-    font-weight: 600;
+    color: var(--on-surface-variant);
+    font-weight: 700;
     margin-bottom: 8px;
+    text-transform: uppercase;
 }
 
 .stripe-input-wrapper {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    background: var(--surface-container-high, var(--background));
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-md, 8px);
     padding: 14px 16px;
 }
 
 .custom-input {
     width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    background: var(--surface-container-high, var(--background));
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-md, 8px);
     padding: 14px 16px;
-    color: var(--text-primary);
+    color: var(--on-surface);
     font-family: inherit;
     font-size: 15px;
     outline: none;
     box-sizing: border-box;
+    transition: border-color 0.2s ease;
 }
 
 .custom-input:focus {
@@ -212,28 +213,39 @@
     margin-top: 24px;
 }
 
-.btn-cancel, .btn-save {
+.btn-cancel,
+.btn-save {
     flex: 1;
-    padding: 16px;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
+    padding: 14px;
+    border-radius: var(--radius-lg, 12px);
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    transition: background 0.2s;
+    background: var(--surface-container-high);
+    border: 1px solid var(--outline-variant);
+    color: var(--on-surface);
+    transition: all 0.2s ease;
 }
 
-.btn-save:hover:not(:disabled), .btn-cancel:hover:not(:disabled) {
-    background: var(--bg);
+.btn-save {
+    background: var(--primary);
+    color: var(--on-primary, #ffffff);
+    border: none;
+}
+
+.btn-save:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.btn-cancel:hover:not(:disabled) {
+    background: var(--surface-container-highest);
 }
 
 .error-message {
-    color: #e74c3c;
+    color: #ef4444;
     font-size: 13px;
     margin-top: 8px;
 }
@@ -250,7 +262,7 @@
     background: transparent;
     border: none;
     color: var(--primary);
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
 }
 
@@ -258,17 +270,18 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border: 1px solid var(--border);
+    border: 1px solid var(--outline-variant);
+    background: var(--surface-container-high);
     padding: 16px;
     border-radius: 12px;
     margin-bottom: 12px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
 }
 
 .card-item.selected {
     border: 2px solid var(--primary);
-    background: var(--bg);
+    background: var(--surface-container-highest);
 }
 
 .card-item-left {
@@ -278,23 +291,24 @@
 }
 
 .c-brand {
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 700;
+    color: var(--on-surface);
     font-size: 14px;
 }
 
 .c-exp {
     font-size: 12px;
-    color: var(--text-muted);
+    color: var(--on-surface-variant);
 }
 
 .btn-icon-delete {
     background: transparent;
     border: none;
-    color: #e74c3c;
+    color: #ef4444;
     cursor: pointer;
     opacity: 0.8;
 }
+
 .btn-icon-delete:hover {
     opacity: 1;
 }
@@ -308,21 +322,23 @@
 .btn-pay-now {
     width: 100%;
     padding: 16px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-primary);
+    border-radius: var(--radius-lg, 12px);
+    border: none;
+    background: var(--primary);
+    color: var(--on-primary, #ffffff);
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.2s;
+    box-shadow: 0 4px 14px rgba(63, 81, 181, 0.3);
+    transition: all 0.2s ease;
 }
 
 .btn-pay-now:hover:not(:disabled) {
-    background: var(--bg);
+    filter: brightness(1.1);
+    transform: translateY(-1px);
 }
 
 .ssl-secured {
@@ -331,27 +347,30 @@
     justify-content: center;
     gap: 6px;
     margin-top: 16px;
-    color: var(--text-muted);
-    font-size: 11px;
+    color: var(--on-surface-variant);
+    font-size: 12px;
 }
 
 .spinner-small {
     width: 20px;
     height: 20px;
-    border: 3px solid var(--text-muted);
+    border: 3px solid var(--on-surface-variant);
     border-radius: 50%;
     border-top-color: transparent;
     animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .cod-message {
-    background: var(--bg);
+    background: var(--surface-container-high);
     padding: 24px;
-    border-radius: 8px;
+    border-radius: var(--radius-lg, 12px);
     text-align: center;
-    color: var(--text-primary);
+    color: var(--on-surface);
+    border: 1px solid var(--outline-variant);
 }

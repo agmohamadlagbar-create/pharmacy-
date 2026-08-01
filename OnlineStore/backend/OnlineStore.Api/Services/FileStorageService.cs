@@ -106,6 +106,7 @@ public class FileStorageService : IFileStorageService
 
         var relativeFolder = Path.Combine(sanitizedCountry, sanitizedCity, "ads");
         var storageKey = await SaveCleanedOriginalAsync(relativeFolder, file);
+        storageKey = storageKey.Replace('\\', '/');
 
         await _imageQueue.QueueImageWorkAsync(new ImageProcessingItem(
             storageKey, "ads", "", sanitizedCountry, sanitizedCity, file.FileName));

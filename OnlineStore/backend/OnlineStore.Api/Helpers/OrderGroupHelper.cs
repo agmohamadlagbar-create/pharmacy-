@@ -66,9 +66,14 @@ public static class OrderGroupHelper
                     item.Product?.StoreUserId ?? order.StoreUserId,
                     currencyCode
                 )).ToList(),
-                currencyCode
+                currencyCode,
+                order.CancellationReason,
+                order.CancelledByRole,
+                order.CancelledAtUtc
             );
         }).ToList();
+
+        var cancelledOrderWithReason = orderedOrders.FirstOrDefault(o => !string.IsNullOrEmpty(o.CancellationReason));
 
         return new GroupedOrderDto(
             orderGroupId,
@@ -85,7 +90,10 @@ public static class OrderGroupHelper
             customerCoords.Latitude,
             customerCoords.Longitude,
             deliveryJob?.Id,
-            deliveryJob?.Status.ToString()
+            deliveryJob?.Status.ToString(),
+            cancelledOrderWithReason?.CancellationReason ?? representative.CancellationReason,
+            cancelledOrderWithReason?.CancelledByRole ?? representative.CancelledByRole,
+            cancelledOrderWithReason?.CancelledAtUtc ?? representative.CancelledAtUtc
         );
     }
 

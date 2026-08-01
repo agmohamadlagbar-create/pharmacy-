@@ -12,6 +12,10 @@ public class UserAddress
     public string? BuildingNumber { get; set; }
     public string? City { get; set; }
     public string? PostalCode { get; set; }
+    public string? District { get; set; }
+    public string? Neighborhood { get; set; }
+    public string? Floor { get; set; }
+    public string? ApartmentNo { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     

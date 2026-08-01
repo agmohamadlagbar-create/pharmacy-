@@ -1,20 +1,24 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../apiClient.js'
 import { formatPrice } from '../utils/formatPrice.js'
 import Skeleton from '../components/Skeleton.jsx'
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js'
 import AiDashboardTab from '../components/AiDashboardTab.jsx'
+import './AdminPage.css'
 
 export default function AdminPage({ onBack }) {
     const { t } = useTranslation()
     const [tab, setTab] = useState('products')
-    const [aiSubTab, setAiSubTab] = useState('dashboard')
+    const [stats, setStats] = useState({ totalProducts: 0, pendingProducts: 0, totalUsers: 0, totalOrders: 0, totalCategories: 0, totalAds: 0 })
     const [categories, setCategories] = useState([])
     const [subcategories, setSubcategories] = useState({})
     const [ads, setAds] = useState([])
     const [loadingOther, setLoadingOther] = useState(false)
     const [statusFilter, setStatusFilter] = useState('Pending')
+
+    // Custom confirm modal state
+    const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null })
 
     // Create Category Form State
     const [newCatName, setNewCatName] = useState('')
@@ -37,14 +41,24 @@ export default function AdminPage({ onBack }) {
     const [showProductForm, setShowProductForm] = useState(false)
     const [editingProduct, setEditingProduct] = useState(null)
     const [productForm, setProductForm] = useState({ name: '', description: '', price: '', images: [], categoryId: '', storeName: '', stockQuantity: '0' })
-    const [productImageFile, setProductImageFile] = useState(null)
-    const [productImagePreview, setProductImagePreview] = useState(null)
     const [productUploading, setProductUploading] = useState(false)
 
     // Store autocomplete state
     const [storeSuggestions, setStoreSuggestions] = useState([])
     const [showStoreSuggestions, setShowStoreSuggestions] = useState(false)
     const [storeSearchLoading, setStoreSearchLoading] = useState(false)
+
+    // Fetch live Admin stats Overview
+    const fetchAdminStats = useCallback(async () => {
+        try {
+            const { data } = await api.get(`/api/admin/stats?_=${Date.now()}`)
+            setStats(data || { totalProducts: 0, pendingProducts: 0, totalUsers: 0, totalOrders: 0, totalCategories: 0, totalAds: 0 })
+        } catch { /* ignore */ }
+    }, [])
+
+    useEffect(() => {
+        fetchAdminStats()
+    }, [fetchAdminStats])
 
     // ── Infinite scroll for Products tab ──
     const fetchAdminProducts = async (page, limit) => {
@@ -60,7 +74,7 @@ export default function AdminPage({ onBack }) {
         retry: productsRetry,
         reset: productsReset,
         initialLoad: productsInitialLoad
-    } = useInfiniteScroll(fetchAdminProducts, { limit: 9, deps: [statusFilter], enabled: tab === 'products' })
+    } = useInfiniteScroll(fetchAdminProducts, { limit: 9, deps: [statusFilter], enabled: tab === 'products' && !showProductForm })
 
     // ── Infinite scroll for Orders tab ──
     const fetchAdminOrders = async (page, limit) => {
@@ -93,9 +107,7 @@ export default function AdminPage({ onBack }) {
     // ── Infinite scroll for Categories tab ──
     const fetchAdminCategories = async (page, limit) => {
         const { data } = await api.get(`/api/categories?page=${page}&limit=${limit}&_=${Date.now()}`)
-        // Also fetch subcategories for each category
         const catData = Array.isArray(data) ? data : (data.data || data.items || [])
-        // Re-construct the response to fit what useInfiniteScroll expects
         const response = {
             data: catData,
             page: data.page || page,
@@ -188,30 +200,39 @@ export default function AdminPage({ onBack }) {
         setLoadingOther(false)
     }
 
-    // For actions that modify data, we need to reset the infinite scroll
     function reloadCurrentTab() {
+        fetchAdminStats()
         if (tab === 'products') productsReset()
         else if (tab === 'categories') { categoriesReset(); setSubcategories({}) }
         else if (tab === 'orders') ordersReset()
+        else if (tab === 'users') usersReset()
         else if (tab === 'ads') loadAds()
     }
 
     // ── Product actions ──
-    async function approveProduct(id) { await api.put(`/api/admin/products/${id}/approve`); productsReset() }
+    async function approveProduct(id) { await api.put(`/api/admin/products/${id}/approve`); productsReset(); fetchAdminStats() }
     async function rejectProduct(id) {
         const reason = prompt(t('Enter rejection reason:'))
         if (!reason) return
         await api.put(`/api/admin/products/${id}/reject`, { reason })
         productsReset()
+        fetchAdminStats()
     }
-    async function deleteProduct(id) {
-        if (!confirm(t('Delete this product permanently?'))) return
-        try {
-            await api.delete(`/api/admin/products/${id}`)
-            productsReset()
-        } catch (err) {
-            alert(err?.response?.data?.error || 'Failed to delete')
-        }
+    function deleteProduct(id) {
+        setConfirmModal({
+            open: true,
+            title: t('Delete Product'),
+            message: t('Are you sure you want to permanently delete this product? This action cannot be undone.'),
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/api/admin/products/${id}`)
+                    productsReset()
+                    fetchAdminStats()
+                } catch (err) {
+                    alert(err?.response?.data?.error || 'Failed to delete product')
+                }
+            }
+        })
     }
     function startEditProduct(p) {
         const productImages = []
@@ -251,7 +272,8 @@ export default function AdminPage({ onBack }) {
         } catch { alert(t('Failed to upload some images')) }
         setProductUploading(false)
     }
-    // Store name autocomplete search
+
+    // Store autocomplete search
     async function searchStores(query) {
         if (!query || query.length < 1) { setStoreSuggestions([]); setShowStoreSuggestions(false); return }
         setStoreSearchLoading(true)
@@ -300,6 +322,7 @@ export default function AdminPage({ onBack }) {
             setEditingProduct(null)
             setProductForm({ name: '', description: '', price: '', images: [], categoryId: '', storeName: '', stockQuantity: '0' })
             productsReset()
+            fetchAdminStats()
         } catch (err) { alert(err?.response?.data?.error || 'Failed') }
     }
 
@@ -308,6 +331,7 @@ export default function AdminPage({ onBack }) {
         if (isDisabled) await api.put(`/api/admin/users/${id}/enable`)
         else await api.delete(`/api/admin/users/${id}`)
         usersReset()
+        fetchAdminStats()
     }
 
     // ── Category actions ──
@@ -327,13 +351,26 @@ export default function AdminPage({ onBack }) {
             setNewCatName(''); setNewCatCode(''); setNewCatImageFile(null); setNewCatImagePreview(null); setNewCatParentId('')
             categoriesReset()
             setSubcategories({})
+            fetchAdminStats()
         } catch (err) { alert(err?.response?.data?.error || 'Failed to create category') }
         finally { setUploading(false) }
     }
-    async function deleteCategory(id) {
-        if (!confirm(t('Delete this category? Products in it will be orphaned.'))) return
-        try { await api.delete(`/api/categories/${id}`); categoriesReset(); setSubcategories({}) }
-        catch (err) { alert(err?.response?.data?.error || 'Failed to delete') }
+    function deleteCategory(id) {
+        setConfirmModal({
+            open: true,
+            title: t('Delete Category'),
+            message: t('Are you sure you want to delete this category? Products in it will be orphaned.'),
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/api/categories/${id}`)
+                    categoriesReset()
+                    setSubcategories({})
+                    fetchAdminStats()
+                } catch (err) {
+                    alert(err?.response?.data?.error || 'Failed to delete category')
+                }
+            }
+        })
     }
     async function changeCategoryImage(catId) {
         const input = document.createElement('input')
@@ -373,410 +410,489 @@ export default function AdminPage({ onBack }) {
             setAdImageFile(null); setAdImagePreview(null); setAdTitle(''); setAdLinkUrl(''); setAdSortOrder(0)
             setRefreshKey(k => k + 1)
             loadAds()
+            fetchAdminStats()
         } catch (err) { alert(err?.response?.data?.error || 'Failed to create ad') }
         finally { setAdUploading(false) }
     }
-    async function deleteAd(id) {
-        if (!confirm(t('Delete this ad banner?'))) return
-        try { await api.delete(`/api/ads/${id}`); setRefreshKey(k => k + 1); loadAds() }
-        catch { alert('Failed to delete ad') }
+    function deleteAd(id) {
+        setConfirmModal({
+            open: true,
+            title: t('Delete Ad Banner'),
+            message: t('Are you sure you want to delete this ad banner?'),
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/api/ads/${id}`)
+                    setRefreshKey(k => k + 1)
+                    loadAds()
+                    fetchAdminStats()
+                } catch {
+                    alert('Failed to delete ad')
+                }
+            }
+        })
     }
 
     function getImageUrl(url) {
         if (!url) return null
         return url.startsWith('http') ? url : `${api.defaults.baseURL}${url}`
     }
-    const statusColor = (s) => ({ Pending: '#f59e0b', Approved: '#4ade80', Rejected: '#f87171' }[s] || '#888')
-    const cardStyle = { background: 'var(--card)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '12px', padding: '16px', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }
 
-    // Skeleton row for admin list items
+    // Skeleton row
     const AdminSkeleton = () => (
-        <div style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="admin-item-card">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '60%' }}>
                 <Skeleton width="50%" height="20px" />
                 <Skeleton width="80%" height="16px" />
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="admin-btn-group">
                 <Skeleton width="70px" height="32px" borderRadius="8px" />
                 <Skeleton width="70px" height="32px" borderRadius="8px" />
             </div>
         </div>
     )
 
-    // Show loading state
-    const isTabLoading = (tab === 'products' && productsInitialLoad) ||
-        (tab === 'users' && usersInitialLoad) ||
-        (tab === 'categories' && categoriesInitialLoad) ||
-        (tab === 'orders' && ordersInitialLoad) ||
-        (tab === 'ads' && loadingOther)
-
     return (
-        <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto', color: 'var(--text)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <button onClick={onBack} className="glass-btn">← {t('Back')}</button>
-                <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>{t('Admin Panel')}</h2>
-                <div />
-            </div>
-
-            <div className="seg" style={{ marginBottom: '20px' }}>
-                <button className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>{t('Products')}</button>
-                <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>{t('Users')}</button>
-                <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>{t('Orders')}</button>
-                <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>{t('Categories')}</button>
-                <button className={tab === 'ads' ? 'active' : ''} onClick={() => setTab('ads')}>{t('Ads')}</button>
-                <button className={tab === 'ai' ? 'active' : ''} onClick={() => setTab('ai')}>AI Assistant</button>
-            </div>
-
-            {/* ── Products Tab ── */}
-            {tab === 'products' && (
-                <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        {!showProductForm ? (
-                            <div className="seg">
-                                {['Pending', 'Approved', 'Rejected'].map(s => (
-                                    <button key={s} className={statusFilter === s ? 'active' : ''} onClick={() => setStatusFilter(s)}>{t(s)}</button>
-                                ))}
-                            </div>
-                        ) : <div />}
-                        <button onClick={() => { setShowProductForm(!showProductForm); setEditingProduct(null); setProductForm({ name: '', description: '', price: '', images: [], categoryId: '', storeName: '', stockQuantity: '0' }); setShowStoreSuggestions(false) }}
-                            className="primary" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}>
-                            {showProductForm ? t('Cancel') : '+ ' + t('Add Product')}
-                        </button>
+        <div className="admin-page">
+            <div className="admin-container">
+                {/* Header */}
+                <div className="admin-header">
+                    <button onClick={onBack} className="admin-back-btn">
+                        <span className="material-symbols-outlined">arrow_back</span>
+                        {t('Back')}
+                    </button>
+                    <div className="admin-title-area">
+                        <span className="material-symbols-outlined admin-title-icon">admin_panel_settings</span>
+                        <h2 className="admin-title">{t('Admin Control Panel')}</h2>
                     </div>
-                    {showProductForm && (
-                        <div style={{ ...cardStyle, marginBottom: '16px' }}>
-                            <h3 style={{ marginTop: 0, color: 'var(--text)' }}>{editingProduct ? t('Edit Product') : t('Create Product (Admin)')}</h3>
-                            <form onSubmit={handleProductSubmit}>
-                                <div className="sp-form-grid">
-                                    <div className="field">
-                                        <label>{t('Product name')}</label>
-                                        <input className="sp-input" placeholder={t('Product name')} value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} required />
-                                    </div>
-                                    <div className="field">
-                                        <label>{t('Price')}</label>
-                                        <input className="sp-input" type="number" step="0.01" placeholder={t('Price')} value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })} required />
-                                    </div>
-                                    <div className="field">
-                                        <label>{t('Stock Quantity')}</label>
-                                        <input className="sp-input" type="number" placeholder={t('Quantity')} value={productForm.stockQuantity} onChange={e => setProductForm({ ...productForm, stockQuantity: e.target.value })} required />
-                                    </div>
-                                    <div className="field" style={{ gridColumn: '1 / -1' }}>
-                                        <label>{t('Description')}</label>
-                                        <textarea className="sp-input" placeholder={t('Description')} value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} rows={3} />
-                                    </div>
-                                    <div className="field" style={{ gridColumn: '1 / -1' }}>
-                                        <label>{t('Product Images')} ({productForm.images.length}/5)</label>
-                                        <div className="sp-image-upload-area" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', border: 'none', padding: 0 }}>
-                                            {productForm.images.map((img, idx) => (
-                                                <div key={idx} className="sp-image-preview-wrapper" style={{ width: '100px', height: '100px' }}>
-                                                    <img src={getImageUrl(img)} alt="Preview" className="sp-image-preview" style={{ borderRadius: '8px' }} />
-                                                    <button type="button" className="sp-image-remove-btn" onClick={() => setProductForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}>✕</button>
-                                                </div>
-                                            ))}
-                                            {productForm.images.length < 5 && (
-                                                <label className="sp-image-upload-label" style={{ width: '100px', height: '100px', margin: 0 }}>
-                                                    <input type="file" accept="image/*" multiple onChange={handleProductImageUpload} style={{ display: 'none' }} />
-                                                    <div className="sp-image-upload-placeholder" style={{ padding: '10px' }}>
-                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                                                        <span style={{ fontSize: '10px' }}>{productUploading ? t('...') : t('Add')}</span>
+                    <button onClick={reloadCurrentTab} className="admin-refresh-btn">
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>refresh</span>
+                        {t('Refresh')}
+                    </button>
+                </div>
+
+                {/* Bento Grid Overview */}
+                <section className="admin-bento-grid">
+                    <div className="admin-bento-card">
+                        <span className="admin-bento-label">{t('Total Products')}</span>
+                        <div className="admin-bento-value highlight">
+                            {stats.totalProducts}
+                        </div>
+                        <span className="admin-bento-subtext">{stats.pendingProducts} {t('pending review')}</span>
+                    </div>
+                    <div className="admin-bento-card">
+                        <span className="admin-bento-label">{t('Registered Users')}</span>
+                        <div className="admin-bento-value">
+                            {stats.totalUsers}
+                        </div>
+                        <span className="admin-bento-subtext muted">{t('Active accounts')}</span>
+                    </div>
+                    <div className="admin-bento-card">
+                        <span className="admin-bento-label">{t('Total Orders')}</span>
+                        <div className="admin-bento-value">
+                            {stats.totalOrders}
+                        </div>
+                        <span className="admin-bento-subtext">{t('System orders')}</span>
+                    </div>
+                    <div className="admin-bento-card">
+                        <span className="admin-bento-label">{t('Categories & Ads')}</span>
+                        <div className="admin-bento-value">
+                            {stats.totalCategories + stats.totalAds}
+                        </div>
+                        <span className="admin-bento-subtext muted">{t('Catalog items')}</span>
+                    </div>
+                </section>
+
+                {/* Main Navigation Tabs */}
+                <div className="admin-tabs-nav">
+                    <button className={`admin-tab-btn ${tab === 'products' ? 'active' : ''}`} onClick={() => setTab('products')}>
+                        <span className="material-symbols-outlined admin-tab-icon">inventory_2</span>
+                        <span>{t('Products')}</span>
+                    </button>
+                    <button className={`admin-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>
+                        <span className="material-symbols-outlined admin-tab-icon">group</span>
+                        <span>{t('Users')}</span>
+                    </button>
+                    <button className={`admin-tab-btn ${tab === 'orders' ? 'active' : ''}`} onClick={() => setTab('orders')}>
+                        <span className="material-symbols-outlined admin-tab-icon">receipt_long</span>
+                        <span>{t('Orders')}</span>
+                    </button>
+                    <button className={`admin-tab-btn ${tab === 'categories' ? 'active' : ''}`} onClick={() => setTab('categories')}>
+                        <span className="material-symbols-outlined admin-tab-icon">category</span>
+                        <span>{t('Categories')}</span>
+                    </button>
+                    <button className={`admin-tab-btn ${tab === 'ads' ? 'active' : ''}`} onClick={() => setTab('ads')}>
+                        <span className="material-symbols-outlined admin-tab-icon">campaign</span>
+                        <span>{t('Ads')}</span>
+                    </button>
+                    <button className={`admin-tab-btn ${tab === 'ai' ? 'active' : ''}`} onClick={() => setTab('ai')}>
+                        <span className="material-symbols-outlined admin-tab-icon">auto_awesome</span>
+                        <span>AI Assistant</span>
+                    </button>
+                </div>
+
+                {/* ── Products Tab ── */}
+                {tab === 'products' && (
+                    <>
+                        {showProductForm ? (
+                            /* Single-purpose Add / Edit Product Form View (Hides product list) */
+                            <div className="admin-card-box">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h3 className="admin-card-title" style={{ margin: 0 }}>{editingProduct ? t('Edit Product') : t('Create Product (Admin)')}</h3>
+                                    <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="admin-btn-action">
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '4px' }}>close</span>
+                                        {t('Back to Products')}
+                                    </button>
+                                </div>
+                                <form onSubmit={handleProductSubmit}>
+                                    <div className="admin-grid-form">
+                                        <div className="admin-field">
+                                            <label>{t('Product name')}</label>
+                                            <input className="admin-input-style" placeholder={t('Product name')} value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} required />
+                                        </div>
+                                        <div className="admin-field">
+                                            <label>{t('Price')}</label>
+                                            <input className="admin-input-style" type="number" step="0.01" placeholder={t('Price')} value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })} required />
+                                        </div>
+                                        <div className="admin-field">
+                                            <label>{t('Stock Quantity')}</label>
+                                            <input className="admin-input-style" type="number" placeholder={t('Quantity')} value={productForm.stockQuantity} onChange={e => setProductForm({ ...productForm, stockQuantity: e.target.value })} required />
+                                        </div>
+                                        <div className="admin-field full-width">
+                                            <label>{t('Description')}</label>
+                                            <textarea className="admin-input-style" placeholder={t('Description')} value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} rows={3} />
+                                        </div>
+                                        <div className="admin-field full-width">
+                                            <label>{t('Product Images')} ({productForm.images.length}/5)</label>
+                                            <div className="admin-file-upload-row">
+                                                {productForm.images.map((img, idx) => (
+                                                    <div key={idx} className="admin-file-preview-card">
+                                                        <img src={getImageUrl(img)} alt="Preview" className="admin-file-preview-img" />
+                                                        <button type="button" onClick={() => setProductForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}
+                                                            className="admin-file-remove-btn">✕</button>
                                                     </div>
+                                                ))}
+                                                {productForm.images.length < 5 && (
+                                                    <label className="admin-file-dropzone">
+                                                        <input type="file" accept="image/*" multiple onChange={handleProductImageUpload} style={{ display: 'none' }} />
+                                                        <span className="material-symbols-outlined">add_photo_alternate</span>
+                                                        <span className="admin-file-dropzone-text">{productUploading ? t('...') : t('Add Image')}</span>
+                                                    </label>
+                                                )}
+                                            </div>
+                                            {productForm.images.length === 0 && <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>{t('At least 1 image is required.')}</div>}
+                                        </div>
+                                        <div className="admin-field">
+                                            <label>{t('Select category')}</label>
+                                            <select className="admin-input-style" value={productForm.categoryId} onChange={e => setProductForm({ ...productForm, categoryId: e.target.value })} required>
+                                                <option value="">{t('Select category')}</option>
+                                                {allCategoriesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                        </div>
+                                        {!editingProduct && (
+                                            <div className="admin-field" style={{ position: 'relative' }}>
+                                                <label>{t('Store Name')}</label>
+                                                <input
+                                                    className="admin-input-style"
+                                                    placeholder={t('Type store name...')}
+                                                    value={productForm.storeName}
+                                                    onChange={handleStoreNameChange}
+                                                    onFocus={() => { if (productForm.storeName) searchStores(productForm.storeName) }}
+                                                    onBlur={() => setTimeout(() => setShowStoreSuggestions(false), 200)}
+                                                    autoComplete="off"
+                                                    required
+                                                />
+                                                {showStoreSuggestions && storeSuggestions.length > 0 && (
+                                                    <div className="admin-store-suggestions">
+                                                        {storeSuggestions.map(store => (
+                                                            <div key={store.userId}
+                                                                onMouseDown={() => selectStore(store)}
+                                                                className="admin-store-suggestion-item"
+                                                            >
+                                                                <div style={{ fontWeight: '600', color: 'var(--on-surface)', fontSize: '14px' }}>{store.shopName}</div>
+                                                                <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)' }}>{store.storeType} {store.location ? `• ${store.location}` : ''}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button type="submit" className="admin-add-btn" style={{ marginTop: '20px', width: '100%', justifyContent: 'center' }}>
+                                        {editingProduct ? t('Update Product') : t('Create Product')}
+                                    </button>
+                                </form>
+                            </div>
+                        ) : (
+                            /* Default Products List View */
+                            <>
+                                <div className="admin-sub-segments">
+                                    <div className="admin-seg-group">
+                                        {['Pending', 'Approved', 'Rejected'].map(s => (
+                                            <button key={s} className={`admin-seg-btn ${statusFilter === s ? 'active' : ''}`} onClick={() => setStatusFilter(s)}>
+                                                {t(s)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button onClick={() => { setShowProductForm(true); setEditingProduct(null); setProductForm({ name: '', description: '', price: '', images: [], categoryId: '', storeName: '', stockQuantity: '0' }); setShowStoreSuggestions(false) }}
+                                        className="admin-add-btn">
+                                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+                                        {t('Add Product')}
+                                    </button>
+                                </div>
+
+                                {productsInitialLoad ? (
+                                    <div className="admin-list-grid">
+                                        {Array.from({ length: 5 }).map((_, i) => <AdminSkeleton key={i} />)}
+                                    </div>
+                                ) : (
+                                    <div className="admin-list-grid">
+                                        {products.map(p => (
+                                            <div key={p.id} className="admin-item-card">
+                                                <div className="admin-item-info">
+                                                    <div className="admin-item-title">{p.name}</div>
+                                                    <div className="admin-item-sub">{formatPrice(p.price, p.currencyCode)} • {p.categoryName} • {t('by')} {p.storeName || p.storeUserId}</div>
+                                                    <span className={`admin-badge admin-badge-${p.status.toLowerCase()}`}>{t(p.status)}</span>
+                                                </div>
+                                                <div className="admin-btn-group">
+                                                    {p.status !== 'Approved' && <button onClick={() => approveProduct(p.id)} className="admin-btn-success">{t('Approve')}</button>}
+                                                    {p.status !== 'Rejected' && <button onClick={() => rejectProduct(p.id)} className="admin-btn-danger">{t('Reject')}</button>}
+                                                    <button onClick={() => startEditProduct(p)} className="admin-btn-action">{t('Edit')}</button>
+                                                    <button onClick={() => deleteProduct(p.id)} className="admin-btn-danger">{t('Delete')}</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {products.length === 0 && !productsLoading && (
+                                            <div className="admin-empty-state">{t('No products found for status', { status: t(statusFilter).toLowerCase() })}</div>
+                                        )}
+                                        {productsLoading && !productsInitialLoad && Array.from({ length: 3 }).map((_, i) => <AdminSkeleton key={`more-${i}`} />)}
+                                    </div>
+                                )}
+                                {productsHasMore && !productsInitialLoad && <div ref={productsSentinelRef} style={{ height: '1px' }} />}
+                            </>
+                        )}
+                    </>
+                )}
+
+                {/* ── Users Tab ── */}
+                {tab === 'users' && (
+                    <>
+                        {usersInitialLoad ? (
+                            <div className="admin-list-grid">
+                                {Array.from({ length: 5 }).map((_, i) => <AdminSkeleton key={i} />)}
+                            </div>
+                        ) : (
+                            <div className="admin-list-grid">
+                                {users.map(u => (
+                                    <div key={u.id} className="admin-item-card">
+                                        <div className="admin-item-info">
+                                            <div className="admin-item-title">{u.email}</div>
+                                            <div className="admin-item-sub">{u.accountType} {u.fullName ? `• ${u.fullName}` : ''} {u.isDisabled ? `• ⛔ ${t('Disabled')}` : ''}</div>
+                                        </div>
+                                        <button onClick={() => toggleUser(u.id, u.isDisabled)} className={u.isDisabled ? "admin-btn-success" : "admin-btn-danger"}>
+                                            {u.isDisabled ? t('Enable') : t('Disable')}
+                                        </button>
+                                    </div>
+                                ))}
+                                {usersLoading && !usersInitialLoad && Array.from({ length: 3 }).map((_, i) => <AdminSkeleton key={`more-${i}`} />)}
+                            </div>
+                        )}
+                        {usersHasMore && !usersInitialLoad && <div ref={usersSentinelRef} style={{ height: '1px' }} />}
+                    </>
+                )}
+
+                {/* ── Orders Tab ── */}
+                {tab === 'orders' && (
+                    <>
+                        {ordersInitialLoad ? (
+                            <div className="admin-list-grid">
+                                {Array.from({ length: 5 }).map((_, i) => <AdminSkeleton key={i} />)}
+                            </div>
+                        ) : (
+                            <div className="admin-list-grid">
+                                {orders.map(o => (
+                                    <div key={o.id} className="admin-item-card">
+                                        <div className="admin-item-info">
+                                            <div className="admin-item-title">{t('Order')} #{o.id}</div>
+                                            <div className="admin-item-sub">{t('User:')} {o.userId} • {t('Store:')} {o.storeName || o.storeUserId} • {t('Total:')} {formatPrice(o.totalAmount, o.currencyCode)}</div>
+                                        </div>
+                                        <span className={`admin-badge admin-badge-${(o.status || 'pending').toLowerCase()}`}>{t(o.status)}</span>
+                                    </div>
+                                ))}
+                                {orders.length === 0 && <div className="admin-empty-state">{t('No orders.')}</div>}
+                                {ordersLoading && !ordersInitialLoad && Array.from({ length: 3 }).map((_, i) => <AdminSkeleton key={`more-${i}`} />)}
+                            </div>
+                        )}
+                        {ordersHasMore && !ordersInitialLoad && <div ref={ordersSentinelRef} style={{ height: '1px' }} />}
+                    </>
+                )}
+
+                {/* ── Categories Tab ── */}
+                {tab === 'categories' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+                        <div className="admin-card-box">
+                            <h3 className="admin-card-title">{t('Create New Category')}</h3>
+                            <form onSubmit={handleCreateCategory} style={{ display: 'grid', gap: '14px' }}>
+                                <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder={t('Category name')} className="admin-input-style" required />
+                                <input value={newCatCode} onChange={e => setNewCatCode(e.target.value)} placeholder={t('Unique Code (optional)')} className="admin-input-style" />
+                                {!newCatParentId && (
+                                    <div className="admin-field full-width">
+                                        <label>{t('Category Image')}</label>
+                                        <div className="admin-file-upload-row">
+                                            {newCatImagePreview ? (
+                                                <div className="admin-file-preview-card">
+                                                    <img src={newCatImagePreview} alt="Preview" className="admin-file-preview-img" />
+                                                    <button type="button" onClick={() => { setNewCatImageFile(null); setNewCatImagePreview(null); }} className="admin-file-remove-btn">✕</button>
+                                                </div>
+                                            ) : (
+                                                <label className="admin-file-dropzone">
+                                                    <input type="file" accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { setNewCatImageFile(f); setNewCatImagePreview(URL.createObjectURL(f)) } }} style={{ display: 'none' }} />
+                                                    <span className="material-symbols-outlined">add_photo_alternate</span>
+                                                    <span className="admin-file-dropzone-text">{t('Upload Image')}</span>
                                                 </label>
                                             )}
                                         </div>
-                                        {productForm.images.length === 0 && <div style={{ fontSize: '12px', color: '#f87171', marginTop: '5px' }}>{t('At least 1 image is required.')}</div>}
                                     </div>
-                                    <div className="field">
-                                        <label>{t('Select category')}</label>
-                                        <select className="sp-input" value={productForm.categoryId} onChange={e => setProductForm({ ...productForm, categoryId: e.target.value })} required>
-                                            <option value="">{t('Select category')}</option>
-                                            {allCategoriesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                        </select>
-                                    </div>
-                                    {!editingProduct && (
-                                        <div className="field" style={{ position: 'relative' }}>
-                                            <label>{t('Store Name')}</label>
-                                            <input
-                                                className="sp-input"
-                                                placeholder={t('Type store name...')}
-                                                value={productForm.storeName}
-                                                onChange={handleStoreNameChange}
-                                                onFocus={() => { if (productForm.storeName) searchStores(productForm.storeName) }}
-                                                onBlur={() => setTimeout(() => setShowStoreSuggestions(false), 200)}
-                                                autoComplete="off"
-                                                required
-                                            />
-                                            {showStoreSuggestions && storeSuggestions.length > 0 && (
-                                                <div style={{
-                                                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                                                    background: 'var(--card)', border: '1px solid var(--border)',
-                                                    borderRadius: '8px', marginTop: '4px', maxHeight: '200px', overflowY: 'auto',
-                                                    boxShadow: '0 8px 24px rgba(0,0,0,0.3)', backdropFilter: 'blur(16px)'
-                                                }}>
-                                                    {storeSuggestions.map(store => (
-                                                        <div key={store.userId}
-                                                            onMouseDown={() => selectStore(store)}
-                                                            style={{
-                                                                padding: '10px 14px', cursor: 'pointer',
-                                                                borderBottom: '1px solid var(--border)',
-                                                                transition: 'background 0.15s'
-                                                            }}
-                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-                                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                        >
-                                                            <div style={{ fontWeight: '600', color: 'var(--text)', fontSize: '14px' }}>{store.shopName}</div>
-                                                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{store.storeType} {store.location ? `• ${store.location}` : ''}</div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {showStoreSuggestions && storeSuggestions.length === 0 && productForm.storeName && !storeSearchLoading && (
-                                                <div style={{
-                                                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                                                    background: 'var(--card)', border: '1px solid var(--border)',
-                                                    borderRadius: '8px', marginTop: '4px', padding: '10px 14px',
-                                                    color: 'var(--muted)', fontSize: '13px',
-                                                    boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
-                                                }}>
-                                                    {t('No stores found')}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <button type="submit" className="sp-btn-gradient" style={{ marginTop: '20px', width: '100%', justifyContent: 'center' }}>
-                                    {editingProduct ? t('Update Product') : t('Create Product')}
+                                )}
+                                <select value={newCatParentId} onChange={e => { setNewCatParentId(e.target.value); if (e.target.value) { setNewCatImageFile(null); setNewCatImagePreview(null) } }} className="admin-input-style">
+                                    <option value="">{t('None (Top-level Category)')}</option>
+                                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                                <button type="submit" className="admin-add-btn" disabled={uploading} style={{ justifyContent: 'center' }}>
+                                    {uploading ? t('Creating...') : t('Create Category')}
                                 </button>
                             </form>
                         </div>
-                    )}
-                </>
-            )}
 
-            {/* ── Products List (Infinite Scroll) ── */}
-            {tab === 'products' && (
-                <>
-                    {productsInitialLoad ? (
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                            {Array.from({ length: 5 }).map((_, i) => <AdminSkeleton key={i} />)}
-                        </div>
-                    ) : (
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                            {products.map(p => (
-                                <div key={p.id} style={cardStyle}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div>
-                                            <div style={{ fontWeight: '600', color: 'var(--text)' }}>{p.name}</div>
-                                            <div style={{ fontSize: '13px', color: 'var(--muted)' }}>{formatPrice(p.price, p.currencyCode)} • {p.categoryName} • {t('by')} {p.storeName || p.storeUserId}</div>
-                                            <span style={{ fontSize: '11px', fontWeight: '600', color: statusColor(p.status), background: `${statusColor(p.status)}15`, padding: '2px 8px', borderRadius: '12px' }}>{t(p.status)}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                            {p.status !== 'Approved' && <button onClick={() => approveProduct(p.id)} className="admin-btn-success">{t('Approve')}</button>}
-                                            {p.status !== 'Rejected' && <button onClick={() => rejectProduct(p.id)} className="admin-btn-danger">{t('Reject')}</button>}
-                                            <button onClick={() => startEditProduct(p)} className="admin-btn-action">{t('Edit')}</button>
-                                            <button onClick={() => deleteProduct(p.id)} className="admin-btn-danger">{t('Delete')}</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {products.length === 0 && !productsLoading && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px' }}>{t('No products found for status', { status: t(statusFilter).toLowerCase() })}</div>}
-                            {productsLoading && !productsInitialLoad && Array.from({ length: 3 }).map((_, i) => <AdminSkeleton key={`more-${i}`} />)}
-                        </div>
-                    )}
-                    {productsHasMore && !productsInitialLoad && <div ref={productsSentinelRef} style={{ height: '1px' }} />}
-                    {!productsHasMore && products.length > 0 && (
-                        <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                            <span style={{ flex: 1, maxWidth: '60px', height: '1px', background: 'var(--border)' }} />
-                            {t('No more products')}
-                            <span style={{ flex: 1, maxWidth: '60px', height: '1px', background: 'var(--border)' }} />
-                        </div>
-                    )}
-                    {productsError && products.length > 0 && (
-                        <div style={{ textAlign: 'center', padding: '16px', color: 'var(--muted)' }}>
-                            <p>{t('Failed to load more.')}</p>
-                            <button className="primary" onClick={productsRetry} style={{ padding: '6px 16px', borderRadius: '8px', fontSize: '13px' }}>{t('Retry')}</button>
-                        </div>
-                    )}
-                </>
-            )}
-
-            {/* ── Users Tab (Infinite Scroll) ── */}
-            {tab === 'users' && (
-                <>
-                    {usersInitialLoad ? (
-                        <div style={{ display: 'grid', gap: '8px' }}>
-                            {Array.from({ length: 5 }).map((_, i) => <AdminSkeleton key={i} />)}
-                        </div>
-                    ) : (
-                        <div style={{ display: 'grid', gap: '8px' }}>
-                            {users.map(u => (
-                                <div key={u.id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
-                                    <div>
-                                        <div style={{ fontWeight: '500', color: 'var(--text)' }}>{u.email}</div>
-                                        <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{u.accountType} {u.fullName ? `• ${u.fullName}` : ''} {u.isDisabled ? `• ⛔ ${t('Disabled')}` : ''}</div>
-                                    </div>
-                                    <button onClick={() => toggleUser(u.id, u.isDisabled)}
-                                        className={u.isDisabled ? "admin-btn-success" : "admin-btn-danger"}>
-                                        {u.isDisabled ? t('Enable') : t('Disable')}
-                                    </button>
-                                </div>
-                            ))}
-                            {usersLoading && !usersInitialLoad && Array.from({ length: 3 }).map((_, i) => <AdminSkeleton key={`more-${i}`} />)}
-                        </div>
-                    )}
-                    {usersHasMore && !usersInitialLoad && <div ref={usersSentinelRef} style={{ height: '1px' }} />}
-                    {!usersHasMore && users.length > 0 && (
-                        <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: '13px' }}>{t('End of users list')}</div>
-                    )}
-                </>
-            )}
-
-            {/* ── Orders Tab (Infinite Scroll) ── */}
-            {tab === 'orders' && (
-                <>
-                    {ordersInitialLoad ? (
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                            {Array.from({ length: 5 }).map((_, i) => <AdminSkeleton key={i} />)}
-                        </div>
-                    ) : (
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                            {orders.map(o => (
-                                <div key={o.id} style={cardStyle}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <strong style={{ color: 'var(--text)' }}>{t('Order')} #{o.id}</strong>
-                                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#888' }}>{t(o.status)}</span>
-                                    </div>
-                                    <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px' }}>
-                                        {t('User:')} {o.userId} • {t('Store:')} {o.storeName || o.storeUserId} • {t('Total:')} {formatPrice(o.totalAmount, o.currencyCode)}
-                                    </div>
-                                </div>
-                            ))}
-                            {orders.length === 0 && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px' }}>{t('No orders.')}</div>}
-                            {ordersLoading && !ordersInitialLoad && Array.from({ length: 3 }).map((_, i) => <AdminSkeleton key={`more-${i}`} />)}
-                        </div>
-                    )}
-                    {ordersHasMore && !ordersInitialLoad && <div ref={ordersSentinelRef} style={{ height: '1px' }} />}
-                    {!ordersHasMore && orders.length > 0 && (
-                        <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: '13px' }}>{t('End of orders list')}</div>
-                    )}
-                </>
-            )}
-
-            {/* ── Categories Tab (Infinite Scroll) ── */}
-            {tab === 'categories' && (
-                <div>
-                    <div style={{ ...cardStyle, marginBottom: '24px' }}>
-                        <h3 style={{ marginTop: 0, color: 'var(--text)' }}>{t('Create New Category')}</h3>
-                        <form onSubmit={handleCreateCategory} style={{ display: 'grid', gap: '12px' }}>
-                            <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder={t('Category name')} className="admin-input" required />
-                            <input value={newCatCode} onChange={e => setNewCatCode(e.target.value)} placeholder={t('Unique Code (optional)')} className="admin-input" />
-                            {!newCatParentId && (
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', marginBottom: '4px', color: 'var(--muted)' }}>{t('Category Image')}</label>
-                                    {newCatImagePreview && <img src={newCatImagePreview} alt="" style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover', marginBottom: '8px' }} />}
-                                    <input type="file" accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { setNewCatImageFile(f); setNewCatImagePreview(URL.createObjectURL(f)) } }} className="admin-input" />
-                                </div>
-                            )}
-                            <select value={newCatParentId} onChange={e => { setNewCatParentId(e.target.value); if (e.target.value) { setNewCatImageFile(null); setNewCatImagePreview(null) } }} className="admin-input">
-                                <option value="">{t('None (Top-level Category)')}</option>
-                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                            <button type="submit" className="primary" disabled={uploading}>{uploading ? t('Creating...') : t('Create Category')}</button>
-                        </form>
-                    </div>
-
-                    <h3 style={{ color: 'var(--text)' }}>{t('Existing Categories')}</h3>
-                    {categoriesInitialLoad ? (
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                            {Array.from({ length: 5 }).map((_, i) => <AdminSkeleton key={i} />)}
-                        </div>
-                    ) : (
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                            {paginatedCategories.map(c => (
-                                <div key={c.id} style={cardStyle}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            {c.imageUrl ? (
-                                                <img src={getImageUrl(c.imageUrl)} alt={c.name} style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover' }} />
-                                            ) : (
-                                                <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)' }}>📷</div>
-                                            )}
-                                            <div>
-                                                <div style={{ fontWeight: '600', color: 'var(--text)' }}>{c.name} <span style={{ fontSize: '11px', color: 'var(--muted)' }}>({c.code})</span></div>
+                        {categoriesInitialLoad ? (
+                            <div className="admin-list-grid">
+                                {Array.from({ length: 5 }).map((_, i) => <AdminSkeleton key={i} />)}
+                            </div>
+                        ) : (
+                            <div className="admin-list-grid">
+                                {paginatedCategories.map(c => (
+                                    <div key={c.id} className="admin-item-card" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                {c.imageUrl ? (
+                                                    <img src={getImageUrl(c.imageUrl)} alt={c.name} style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'var(--surface-container-high)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-surface-variant)' }}>📷</div>
+                                                )}
+                                                <div>
+                                                    <div className="admin-item-title">{c.name} <span style={{ fontSize: '11px', color: 'var(--on-surface-variant)' }}>({c.code})</span></div>
+                                                </div>
+                                            </div>
+                                            <div className="admin-btn-group">
+                                                <button onClick={() => changeCategoryImage(c.id)} className="admin-btn-action">{t('Change Image')}</button>
+                                                {c.imageUrl && <button onClick={() => removeCategoryImage(c.id)} className="admin-btn-danger">{t('Remove Image')}</button>}
+                                                <button onClick={() => deleteCategory(c.id)} className="admin-btn-danger">{t('Delete')}</button>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '6px' }}>
-                                            <button onClick={() => changeCategoryImage(c.id)} className="admin-btn-action">{t('Change Image')}</button>
-                                            {c.imageUrl && <button onClick={() => removeCategoryImage(c.id)} className="admin-btn-danger">{t('Remove Image')}</button>}
-                                            <button onClick={() => deleteCategory(c.id)} className="admin-btn-danger">{t('Delete')}</button>
-                                        </div>
+                                        {subcategories[c.id] && subcategories[c.id].length > 0 && (
+                                            <div style={{ marginTop: '12px', paddingLeft: '60px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                {subcategories[c.id].map(sub => (
+                                                    <span key={sub.id} className="admin-subcat-chip">
+                                                        {sub.name}
+                                                        <button onClick={() => deleteCategory(sub.id)} className="admin-subcat-del">✕</button>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                    {subcategories[c.id] && subcategories[c.id].length > 0 && (
-                                        <div style={{ marginTop: '12px', paddingLeft: '60px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                            {subcategories[c.id].map(sub => (
-                                                <span key={sub.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: '16px', fontSize: '13px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    {sub.name}
-                                                    <button onClick={() => deleteCategory(sub.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '13px', padding: 0, lineHeight: 1 }}>✕</button>
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                            {paginatedCategories.length === 0 && !categoriesLoading && <div style={{ color: 'var(--muted)' }}>{t('No categories found.')}</div>}
-                            {categoriesLoading && !categoriesInitialLoad && Array.from({ length: 3 }).map((_, i) => <AdminSkeleton key={`more-${i}`} />)}
-                        </div>
-                    )}
-                    {categoriesHasMore && !categoriesInitialLoad && <div ref={categoriesSentinelRef} style={{ height: '1px' }} />}
-                    {!categoriesHasMore && paginatedCategories.length > 0 && (
-                        <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: '13px' }}>{t('End of categories list')}</div>
-                    )}
-                </div>
-            )}
-
-            {/* ── AI Assistant Tab ── */}
-            {tab === 'ai' && (
-                <AiDashboardTab />
-            )}
-
-            {/* ── Ads Tab (no pagination per user request) ── */}
-            {tab === 'ads' && (
-                <div>
-                    <div style={{ ...cardStyle, marginBottom: '24px' }}>
-                        <h3 style={{ marginTop: 0, color: 'var(--text)' }}>{t('Add New Ad Banner')}</h3>
-                        <form onSubmit={handleCreateAd} style={{ display: 'grid', gap: '12px' }}>
-                            <input value={adTitle} onChange={e => setAdTitle(e.target.value)} placeholder={t('Title (optional)')} className="admin-input" />
-                            <input value={adLinkUrl} onChange={e => setAdLinkUrl(e.target.value)} placeholder={t('Link URL (opens when clicked)')} className="admin-input" />
-                            <input type="number" value={adSortOrder} onChange={e => setAdSortOrder(parseInt(e.target.value) || 0)} placeholder={t('Sort Order')} className="admin-input" />
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', marginBottom: '4px', color: 'var(--muted)' }}>{t('Banner Image')} *</label>
-                                {adImagePreview && <img src={adImagePreview} alt="" style={{ width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />}
-                                <input type="file" accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { setAdImageFile(f); setAdImagePreview(URL.createObjectURL(f)) } }} className="admin-input" required />
+                                ))}
+                                {paginatedCategories.length === 0 && !categoriesLoading && <div className="admin-empty-state">{t('No categories found.')}</div>}
+                                {categoriesLoading && !categoriesInitialLoad && Array.from({ length: 3 }).map((_, i) => <AdminSkeleton key={`more-${i}`} />)}
                             </div>
-                            <button type="submit" className="primary" disabled={adUploading}>{adUploading ? t('Uploading...') : t('Create Ad Banner')}</button>
-                        </form>
+                        )}
+                        {categoriesHasMore && !categoriesInitialLoad && <div ref={categoriesSentinelRef} style={{ height: '1px' }} />}
                     </div>
+                )}
 
-                    <h3 style={{ color: 'var(--text)' }}>{t('Existing Ad Banners')}</h3>
-                    {loadingOther ? (
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                            {Array.from({ length: 3 }).map((_, i) => <AdminSkeleton key={i} />)}
+                {/* ── Ads Tab ── */}
+                {tab === 'ads' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+                        <div className="admin-card-box">
+                            <h3 className="admin-card-title">{t('Add New Ad Banner')}</h3>
+                            <form onSubmit={handleCreateAd} style={{ display: 'grid', gap: '14px' }}>
+                                <input value={adTitle} onChange={e => setAdTitle(e.target.value)} placeholder={t('Title (optional)')} className="admin-input-style" />
+                                <input value={adLinkUrl} onChange={e => setAdLinkUrl(e.target.value)} placeholder={t('Link URL (opens when clicked)')} className="admin-input-style" />
+                                <input type="number" value={adSortOrder} onChange={e => setAdSortOrder(parseInt(e.target.value) || 0)} placeholder={t('Sort Order')} className="admin-input-style" />
+                                <div className="admin-field full-width">
+                                    <label>{t('Banner Image')} *</label>
+                                    <div className="admin-file-upload-row">
+                                        {adImagePreview ? (
+                                            <div className="admin-file-preview-card" style={{ width: '200px', height: '100px' }}>
+                                                <img src={adImagePreview} alt="Preview" className="admin-file-preview-img" />
+                                                <button type="button" onClick={() => { setAdImageFile(null); setAdImagePreview(null); }} className="admin-file-remove-btn">✕</button>
+                                            </div>
+                                        ) : (
+                                            <label className="admin-file-dropzone" style={{ width: '150px' }}>
+                                                <input type="file" accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { setAdImageFile(f); setAdImagePreview(URL.createObjectURL(f)) } }} style={{ display: 'none' }} required />
+                                                <span className="material-symbols-outlined">add_photo_alternate</span>
+                                                <span className="admin-file-dropzone-text">{t('Upload Banner')}</span>
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+                                <button type="submit" className="admin-add-btn" disabled={adUploading} style={{ justifyContent: 'center' }}>
+                                    {adUploading ? t('Uploading...') : t('Create Ad Banner')}
+                                </button>
+                            </form>
                         </div>
-                    ) : (
-                        <div style={{ display: 'grid', gap: '12px' }}>
+
+                        <div className="admin-list-grid">
                             {ads.map(ad => (
-                                <div key={ad.id} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <div key={ad.id} className="admin-item-card">
                                     <img src={`${getImageUrl(ad.imageUrl)}?r=${refreshKey}`} alt={ad.title || 'Ad'} style={{ width: '120px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: '600', color: 'var(--text)' }}>{ad.title || t('(No title)')}</div>
+                                        <div className="admin-item-title">{ad.title || t('(No title)')}</div>
                                         {ad.linkUrl && <div style={{ fontSize: '12px', color: 'var(--primary)' }}>{ad.linkUrl}</div>}
-                                        <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{t('Order:')} {ad.sortOrder}</div>
+                                        <div className="admin-item-sub">{t('Order:')} {ad.sortOrder}</div>
                                     </div>
                                     <button onClick={() => deleteAd(ad.id)} className="admin-btn-danger">{t('Delete')}</button>
                                 </div>
                             ))}
-                            {ads.length === 0 && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px' }}>{t('No ad banners yet.')}</div>}
+                            {ads.length === 0 && <div className="admin-empty-state">{t('No ad banners yet.')}</div>}
                         </div>
-                    )}
+                    </div>
+                )}
+
+                {/* ── AI Assistant Tab ── */}
+                {tab === 'ai' && (
+                    <AiDashboardTab />
+                )}
+            </div>
+
+            {/* Custom Styled Confirmation Modal (Light & Dark Theme Compatible) */}
+            {confirmModal.open && (
+                <div className="admin-modal-overlay" onClick={() => setConfirmModal(prev => ({ ...prev, open: false }))}>
+                    <div className="admin-modal-card" onClick={e => e.stopPropagation()}>
+                        <div className="admin-modal-header">
+                            <div className="admin-modal-icon-danger">
+                                <span className="material-symbols-outlined">warning</span>
+                            </div>
+                            <h3 className="admin-modal-title">{confirmModal.title}</h3>
+                        </div>
+                        <p className="admin-modal-message">{confirmModal.message}</p>
+                        <div className="admin-modal-actions">
+                            <button 
+                                className="admin-modal-cancel-btn"
+                                onClick={() => setConfirmModal(prev => ({ ...prev, open: false }))}
+                            >
+                                {t('Cancel')}
+                            </button>
+                            <button 
+                                className="admin-modal-confirm-btn"
+                                onClick={async () => {
+                                    const action = confirmModal.onConfirm;
+                                    setConfirmModal(prev => ({ ...prev, open: false }));
+                                    if (action) await action();
+                                }}
+                            >
+                                {t('Delete')}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

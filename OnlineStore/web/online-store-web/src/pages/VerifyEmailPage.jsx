@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api, setAuthToken } from '../apiClient.js'
 import { useTranslation } from 'react-i18next'
+import './AuthPage.css'
 
 export default function VerifyEmailPage({ onBack }) {
     const { t } = useTranslation()
@@ -62,41 +63,79 @@ export default function VerifyEmailPage({ onBack }) {
     }
 
     return (
-        <div className="card">
-            <div className="header">
-                <div>
-                    <h1>{t('Verify Your Email')}</h1>
-                    <p className="muted">{t('Enter the 6-digit code sent to your email')}</p>
+        <div className="auth-page">
+            <div className="auth-card-glass" style={{ maxWidth: '440px' }}>
+                <div className="auth-header">
+                    <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'var(--primary)', marginBottom: '8px' }}>
+                        mark_email_read
+                    </span>
+                    <h1 className="auth-title">{t('Verify Your Email')}</h1>
+                    <p className="auth-subtitle">{t('Enter the 6-digit code sent to your email')}</p>
                 </div>
+
+                <form onSubmit={handleVerify} className="auth-form" style={{ gap: '16px' }}>
+                    <div className="auth-field">
+                        <label>{t('Email Address')}</label>
+                        <input
+                            type="email"
+                            className="auth-input"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder={t('name@example.com')}
+                            required
+                        />
+                    </div>
+
+                    <div className="auth-field">
+                        <label>{t('Verification Code')}</label>
+                        <input
+                            type="text"
+                            className="auth-input"
+                            value={code}
+                            onChange={(e) => setCode(e.target.value)}
+                            placeholder={t('123456')}
+                            maxLength={6}
+                            required
+                        />
+                    </div>
+
+                    {msg && (
+                        <div className={`auth-banner ${msg.type === 'error' ? 'banner-error' : 'banner-success'}`}>
+                            {msg.text}
+                        </div>
+                    )}
+
+                    <button className="auth-submit-btn" disabled={loading} type="submit">
+                        {loading ? t('Please wait...') : t('Verify Email')}
+                    </button>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                        <button
+                            type="button"
+                            disabled={loading}
+                            onClick={handleResend}
+                            className="auth-guest-btn"
+                        >
+                            {t('Resend Verification Code')}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--on-surface-variant)',
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                                padding: '8px'
+                            }}
+                        >
+                            ← {t('Back to Login')}
+                        </button>
+                    </div>
+                </form>
             </div>
-
-            <form onSubmit={handleVerify} className="form">
-                <div className="field">
-                    <label>{t('Email')}</label>
-                    <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('name@example.com')} />
-                </div>
-
-                <div className="field">
-                    <label>{t('Verification Code')}</label>
-                    <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('123456')} maxLength={6} />
-                </div>
-
-                {msg && <div className={`msg ${msg.type}`}>{msg.text}</div>}
-
-                <button className="primary" disabled={loading} type="submit">
-                    {loading ? t('Please wait...') : t('Verify Email')}
-                </button>
-
-                <button className="primary" type="button" disabled={loading} onClick={handleResend}
-                    style={{ background: 'transparent', border: '1px solid var(--border)' }}>
-                    {t('Resend Code')}
-                </button>
-
-                <button className="primary" type="button" onClick={onBack}
-                    style={{ background: 'transparent', border: 'none', textDecoration: 'underline', fontSize: '13px' }}>
-                    {t('← Back to Login')}
-                </button>
-            </form>
         </div>
     )
 }

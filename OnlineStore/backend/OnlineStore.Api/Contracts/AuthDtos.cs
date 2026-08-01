@@ -38,6 +38,10 @@ public record MeResponse(
     string? BuildingNumber,
     string? City,
     string? PostalCode,
+    string? District,
+    string? Neighborhood,
+    string? Floor,
+    string? ApartmentNo,
     double? Latitude,
     double? Longitude,
     string? Description,
@@ -52,6 +56,10 @@ public record UpdateProfileRequest(
     string? BuildingNumber,
     string? City,
     string? PostalCode,
+    string? District,
+    string? Neighborhood,
+    string? Floor,
+    string? ApartmentNo,
     double? Latitude,
     double? Longitude,
     string? Description,
@@ -122,11 +130,13 @@ public record OrderItemRequest(int ProductId, int Quantity);
 public record CreateOrderRequest(string StoreUserId, List<OrderItemRequest> Items, [Required] string DeliveryAddress, string? PaymentMethod, string? OfferCode, string? PaymentToken);
 public record CheckoutCartRequest([Required] string DeliveryAddress, string? DeliveryCity, string? PaymentMethod, string? OfferCode, string? PaymentToken);
 public record UpdateOrderStatusRequest(string Status);
+public record ShopCancelRequest([Required] string CancellationReason);
 
 public record OrderItemDto(int Id, int? ProductId, string ProductName, int Quantity, decimal UnitPrice, string StoreUserId, string? CurrencyCode = "USD");
-public record OrderDto(int Id, string UserId, string StoreUserId, string? StoreName, string Status, decimal TotalAmount, string DeliveryAddress, string? PaymentMethod, string? OfferCode, List<OrderItemDto> Items, DateTime CreatedAtUtc, DateTime UpdatedAtUtc, string? OrderGroupId = null, double? CustomerLat = null, double? CustomerLng = null, double? StoreLat = null, double? StoreLng = null, string? CurrencyCode = "USD");
-public record GroupedOrderStoreDto(int OrderId, string StoreUserId, string? StoreName, string? StoreLocation, string Status, decimal TotalAmount, double? StoreLat, double? StoreLng, List<OrderItemDto> Items, string? CurrencyCode = "USD");
-public record GroupedOrderDto(string OrderGroupId, int RepresentativeOrderId, string UserId, string Status, decimal TotalAmount, string DeliveryAddress, string? PaymentMethod, string? OfferCode, List<GroupedOrderStoreDto> Stores, DateTime CreatedAtUtc, DateTime UpdatedAtUtc, double? CustomerLat = null, double? CustomerLng = null, int? DeliveryJobId = null, string? DeliveryStatus = null);
+public record OrderDto(int Id, string UserId, string StoreUserId, string? StoreName, string Status, decimal TotalAmount, string DeliveryAddress, string? PaymentMethod, string? OfferCode, List<OrderItemDto> Items, DateTime CreatedAtUtc, DateTime UpdatedAtUtc, string? OrderGroupId = null, double? CustomerLat = null, double? CustomerLng = null, double? StoreLat = null, double? StoreLng = null, string? CurrencyCode = "USD", string? CustomerName = null, string? CustomerAvatarUrl = null, string? CancellationReason = null, string? CancelledByRole = null, DateTime? CancelledAtUtc = null);
+public record GroupedOrderStoreDto(int OrderId, string StoreUserId, string? StoreName, string? StoreLocation, string Status, decimal TotalAmount, double? StoreLat, double? StoreLng, List<OrderItemDto> Items, string? CurrencyCode = "USD", string? CancellationReason = null, string? CancelledByRole = null, DateTime? CancelledAtUtc = null);
+public record GroupedOrderDto(string OrderGroupId, int RepresentativeOrderId, string UserId, string Status, decimal TotalAmount, string DeliveryAddress, string? PaymentMethod, string? OfferCode, List<GroupedOrderStoreDto> Stores, DateTime CreatedAtUtc, DateTime UpdatedAtUtc, double? CustomerLat = null, double? CustomerLng = null, int? DeliveryJobId = null, string? DeliveryStatus = null, string? CancellationReason = null, string? CancelledByRole = null, DateTime? CancelledAtUtc = null);
+public record OrderStatsDto(decimal Revenue, int ActiveCount, string AvgPrep = "14m", string Cancellation = "0.4%");
 
 // ════════════════════════════════════════════
 //  Delivery

@@ -223,13 +223,23 @@ public class ImageProcessingBackgroundService : BackgroundService
         {
             if (sizeName == "large") // Using large as the replacement
             {
+                var normalizedItemKey = item.StorageKey.Replace('\\', '/');
+                var itemFileName = Path.GetFileName(normalizedItemKey);
+
                 var ads = await db.AdBanners
-                    .Where(a => a.ImageUrl != null && a.ImageUrl.Contains(item.StorageKey))
+                    .Where(a => a.ImageUrl != null)
                     .ToListAsync();
 
-                foreach (var ad in ads)
+                var matchingAds = ads.Where(a => {
+                    var normalizedAdUrl = a.ImageUrl!.Replace('\\', '/');
+                    return normalizedAdUrl.Contains(normalizedItemKey) || 
+                           (!string.IsNullOrEmpty(itemFileName) && normalizedAdUrl.Contains(itemFileName));
+                }).ToList();
+
+                var cleanStorageKey = storageKey.Replace('\\', '/');
+                foreach (var ad in matchingAds)
                 {
-                    ad.ImageUrl = "/media/" + storageKey;
+                    ad.ImageUrl = "/media/" + cleanStorageKey;
                 }
             }
         }
