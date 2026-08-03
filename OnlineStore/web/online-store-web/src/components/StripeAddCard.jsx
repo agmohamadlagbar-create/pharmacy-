@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useStripe, useElements, CardNumberElement, CardExpiryElement, CardCvcElement } from '@stripe/react-stripe-js';
 import Spline from '@splinetool/react-spline';
+import { useTranslation } from 'react-i18next';
 import { api } from '../apiClient';
 
 export default function StripeAddCard({ onSuccess, onCancel }) {
+    const { t } = useTranslation();
     const stripe = useStripe();
     const elements = useElements();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -67,32 +69,32 @@ export default function StripeAddCard({ onSuccess, onCancel }) {
             </div>
 
             <div className="form-group-custom">
-                <label className="custom-label">CARD NUMBER</label>
+                <label className="custom-label">{t('Card Number').toUpperCase()}</label>
                 <div className="stripe-input-wrapper">
                     <CardNumberElement options={elementOptions} />
                 </div>
             </div>
 
             <div className="form-group-custom">
-                <label className="custom-label">EXPIRY</label>
+                <label className="custom-label">{t('Expiry').toUpperCase()}</label>
                 <div className="stripe-input-wrapper">
                     <CardExpiryElement options={elementOptions} />
                 </div>
             </div>
             
             <div className="form-group-custom">
-                <label className="custom-label">CVV</label>
+                <label className="custom-label">{t('CVV')}</label>
                 <div className="stripe-input-wrapper">
                     <CardCvcElement options={elementOptions} />
                 </div>
             </div>
 
             <div className="form-group-custom">
-                <label className="custom-label">CARDHOLDER NAME</label>
+                <label className="custom-label">{t('Cardholder Name').toUpperCase()}</label>
                 <input 
                     type="text" 
                     className="custom-input" 
-                    placeholder="Name on card" 
+                    placeholder={t('Name on card')} 
                     value={cardholderName}
                     onChange={(e) => setCardholderName(e.target.value)}
                 />
@@ -102,10 +104,10 @@ export default function StripeAddCard({ onSuccess, onCancel }) {
             
             <div className="form-actions-horizontal">
                 <button type="button" className="btn-cancel" onClick={onCancel} disabled={isProcessing}>
-                    Cancel
+                    {t('Cancel')}
                 </button>
                 <button type="submit" className="btn-save" disabled={!stripe || isProcessing}>
-                    {isProcessing ? <div className="spinner-small" style={{borderColor: 'var(--text-primary)', borderTopColor: 'transparent'}}></div> : 'Save card'}
+                    {isProcessing ? <div className="spinner-small" style={{borderColor: 'var(--text-primary)', borderTopColor: 'transparent'}}></div> : t('Save card')}
                 </button>
             </div>
         </form>

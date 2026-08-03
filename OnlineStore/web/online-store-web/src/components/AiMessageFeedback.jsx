@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../apiClient';
 import './AiMessageFeedback.css';
 
 export default function AiMessageFeedback({ conversationId, messageId }) {
+  const { t } = useTranslation();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -35,7 +37,7 @@ export default function AiMessageFeedback({ conversationId, messageId }) {
   if (submitted) {
     return (
       <div className="ai-feedback-submitted">
-        <span className="feedback-check">✓</span> Thank you for your feedback!
+        <span className="feedback-check">✓</span> {t('Thank you for your feedback!')}
       </div>
     );
   }
@@ -48,7 +50,7 @@ export default function AiMessageFeedback({ conversationId, messageId }) {
     <div className="ai-message-feedback-container">
       {!showForm ? (
         <div className="feedback-trigger-row">
-          <span className="feedback-prompt">Rate answer:</span>
+          <span className="feedback-prompt">{t('Rate answer:')}</span>
           <div className="feedback-stars">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
@@ -71,7 +73,7 @@ export default function AiMessageFeedback({ conversationId, messageId }) {
       ) : (
         <form onSubmit={handleSubmit} className="feedback-form">
           <div className="feedback-form-header">
-            <span>Rate: {rating} ★</span>
+            <span>{t('Rate:')} {rating} ★</span>
             <button 
               type="button" 
               className="feedback-cancel"
@@ -81,7 +83,7 @@ export default function AiMessageFeedback({ conversationId, messageId }) {
                 setComment('');
               }}
             >
-              Cancel
+              {t('Cancel')}
             </button>
           </div>
 
@@ -93,13 +95,13 @@ export default function AiMessageFeedback({ conversationId, messageId }) {
                 className={`feedback-tag-btn ${feedbackType === tag ? 'selected' : ''}`}
                 onClick={() => setFeedbackType(tag)}
               >
-                {tag}
+                {t(tag)}
               </button>
             ))}
           </div>
 
           <textarea
-            placeholder="Add comments or suggestions (optional)..."
+            placeholder={t('Add comments or suggestions (optional)...')}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             className="feedback-comment-input"
@@ -112,7 +114,7 @@ export default function AiMessageFeedback({ conversationId, messageId }) {
             disabled={submitting || rating === 0} 
             className="feedback-submit-btn"
           >
-            {submitting ? 'Submitting...' : 'Submit Feedback'}
+            {submitting ? t('Submitting...') : t('Submit Feedback')}
           </button>
         </form>
       )}

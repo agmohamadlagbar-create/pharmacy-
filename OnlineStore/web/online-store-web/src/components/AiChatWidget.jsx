@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as signalR from '@microsoft/signalr';
 import { useVoice } from '../hooks/useVoice';
 import { api } from '../apiClient';
@@ -7,6 +8,7 @@ import AiMessageFeedback from './AiMessageFeedback';
 import './AiChatWidget.css';
 
 export default function AiChatWidget(props) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -134,7 +136,7 @@ export default function AiChatWidget(props) {
           } else if (chunk.eventType === 'error') {
             setMessages(prev => {
               const newMsgs = [...prev];
-              newMsgs[newMsgs.length - 1] = { text: `Error: ${chunk.error}`, isUser: false };
+              newMsgs[newMsgs.length - 1] = { text: t('Error: {{error}}', { error: chunk.error }), isUser: false };
               return newMsgs;
             });
             setIsGenerating(false);
@@ -144,7 +146,7 @@ export default function AiChatWidget(props) {
           console.error(err);
           setMessages(prev => {
             const newMsgs = [...prev];
-            newMsgs[newMsgs.length - 1] = { text: 'Connection error.', isUser: false };
+            newMsgs[newMsgs.length - 1] = { text: t('Connection error.'), isUser: false };
             return newMsgs;
           });
           setIsGenerating(false);
@@ -182,14 +184,14 @@ export default function AiChatWidget(props) {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2a10 10 0 0 1 10 10v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h4a10 10 0 1 0-14 0h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a10 10 0 0 1 10-10z"></path>
               </svg>
-              AI Assistant
+              {t('AI Assistant')}
             </span>
             <button className="ai-chat-close" onClick={toggleOpen}>&times;</button>
           </div>
           <div className="ai-chat-messages">
             {messages.length === 0 && (
               <div style={{ textAlign: 'center', color: '#888', marginTop: 20 }}>
-                Hi! How can I help you today?
+                {t('Hi! How can I help you today?')}
               </div>
             )}
             {messages.map((msg, idx) => (
@@ -221,7 +223,7 @@ export default function AiChatWidget(props) {
             <input 
               type="text" 
               className="ai-chat-input" 
-              placeholder="Type a message..." 
+              placeholder={t('Type a message...')} 
               value={inputText}
               onChange={e => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}

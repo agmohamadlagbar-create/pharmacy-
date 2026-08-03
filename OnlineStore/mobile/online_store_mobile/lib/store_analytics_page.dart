@@ -6,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:path_provider/path_provider.dart';
 import 'api.dart';
+import 'widgets/stitch_bottom_navigation_bar.dart';
 
 class StoreAnalyticsPage extends StatefulWidget {
   const StoreAnalyticsPage({super.key});
@@ -33,6 +34,7 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
   // Low stock threshold
   int _threshold = 10;
   bool _savingThreshold = false;
+  final _thresholdCtrl = TextEditingController(text: '10');
 
   // Telegram
   bool _tgConnected = false;
@@ -95,6 +97,7 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
   @override
   void dispose() {
     _tgChatIdCtrl.dispose();
+    _thresholdCtrl.dispose();
     super.dispose();
   }
 
@@ -153,6 +156,7 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
         setState(() {
           _data = result;
           _threshold = (result['lowStockThreshold'] as num?)?.toInt() ?? 10;
+          _thresholdCtrl.text = '$_threshold';
           _loading = false;
         });
       }
@@ -170,9 +174,27 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
     setState(() => _savingThreshold = true);
     try {
       await Api.put('/api/analytics/settings/low-stock-threshold', {'threshold': _threshold});
-      _fetchDashboard();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Threshold updated successfully!'.tr()),
+            backgroundColor: const Color(0xFF10b981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      await _fetchDashboard();
     } catch (err) {
       debugPrint('Failed to save threshold: $err');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${'Failed to save threshold:'.tr()} $err'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _savingThreshold = false);
     }
@@ -442,6 +464,22 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
                         ),
                       ),
                     ),
+      bottomNavigationBar: StitchBottomNavigationBar(
+        currentIndex: 3,
+        isShop: true,
+        onTap: (index) {
+          if (index == 3) return;
+          if (index == 0) {
+            Navigator.pushReplacementNamed(context, '/categories');
+          } else if (index == 1) {
+            Navigator.pushReplacementNamed(context, '/store-products');
+          } else if (index == 2) {
+            Navigator.pushReplacementNamed(context, '/store-orders');
+          } else if (index == 4) {
+            Navigator.pushReplacementNamed(context, '/profile');
+          }
+        },
+      ),
     );
   }
 
@@ -645,28 +683,30 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
         if (dailySales.isNotEmpty) ...[
           _chartCard(
             title: 'Daily Sales (Last 7 Days)'.tr(),
-            chart: _buildLineChart(dailySales, 'date', const Color(0xFF6366f1), currency, isDark),
+            chart: _buildLineChart(dailySales, 'date', const Color(0xFF6366f1), currency, isDark, cs),
             isDark: isDark,
+            cs: cs,
           ),
           const SizedBox(height: 12),
         ],
         if (monthlySales.isNotEmpty)
           _chartCard(
             title: 'Monthly Sales (Last 12 Months)'.tr(),
-            chart: _buildLineChart(monthlySales, 'month', const Color(0xFF10b981), currency, isDark),
+            chart: _buildLineChart(monthlySales, 'month', const Color(0xFF10b981), currency, isDark, cs),
             isDark: isDark,
+            cs: cs,
           ),
       ],
     );
   }
 
-  Widget _chartCard({required String title, required Widget chart, required bool isDark}) {
+  Widget _chartCard({required String title, required Widget chart, required bool isDark, required ColorScheme cs}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+        color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -679,7 +719,7 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
     );
   }
 
-  Widget _buildLineChart(List<Map<String, dynamic>> data, String labelKey, Color color, String currency, bool isDark) {
+  Widget _buildLineChart(List<Map<String, dynamic>> data, String labelKey, Color color, String currency, bool isDark, ColorScheme cs) {
     if (data.isEmpty) return const SizedBox.shrink();
 
     final revenueSpots = <FlSpot>[];
@@ -704,7 +744,7 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
           drawVerticalLine: false,
           horizontalInterval: maxRevenue > 0 ? maxRevenue / 4 : 1,
           getDrawingHorizontalLine: (value) => FlLine(
-            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+            color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.06),
             strokeWidth: 1,
           ),
         ),
@@ -724,7 +764,7 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
                 final shortLabel = label.length > 6 ? label.substring(0, 6) : label;
                 return SideTitleWidget(
                   meta: meta,
-                  child: Text(shortLabel, style: GoogleFonts.dmSans(fontSize: 9, color: isDark ? Colors.white38 : Colors.black38)),
+                  child: Text(shortLabel, style: GoogleFonts.dmSans(fontSize: 9, color: isDark ? cs.onSurfaceVariant : Colors.black38)),
                 );
               },
             ),
@@ -737,7 +777,7 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
               getTitlesWidget: (value, meta) {
                 return Text(
                   _formatCompact(value),
-                  style: GoogleFonts.dmSans(fontSize: 9, color: isDark ? Colors.white38 : Colors.black38),
+                  style: GoogleFonts.dmSans(fontSize: 9, color: isDark ? cs.onSurfaceVariant : Colors.black38),
                 );
               },
             ),
@@ -745,8 +785,8 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
         ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (_) => isDark ? const Color(0xFF2C1A10) : Colors.white,
-            tooltipBorder: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+            getTooltipColor: (_) => isDark ? cs.surfaceContainerHigh : cs.surfaceContainerLowest,
+            tooltipBorder: BorderSide(color: isDark ? cs.outlineVariant.withValues(alpha: 0.4) : cs.outlineVariant.withValues(alpha: 0.5)),
             tooltipRoundedRadius: 8,
             getTooltipItems: (spots) {
               return spots.map((s) {
@@ -814,9 +854,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+              color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+              border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
             ),
             child: Row(
               children: [
@@ -896,9 +936,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
                 width: 140,
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+                  color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+                  border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -953,9 +993,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+              color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+              border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
             ),
             child: Row(
               children: [
@@ -1014,9 +1054,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+            color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+            border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
           ),
           child: Row(
             children: [
@@ -1070,9 +1110,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+            color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+            border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
           ),
           child: Column(
             children: [
@@ -1149,7 +1189,22 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
   // ═══════════════════════════════════════
 
   Widget _buildLowStockWarnings(ColorScheme cs, bool isDark) {
-    final products = (_data!['lowStockProducts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final productPreviews = (_data!['productPreviews'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final List<Map<String, dynamic>> products;
+    if (productPreviews.isNotEmpty) {
+      products = productPreviews
+          .where((p) => ((p['currentStock'] as num?)?.toInt() ?? 0) <= _threshold)
+          .map((p) => {
+                'productId': p['productId'],
+                'productName': p['productName'],
+                'imageUrl': p['imageUrl'],
+                'remainingQuantity': p['currentStock'],
+                'threshold': _threshold
+              })
+          .toList();
+    } else {
+      products = (_data!['lowStockProducts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1160,9 +1215,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+            color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+            border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
           ),
           child: Row(
             children: [
@@ -1179,8 +1234,10 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     isDense: true,
                   ),
-                  controller: TextEditingController(text: '$_threshold'),
-                  onChanged: (val) => _threshold = int.tryParse(val) ?? _threshold,
+                  controller: _thresholdCtrl,
+                  onChanged: (val) => setState(() {
+                    _threshold = int.tryParse(val) ?? _threshold;
+                  }),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1327,9 +1384,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+            color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+            border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1453,9 +1510,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+              color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+              border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
             ),
             child: Row(
               children: [
@@ -1522,9 +1579,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+        color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1657,9 +1714,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+        color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1708,9 +1765,9 @@ class _StoreAnalyticsPageState extends State<StoreAnalyticsPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+        color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1914,12 +1971,13 @@ class _AnalyticsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+        color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1934,7 +1992,7 @@ class _AnalyticsCard extends StatelessWidget {
             child: Icon(icon, size: 18, color: color),
           ),
           const Spacer(),
-          Text(label, style: GoogleFonts.dmSans(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+          Text(label, style: GoogleFonts.dmSans(fontSize: 10, color: cs.onSurface.withValues(alpha: 0.5)),
               maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
           Text(value, style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700),
@@ -1966,6 +2024,7 @@ class _GrowthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isPositive = percent > 0;
     final isNegative = percent < 0;
     final badgeColor = isPositive ? const Color(0xFF10b981) : isNegative ? const Color(0xFFef4444) : Colors.grey;
@@ -1973,9 +2032,9 @@ class _GrowthCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2C1A10) : Colors.white,
+        color: isDark ? cs.surfaceContainer : cs.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: isDark ? cs.outlineVariant.withValues(alpha: 0.3) : cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

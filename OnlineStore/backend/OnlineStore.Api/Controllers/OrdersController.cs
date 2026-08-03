@@ -488,7 +488,7 @@ public class OrdersController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Get store order stats (Today's Revenue and Active Orders Count).</summary>
+    /// <summary>Get store order stats (Today's Revenue, Active Orders Count, 30-day Avg Prep Time, 30-day Cancellation Rate & 30-day trends).</summary>
     [Authorize(Roles = "Shop,Admin")]
     [HttpGet("stats")]
     public async Task<ActionResult<OrderStatsDto>> GetOrderStats([FromQuery(Name = "_")] string? cacheBust = null)
@@ -503,7 +503,10 @@ public class OrdersController : ControllerBase
             query = query.Where(o => o.StoreUserId == userId);
         }
 
-        var todayUtcStart = DateTime.UtcNow.Date;
+        var now = DateTime.UtcNow;
+        var todayUtcStart = now.Date;
+        var current30dStart = now.AddDays(-30);
+        var prev30dStart = now.AddDays(-60);
 
         var revenueStatuses = new[] { OrderStatus.Delivered, OrderStatus.PickedUp, OrderStatus.OnTheWay };
         var activeStatuses = new[] { OrderStatus.Pending, OrderStatus.Preparing, OrderStatus.ReadyForPickup };
@@ -516,7 +519,86 @@ public class OrdersController : ControllerBase
             .Where(o => activeStatuses.Contains(o.Status))
             .CountAsync();
 
-        return Ok(new OrderStatsDto(todayRevenue, activeCount, "14m", "0.4%"));
+        var windowOrders = await query
+            .Where(o => o.CreatedAtUtc >= prev30dStart)
+            .Select(o => new {
+                o.Id,
+                o.Status,
+                o.TotalAmount,
+                o.CreatedAtUtc,
+                o.PreparingAtUtc,
+                o.ReadyForPickupAtUtc
+            })
+            .ToListAsync();
+
+        var curr30d = windowOrders.Where(o => o.CreatedAtUtc >= current30dStart).ToList();
+        var prev30d = windowOrders.Where(o => o.CreatedAtUtc < current30dStart).ToList();
+
+        var currRev = curr30d.Where(o => revenueStatuses.Contains(o.Status)).Sum(o => o.TotalAmount);
+        var prevRev = prev30d.Where(o => revenueStatuses.Contains(o.Status)).Sum(o => o.TotalAmount);
+        decimal revenueTrend = prevRev > 0 ? Math.Round(((currRev - prevRev) / prevRev) * 100m, 1) : (currRev > 0 ? 100m : 0m);
+
+        var currTotalOrders = curr30d.Count;
+        var prevTotalOrders = prev30d.Count;
+        decimal activeTrend = prevTotalOrders > 0 ? Math.Round(((decimal)(currTotalOrders - prevTotalOrders) / prevTotalOrders) * 100m, 1) : (currTotalOrders > 0 ? 100m : 0m);
+
+        var currPrepDurations = curr30d
+            .Where(o => o.PreparingAtUtc.HasValue && o.ReadyForPickupAtUtc.HasValue && o.ReadyForPickupAtUtc.Value >= o.PreparingAtUtc.Value)
+            .Select(o => (o.ReadyForPickupAtUtc!.Value - o.PreparingAtUtc!.Value).TotalMinutes)
+            .ToList();
+
+        var prevPrepDurations = prev30d
+            .Where(o => o.PreparingAtUtc.HasValue && o.ReadyForPickupAtUtc.HasValue && o.ReadyForPickupAtUtc.Value >= o.PreparingAtUtc.Value)
+            .Select(o => (o.ReadyForPickupAtUtc!.Value - o.PreparingAtUtc!.Value).TotalMinutes)
+            .ToList();
+
+        string avgPrepStr = "N/A";
+        decimal avgPrepTrend = 0m;
+
+        if (currPrepDurations.Count > 0)
+        {
+            double avgMinutes = currPrepDurations.Average();
+            int totalMins = (int)Math.Round(avgMinutes);
+            if (totalMins < 60)
+            {
+                avgPrepStr = $"{Math.Max(1, totalMins)}m";
+            }
+            else
+            {
+                int hrs = totalMins / 60;
+                int mins = totalMins % 60;
+                avgPrepStr = mins > 0 ? $"{hrs}h {mins}m" : $"{hrs}h";
+            }
+
+            if (prevPrepDurations.Count > 0)
+            {
+                double prevAvgMinutes = prevPrepDurations.Average();
+                if (prevAvgMinutes > 0)
+                {
+                    avgPrepTrend = Math.Round((decimal)(((avgMinutes - prevAvgMinutes) / prevAvgMinutes) * 100.0), 1);
+                }
+            }
+        }
+
+        var currCancelledCount = curr30d.Count(o => o.Status == OrderStatus.Cancelled);
+        var prevCancelledCount = prev30d.Count(o => o.Status == OrderStatus.Cancelled);
+
+        decimal currCancelRate = currTotalOrders > 0 ? (decimal)currCancelledCount / currTotalOrders * 100m : 0m;
+        decimal prevCancelRate = prevTotalOrders > 0 ? (decimal)prevCancelledCount / prevTotalOrders * 100m : 0m;
+
+        string cancellationStr = $"{Math.Round(currCancelRate, 1)}%";
+        decimal cancellationTrend = prevTotalOrders > 0 ? Math.Round(currCancelRate - prevCancelRate, 1) : 0m;
+
+        return Ok(new OrderStatsDto(
+            todayRevenue,
+            activeCount,
+            avgPrepStr,
+            cancellationStr,
+            revenueTrend,
+            activeTrend,
+            avgPrepTrend,
+            cancellationTrend
+        ));
     }
 
     /// <summary>Get active grouped orders for customer home page tracking.</summary>
@@ -623,6 +705,14 @@ public class OrdersController : ControllerBase
             return BadRequest(new { error = $"Cannot transition from {order.Status} to {newStatus}" });
 
         order.Status = newStatus;
+        if (newStatus == OrderStatus.Preparing && order.PreparingAtUtc is null)
+        {
+            order.PreparingAtUtc = DateTime.UtcNow;
+        }
+        else if (newStatus == OrderStatus.ReadyForPickup && order.ReadyForPickupAtUtc is null)
+        {
+            order.ReadyForPickupAtUtc = DateTime.UtcNow;
+        }
         order.UpdatedAtUtc = DateTime.UtcNow;
 
         DeliveryJob? deliveryJob = null;

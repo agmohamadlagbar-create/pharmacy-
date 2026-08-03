@@ -464,7 +464,7 @@ export default function StoreProductsPage({ onBack }) {
                                 <div className="sp-image-upload-area">
                                     {form.images.map((img, idx) => (
                                         <div key={idx} className="sp-image-preview-wrapper">
-                                            <img src={getImageUrl(img)} alt="Preview" className="sp-image-preview" />
+                                            <img src={getImageUrl(img)} alt={t('Preview')} className="sp-image-preview" />
                                             <button type="button" className="sp-image-remove-btn" onClick={() => {
                                                 setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))
                                                 setTouched(prev => ({ ...prev, images: true }))

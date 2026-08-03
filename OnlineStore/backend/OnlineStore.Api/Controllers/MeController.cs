@@ -136,6 +136,18 @@ public class MeController : ControllerBase
             if (missingFields.Count > 0)
                 return BadRequest(new { error = $"The following address fields are required: {string.Join(", ", missingFields)}" });
         }
+        // Validate required address fields for Delivery and Shop accounts (Building No, Floor, Apartment No are optional)
+        else if (user.AccountType == OnlineStore.Domain.Entities.AccountType.Delivery || user.AccountType == OnlineStore.Domain.Entities.AccountType.Shop)
+        {
+            var missingFields = new List<string>();
+            if (string.IsNullOrWhiteSpace(request.Street)) missingFields.Add("Address Information");
+            if (string.IsNullOrWhiteSpace(request.District)) missingFields.Add("District");
+            if (string.IsNullOrWhiteSpace(request.Neighborhood)) missingFields.Add("Neighborhood");
+            if (string.IsNullOrWhiteSpace(request.City)) missingFields.Add("City");
+
+            if (missingFields.Count > 0)
+                return BadRequest(new { error = $"The following address fields are required: {string.Join(", ", missingFields)}" });
+        }
 
         user.FullName = request.FullName ?? user.FullName;
         user.Country = request.Country ?? user.Country;

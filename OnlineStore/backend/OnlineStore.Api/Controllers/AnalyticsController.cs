@@ -181,7 +181,7 @@ public class AnalyticsController : ControllerBase
 
     /// <summary>Update the low stock threshold for this store.</summary>
     [HttpPut("settings/low-stock-threshold")]
-    public async Task<IActionResult> UpdateLowStockThreshold(UpdateLowStockThresholdRequest req)
+    public async Task<IActionResult> UpdateLowStockThreshold([FromBody] UpdateLowStockThresholdRequest req)
     {
         var userId = User.GetAuthenticatedUserId();
         if (userId is null) return Unauthorized();

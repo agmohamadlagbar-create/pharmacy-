@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using OnlineStore.Api.Hubs;
 using OnlineStore.Domain.Entities;
 using OnlineStore.Infrastructure.Persistence;
@@ -28,15 +29,9 @@ public class NotificationService : INotificationService
 
     public async Task NotifyOrderStatusChangedAsync(string userId, int orderId, string status)
     {
+        // Live SignalR update only (FCM push is handled by NotifyUserAsync)
         await _hub.Clients.Group($"user:{userId}")
             .SendAsync("OrderStatusChanged", new { OrderId = orderId, Status = status });
-
-        // Trigger push notification outside app for status change
-        await _fcmService.SendPushNotificationToUserAsync(
-            userId,
-            "Order Status Updated",
-            $"Order #{orderId} status changed to {status}",
-            new Dictionary<string, string> { { "orderId", orderId.ToString() }, { "status", status } });
     }
 
     public async Task NotifyDriverLocationChangedAsync(string userId, int orderId, double lat, double lng)
@@ -79,7 +74,7 @@ public class NotificationService : INotificationService
 
     public async Task NotifyAvailableDriversAsync(string title, string message)
     {
-        // Push to all connected drivers (no persistence – drivers query available jobs via API)
+        // Push to all connected drivers (in-app real-time via SignalR)
         await _hub.Clients.Group("available-drivers")
             .SendAsync("ReceiveNotification", new
             {
@@ -88,5 +83,28 @@ public class NotificationService : INotificationService
                 Message = message,
                 CreatedAtUtc = DateTime.UtcNow
             });
+
+        // Push to all registered delivery driver devices via FCM (outside app OS notification)
+        try
+        {
+            var driverUserIds = await (
+                from token in _db.UserDeviceTokens
+                join userRole in _db.UserRoles on token.UserId equals userRole.UserId
+                join role in _db.Roles on userRole.RoleId equals role.Id
+                where role.Name == "Delivery"
+                select token.UserId
+            ).Distinct().ToListAsync();
+
+            foreach (var driverId in driverUserIds)
+            {
+                await _fcmService.SendPushNotificationToUserAsync(driverId, title, message, new Dictionary<string, string>
+                {
+                    ["type"] = "available_delivery_job",
+                    ["title"] = title,
+                    ["body"] = message
+                });
+            }
+        }
+        catch { /* FCM push errors must never block main application logic */ }
     }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../api.dart';
+import '../utils/animation_utils.dart';
 
 /// Section configuration — maps backend keys to customer-friendly UI.
 class _SectionConfig {
@@ -290,6 +292,7 @@ class _ProductCardState extends State<_ProductCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final p = widget.product;
 
     final name = (p['ProductName'] ?? p['productName'] ?? 'Product') as String;
@@ -332,14 +335,22 @@ class _ProductCardState extends State<_ProductCard> {
                   SizedBox(
                     width: double.infinity,
                     height: 110,
-                    child: imageUrl != null && imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _buildPlaceholderImage(theme),
-                          )
-                        : _buildPlaceholderImage(theme),
+                    child: () {
+                      final formattedUrl = Api.formatImageUrl(imageUrl);
+                      if (formattedUrl.isEmpty) return _buildPlaceholderImage(theme);
+                      if (formattedUrl.startsWith('assets/')) {
+                        return Image.asset(
+                          formattedUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildPlaceholderImage(theme),
+                        );
+                      }
+                      return Image.network(
+                        formattedUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildPlaceholderImage(theme),
+                      );
+                    }(),
                   ),
                   // Badges
                   if (widget.showTrendingBadge)
@@ -455,6 +466,7 @@ class _ProductCardState extends State<_ProductCard> {
                                   : () {
                                       widget.onAddToCart
                                           ?.call(productId, 1);
+                                      showAddToCartAnimation(context);
                                       setState(() => _addedToCart = true);
                                       Future.delayed(
                                         const Duration(seconds: 2),
@@ -471,6 +483,12 @@ class _ProductCardState extends State<_ProductCard> {
                                     ? const Color(0xFF3B6D11)
                                     : theme.primaryColor,
                                 foregroundColor: Colors.white,
+                                disabledBackgroundColor: isDark
+                                    ? Colors.white.withValues(alpha: 0.12)
+                                    : const Color(0xFFCBD5E1),
+                                disabledForegroundColor: isDark
+                                    ? Colors.white38
+                                    : const Color(0xFF64748B),
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 6),
                                 shape: RoundedRectangleBorder(

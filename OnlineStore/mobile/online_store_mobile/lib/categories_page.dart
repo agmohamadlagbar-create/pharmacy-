@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'api.dart';
@@ -12,6 +10,10 @@ import 'widgets/ripple_avatar.dart';
 import 'widgets/custom_store_app_bar.dart';
 import 'widgets/skeleton_loader.dart';
 import 'widgets/ai_assistant_fab.dart';
+import 'widgets/stitch_category_card.dart';
+import 'widgets/stitch_bottom_navigation_bar.dart';
+import 'widgets/section_header.dart';
+import 'widgets/status_chip.dart';
 
 class CategoriesPage extends StatefulWidget {
   final VoidCallback onLogout;
@@ -32,24 +34,22 @@ class CategoriesPage extends StatefulWidget {
 }
 
 class _CategoriesPageState extends State<CategoriesPage> {
-  final PageController _pageCtrl = PageController();
-  int _adIndex = 0;
-
-  // Sidebar state
+  // Sidebar & Profile state
   String _userName = 'My User Profile';
   File? _avatarFile;
   String? _avatarUrl;
   String? _accountType;
   bool _isGuest = false;
 
-  // Categories from API
+  // Categories state from Backend API
   List<Map<String, dynamic>> _categories = [];
   bool _loadingCategories = true;
 
-  // Dynamic ad banners from API
+  // Dynamic Ad Banners from Backend API
   List<Map<String, dynamic>> _adBanners = [];
   bool _loadingAds = true;
-
+  final PageController _pageCtrl = PageController();
+  int _adIndex = 0;
   Timer? _timer;
 
   @override
@@ -77,6 +77,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
       final res = await Api.get('/api/me');
       if (mounted) {
         setState(() {
+          _accountType = res['accountType'] ?? _accountType;
           _userName =
               (res['fullName'] != null && res['fullName'].toString().isNotEmpty)
                   ? res['fullName']
@@ -87,9 +88,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
           _avatarUrl = res['profilePictureUrl'];
         });
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch (_) {}
   }
 
   Future<void> _fetchCategories() async {
@@ -103,11 +102,13 @@ class _CategoriesPageState extends State<CategoriesPage> {
               .map((c) => {
                     'id': c['id'].toString(),
                     'name': c['name'].toString(),
-                    'imageUrl': c['imageUrl'],
+                    'imageUrl': Api.formatImageUrl(c['imageUrl']?.toString()),
                   })
               .toList();
           _loadingCategories = false;
         });
+      } else {
+        if (mounted) setState(() => _loadingCategories = false);
       }
     } catch (e) {
       if (mounted) setState(() => _loadingCategories = false);
@@ -121,10 +122,19 @@ class _CategoriesPageState extends State<CategoriesPage> {
       final data = res is List ? res : (res['data'] is List ? res['data'] : []);
       if (mounted && data is List) {
         setState(() {
-          _adBanners = data.map((a) => Map<String, dynamic>.from(a)).toList();
+          _adBanners = data
+              .map((a) => {
+                    'id': a['id']?.toString(),
+                    'imageUrl': Api.formatImageUrl(a['imageUrl']?.toString()),
+                    'title': a['title']?.toString(),
+                    'linkUrl': a['linkUrl']?.toString(),
+                  })
+              .toList();
           _loadingAds = false;
         });
         if (_adBanners.isNotEmpty) _startAutoScroll();
+      } else {
+        if (mounted) setState(() => _loadingAds = false);
       }
     } catch (_) {
       if (mounted) setState(() => _loadingAds = false);
@@ -143,41 +153,6 @@ class _CategoriesPageState extends State<CategoriesPage> {
         curve: Curves.easeInOut,
       );
     });
-  }
-
-  void _goToAd(int index) {
-    if (!mounted) return;
-    _pageCtrl.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-    );
-    _startAutoScroll();
-  }
-
-  void _prevAd() {
-    if (_adBanners.isEmpty) return;
-    _goToAd((_adIndex - 1 + _adBanners.length) % _adBanners.length);
-  }
-
-  void _nextAd() {
-    if (_adBanners.isEmpty) return;
-    _goToAd((_adIndex + 1) % _adBanners.length);
-  }
-
-  Future<void> _openAdLink(String? url) async {
-    if (url == null || url.isEmpty) return;
-    final uri = Uri.tryParse(url);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _handleAvatarTapped() async {
@@ -214,22 +189,49 @@ class _CategoriesPageState extends State<CategoriesPage> {
     }
   }
 
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
   Widget _buildDrawerItem({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
     Color? color,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final iconColor = color ?? colorScheme.onSurfaceVariant;
+    final textColor = color ?? colorScheme.onSurface;
+
     return ListTile(
-      leading: Icon(icon, color: color),
-      title: Text(title, style: color != null ? TextStyle(color: color) : null),
+      leading: Icon(icon, color: iconColor, size: 22),
+      title: Text(
+        title,
+        style: GoogleFonts.inter(
+          color: textColor,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      horizontalTitleGap: 12,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
       onTap: onTap,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: CustomStoreAppBar(
         isRoot: true,
         cartCount: widget.cartCount,
@@ -240,15 +242,21 @@ class _CategoriesPageState extends State<CategoriesPage> {
       ),
       floatingActionButton: const AiAssistantFab(),
       drawer: Drawer(
+        backgroundColor: theme.scaffoldBackgroundColor,
         child: Column(
           children: [
+            // Drawer Header
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF9F5F3), // Surface color
+              padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainer,
                 border: Border(
-                    bottom: BorderSide(color: Color(0x14000000), width: 0.5)),
+                  bottom: BorderSide(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -257,13 +265,12 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     width: 80,
                     height: 80,
                     padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
                         colors: [
-                          Color(0xFFF0997B),
-                          Color(0xFFD85A30),
-                          Color(0xFF4a1b0c)
+                          colorScheme.primary,
+                          colorScheme.primaryContainer,
                         ],
                       ),
                     ),
@@ -271,338 +278,338 @@ class _CategoriesPageState extends State<CategoriesPage> {
                       size: 74,
                       image: _avatarFile != null
                           ? FileImage(_avatarFile!)
-                          : (_avatarUrl != null
-                              ? NetworkImage('${Api.baseUrl}$_avatarUrl')
+                          : (_avatarUrl != null && _avatarUrl!.trim().isNotEmpty
+                              ? NetworkImage(Api.formatImageUrl(_avatarUrl))
                               : null) as ImageProvider?,
                       onTap: _handleAvatarTapped,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Text(
                     _userName,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.playfairDisplay(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 20,
-                      color: const Color(0xFF1A0A00),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   if (_accountType != null) ...[
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFAECE7),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        _accountType!.toUpperCase(),
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(
-                          color: const Color(0xFF993C1D),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
+                    const SizedBox(height: 8),
+                    StatusChip(
+                      label: _accountType!.toUpperCase(),
+                      type: StatusChipType.info,
+                      showDot: false,
                     ),
                   ],
                 ],
               ),
             ),
 
-            // ── Common links ──
-            _buildDrawerItem(
-              icon: Icons.home_rounded,
-              title: 'Home Page'.tr(),
-              onTap: () => Navigator.of(context).pop(),
+            // Navigation links
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                children: [
+                  _buildDrawerItem(
+                    icon: Icons.home_rounded,
+                    title: 'Home Page'.tr(),
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+
+                  if (!_isGuest) ...[
+                    _buildDrawerItem(
+                      icon: Icons.person_rounded,
+                      title: 'Profile Page'.tr(),
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        await Navigator.of(context).pushNamed('/profile');
+                        _fetchProfile();
+                      },
+                    ),
+                    if (_accountType == 'Shop') ...[
+                      _buildDrawerItem(
+                        icon: Icons.inventory_2_rounded,
+                        title: 'My Products'.tr(),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushNamed('/store-products');
+                        },
+                      ),
+                      _buildDrawerItem(
+                        icon: Icons.receipt_long_rounded,
+                        title: 'Store Orders'.tr(),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushNamed('/store-orders');
+                        },
+                      ),
+                      _buildDrawerItem(
+                        icon: Icons.analytics_rounded,
+                        title: 'Store Analytics'.tr(),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushNamed('/store-analytics');
+                        },
+                      ),
+                    ],
+                    if (_accountType == 'Delivery')
+                      _buildDrawerItem(
+                        icon: Icons.local_shipping_rounded,
+                        title: 'Delivery Jobs'.tr(),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushNamed('/delivery-jobs');
+                        },
+                      ),
+                    if (_accountType == 'Admin')
+                      _buildDrawerItem(
+                        icon: Icons.admin_panel_settings_rounded,
+                        title: 'Admin Panel'.tr(),
+                        onTap: () async {
+                          Navigator.of(context).pop();
+                          await Navigator.of(context).pushNamed('/admin');
+                          _fetchAds();
+                          _fetchCategories();
+                        },
+                      ),
+                    if (_accountType == 'User') ...[
+                      _buildDrawerItem(
+                        icon: Icons.favorite_rounded,
+                        title: 'Favorites'.tr(),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushNamed('/favorites');
+                        },
+                      ),
+                      _buildDrawerItem(
+                        icon: Icons.track_changes_rounded,
+                        title: 'Active Orders'.tr(),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushNamed('/active-orders');
+                        },
+                      ),
+                      _buildDrawerItem(
+                        icon: Icons.local_shipping_rounded,
+                        title: 'Delivered Orders'.tr(),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushNamed('/delivered-orders');
+                        },
+                      ),
+                    ],
+                    _buildDrawerItem(
+                      icon: Icons.notifications_rounded,
+                      title: 'Notifications'.tr(),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pushNamed('/notifications');
+                      },
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.settings_rounded,
+                      title: 'Settings'.tr(),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pushNamed('/settings');
+                      },
+                    ),
+                  ],
+                ],
+              ),
             ),
 
-            if (!_isGuest) ...[
-              _buildDrawerItem(
-                icon: Icons.person_rounded,
-                title: 'Profile Page'.tr(),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await Navigator.of(context).pushNamed('/profile');
-                  _fetchProfile();
-                },
-              ),
-
-              // ── Role-specific links ──
-              if (_accountType == 'Shop') ...[
-                _buildDrawerItem(
-                  icon: Icons.inventory_2_rounded,
-                  title: 'My Products'.tr(),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pushNamed('/store-products');
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.receipt_long_rounded,
-                  title: 'Store Orders'.tr(),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pushNamed('/store-orders');
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.analytics_rounded,
-                  title: 'Store Analytics'.tr(),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pushNamed('/store-analytics');
-                  },
-                ),
-              ],
-
-              if (_accountType == 'Delivery')
-                _buildDrawerItem(
-                  icon: Icons.local_shipping_rounded,
-                  title: 'Delivery Jobs'.tr(),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pushNamed('/delivery-jobs');
-                  },
-                ),
-
-              if (_accountType == 'Admin')
-                _buildDrawerItem(
-                  icon: Icons.admin_panel_settings_rounded,
-                  title: 'Admin Panel'.tr(),
-                  onTap: () async {
-                    Navigator.of(context).pop();
-                    await Navigator.of(context).pushNamed('/admin');
-                    // Re-fetch ads and categories when returning from admin
-                    _fetchAds();
-                    _fetchCategories();
-                  },
-                ),
-
-              // ── Customer-only links ──
-              if (_accountType == 'User') ...[
-                _buildDrawerItem(
-                  icon: Icons.favorite_rounded,
-                  title: 'Favorites'.tr(),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pushNamed('/favorites');
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.track_changes_rounded,
-                  title: 'Active Orders'.tr(),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pushNamed('/active-orders');
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.local_shipping_rounded,
-                  title: 'Delivered Orders'.tr(),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pushNamed('/delivered-orders');
-                  },
-                ),
-              ],
-
-              _buildDrawerItem(
-                icon: Icons.notifications_rounded,
-                title: 'Notifications'.tr(),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushNamed('/notifications');
-                },
-              ),
-
-              _buildDrawerItem(
-                icon: Icons.settings_rounded,
-                title: 'Settings'.tr(),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushNamed('/settings');
-                },
-              ),
-            ],
-
-            const Spacer(),
-            const Divider(),
+            Divider(color: colorScheme.outlineVariant.withValues(alpha: 0.5), height: 1),
             SafeArea(
               top: false,
-              child: _buildDrawerItem(
-                icon: _isGuest ? Icons.login_rounded : Icons.logout_rounded,
-                title: _isGuest ? 'Sign In'.tr() : 'Log out'.tr(),
-                onTap: widget.onLogout,
-                color: _isGuest
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.redAccent,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: _buildDrawerItem(
+                  icon: _isGuest ? Icons.login_rounded : Icons.logout_rounded,
+                  title: _isGuest ? 'Sign In'.tr() : 'Log out'.tr(),
+                  onTap: widget.onLogout,
+                  color: _isGuest ? colorScheme.primary : colorScheme.error,
+                ),
               ),
             ),
           ],
         ),
       ),
       body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ads carousel
+            const SizedBox(height: 12),
+
+            // ── Ads Banner Carousel ──
             if (_loadingAds)
-              Shimmer(
-                child: Padding(
-                  padding: const EdgeInsets.all(0),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Shimmer(
                   child: Skeleton(
-                      height: 200,
-                      width: MediaQuery.of(context).size.width,
-                      borderRadius: BorderRadius.zero),
+                    height: 190,
+                    width: double.infinity,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
               )
-            else if (_adBanners.isNotEmpty)
-              SizedBox(
-                height: 200,
-                child: Stack(
-                  children: [
-                    PageView.builder(
+            else if (_adBanners.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Container(
+                  height: 190,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: PageView.builder(
                       controller: _pageCtrl,
                       onPageChanged: (i) => setState(() => _adIndex = i),
                       itemCount: _adBanners.length,
                       itemBuilder: (ctx, i) {
                         final ad = _adBanners[i];
-                        final imgUrl = ad['imageUrl']?.toString() ?? '';
-                        final fullUrl = imgUrl.startsWith('http')
-                            ? imgUrl
-                            : '${Api.baseUrl}$imgUrl';
-                        return GestureDetector(
-                          onTap: () => _openAdLink(ad['linkUrl']?.toString()),
-                          child: Image.network(
-                            fullUrl,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            cacheWidth:
-                                800, // Optimize memory for horizontal ads
-                            errorBuilder: (_, __, ___) => Container(
-                              color: Colors.grey.shade300,
-                              child: const Center(
-                                  child: Icon(Icons.image,
-                                      size: 48, color: Colors.grey)),
+                        final String rawUrl = ad['imageUrl'] ?? ad['image'] ?? '';
+                        final String formattedUrl = Api.formatImageUrl(rawUrl);
+                        final String title = ad['title'] ?? '';
+
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Container(
+                              color: colorScheme.surfaceContainerHighest,
+                              child: formattedUrl.isEmpty
+                                  ? Center(
+                                      child: Icon(
+                                        Icons.campaign_outlined,
+                                        size: 48,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    )
+                                  : (formattedUrl.startsWith('assets/')
+                                      ? Image.asset(
+                                          formattedUrl,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          errorBuilder: (_, __, ___) => Center(
+                                            child: Icon(
+                                              Icons.campaign_outlined,
+                                              size: 48,
+                                              color: colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        )
+                                      : Image.network(
+                                          formattedUrl,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          errorBuilder: (_, __, ___) => Center(
+                                            child: Icon(
+                                              Icons.campaign_outlined,
+                                              size: 48,
+                                              color: colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        )),
                             ),
-                          ),
+                            if (title.isNotEmpty) ...[
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black.withValues(alpha: 0.75),
+                                      ],
+                                    ),
+                                  ),
+                                  child: Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         );
                       },
-                    ),
-                    Positioned(
-                      left: 8,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: Container(
-                          decoration: BoxDecoration(
-                              color: Colors.black.withAlpha(100),
-                              shape: BoxShape.circle),
-                          child: IconButton(
-                              icon: const Icon(Icons.chevron_left,
-                                  color: Colors.white),
-                              onPressed: _prevAd),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 8,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: Container(
-                          decoration: BoxDecoration(
-                              color: Colors.black.withAlpha(100),
-                              shape: BoxShape.circle),
-                          child: IconButton(
-                              icon: const Icon(Icons.chevron_right,
-                                  color: Colors.white),
-                              onPressed: _nextAd),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Dots
-            if (_adBanners.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    _adBanners.length,
-                    (i) => GestureDetector(
-                      onTap: () => _goToAd(i),
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _adIndex == i
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withAlpha(60),
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
 
-            // Section title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                'Shop by Category'.tr(),
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+              // Carousel Indicator Dots
+              if (_adBanners.length > 1) ...[
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    _adBanners.length,
+                    (i) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: _adIndex == i ? 20 : 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        color: _adIndex == i
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                      ),
                     ),
-              ),
+                  ),
+                ),
+              ],
+            ],
+
+            const SizedBox(height: 8),
+
+            // ── Featured Categories Header ──
+            SectionHeader(
+              title: 'Featured Categories'.tr(),
             ),
 
-            // Category grid
+            // ── Horizontal Categories Bento Scroll ──
             if (_loadingCategories)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Shimmer(
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 0.85,
-                    children: List.generate(
-                      4,
-                      (i) => Card(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28)),
-                        elevation: 4,
-                        shadowColor: Colors.black26,
-                        child: Column(
-                          children: [
-                            const Expanded(
-                                child: Skeleton(
-                                    borderRadius: BorderRadius.only(
-                                        topLeft: Radius.circular(28),
-                                        topRight: Radius.circular(28)))),
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Center(
-                                  child: Skeleton(
-                                      height: 15,
-                                      width: 80,
-                                      borderRadius: BorderRadius.circular(4))),
-                            ),
-                          ],
-                        ),
+              SizedBox(
+                height: 260,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: 4,
+                  itemBuilder: (context, index) => Container(
+                    width: 200,
+                    margin: const EdgeInsets.only(right: 14),
+                    child: Shimmer(
+                      child: Skeleton(
+                        height: 260,
+                        width: 200,
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                   ),
@@ -611,110 +618,100 @@ class _CategoriesPageState extends State<CategoriesPage> {
             else if (_categories.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(40),
-                child: Text('No categories yet.'.tr(),
-                    style: const TextStyle(color: Colors.grey)),
+                child: Center(
+                  child: Text(
+                    'No categories found.'.tr(),
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               )
             else
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 0.85,
-                  children: _categories
-                      .map((cat) => _CategoryCard(
-                            id: cat['id']!,
-                            name: cat['name']!,
-                            imageUrl: cat['imageUrl'],
-                          ))
-                      .toList(),
+              SizedBox(
+                height: 260,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final cat = _categories[index];
+                    final String catId = cat['id']!;
+                    final String name = cat['name']!;
+                    final String imgUrl = cat['imageUrl'] ?? '';
+
+                    return StitchCategoryCard(
+                      title: name,
+                      imageUrl: imgUrl,
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/category-products',
+                          arguments: {'id': catId, 'name': name},
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CategoryCard extends StatelessWidget {
-  final String id;
-  final String name;
-  final String? imageUrl;
-
-  const _CategoryCard({
-    required this.id,
-    required this.name,
-    this.imageUrl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0x14000000), width: 0.5),
-      ),
-      color: const Color(0xFFF9F5F3),
-      child: InkWell(
-        onTap: () {
-          if (kDebugMode) print('Category tapped: $id ($name)');
-          Navigator.pushNamed(
-            context,
-            '/category-products',
-            arguments: <String, dynamic>{'id': id, 'name': name},
-          );
+      bottomNavigationBar: StitchBottomNavigationBar(
+        currentIndex: 0,
+        cartCount: widget.cartCount,
+        isShop: _accountType == 'Shop',
+        isDelivery: _accountType == 'Delivery',
+        isAdmin: _accountType == 'Admin',
+        onTap: (index) {
+          if (index == 0) return;
+          if (_accountType == 'Admin') {
+            if (index == 1) {
+              Navigator.pushNamed(context, '/admin', arguments: {'initialTab': 0});
+            } else if (index == 2) {
+              Navigator.pushNamed(context, '/admin', arguments: {'initialTab': 4});
+            } else if (index == 3) {
+              Navigator.pushNamed(context, '/admin', arguments: {'initialTab': 3});
+            } else if (index == 4) {
+              Navigator.pushNamed(context, '/profile');
+            }
+          } else if (_accountType == 'Delivery') {
+            if (index == 1) {
+              Navigator.pushNamed(context, '/delivery-jobs');
+            } else if (index == 2) {
+              Navigator.pushNamed(context, '/notifications');
+            } else if (index == 3) {
+              Navigator.pushNamed(context, '/settings');
+            } else if (index == 4) {
+              Navigator.pushNamed(context, '/profile');
+            }
+          } else if (_accountType == 'Shop') {
+            if (index == 1) {
+              Navigator.pushNamed(context, '/store-products');
+            } else if (index == 2) {
+              Navigator.pushNamed(context, '/store-orders');
+            } else if (index == 3) {
+              Navigator.pushNamed(context, '/store-analytics');
+            } else if (index == 4) {
+              Navigator.pushNamed(context, '/profile');
+            }
+          } else {
+            if (index == 1) {
+              Navigator.pushNamed(context, '/favorites');
+            } else if (index == 2) {
+              widget.onNavigateCart();
+            } else if (index == 3) {
+              Navigator.pushNamed(context, '/active-orders');
+            } else if (index == 4) {
+              Navigator.pushNamed(context, '/profile');
+            }
+          }
         },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF0E9E6),
-                ),
-                child: imageUrl != null
-                    ? Image.network(
-                        imageUrl!.startsWith('http')
-                            ? imageUrl!
-                            : '${Api.baseUrl}$imageUrl',
-                        fit: BoxFit.cover,
-                        cacheWidth: 300, // Optimize memory
-                        errorBuilder: (_, __, ___) => _placeholder(context),
-                      )
-                    : _placeholder(context),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                name,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                  color: const Color(0xFF1A0A00),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
-    );
-  }
-
-  Widget _placeholder(BuildContext ctx) {
-    return Container(
-      color: const Color(0xFFF0E9E6),
-      child: const Icon(Icons.category_rounded,
-          size: 40, color: Color(0xFFA8948D)),
     );
   }
 }

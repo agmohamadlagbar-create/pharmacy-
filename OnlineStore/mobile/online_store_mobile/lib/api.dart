@@ -6,8 +6,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class Api {
   // Android emulator localhost => 10.0.2.2, Physical device via USB => 127.0.0.1, LAN => 192.168.1.132
-  // Chrome / Web => localhost
-  static String get baseUrl => kIsWeb ? '' : 'https://lagbar.runasp.net';
+  // Chrome / Web => http://localhost:5000 in debug or https://lagbar.runasp.net
+  static String get baseUrl {
+    if (kIsWeb) {
+      if (kDebugMode) {
+        return 'http://localhost:5000';
+      }
+      return 'https://lagbar.runasp.net';
+    }
+    return 'https://lagbar.runasp.net';
+  }
+
+  static String formatImageUrl(String? rawUrl) {
+    if (rawUrl == null || rawUrl.trim().isEmpty) return '';
+    final trimmed = rawUrl.trim();
+    if (trimmed.startsWith('assets/')) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return Uri.encodeFull(trimmed);
+    }
+    final path = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    return Uri.encodeFull('$baseUrl$path');
+  }
 
   static bool _isRefreshing = false;
 
@@ -81,8 +100,7 @@ class Api {
     return _processResponse(res);
   }
 
-  static Future<Map<String, dynamic>> put(
-      String path, dynamic body) async {
+  static Future<Map<String, dynamic>> put(String path, dynamic body) async {
     final uri = Uri.parse('$baseUrl$path');
     final prefs = await _sharedPrefs;
     final token = prefs.getString('token');

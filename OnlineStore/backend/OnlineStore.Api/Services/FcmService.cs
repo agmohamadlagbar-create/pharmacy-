@@ -150,14 +150,18 @@ public class FcmService : IFcmService
         {
             try
             {
+                var notificationTag = data != null && data.TryGetValue("orderId", out var oId) ? $"order_{oId}" : "online_store_notif";
+
                 var payload = new
                 {
                     message = new
                     {
                         token = token,
-                        // Data-only message: no "notification" or "webpush.notification" fields.
-                        // This prevents the browser from auto-displaying notifications,
-                        // giving full control to our service worker (single display point).
+                        notification = new
+                        {
+                            title = title,
+                            body = message
+                        },
                         data = new Dictionary<string, string>(data ?? new Dictionary<string, string>())
                         {
                             ["title"] = title,
@@ -167,7 +171,43 @@ public class FcmService : IFcmService
                         },
                         webpush = new
                         {
-                            headers = new { Urgency = "high" }
+                            headers = new { Urgency = "high", Topic = notificationTag },
+                            notification = new
+                            {
+                                title = title,
+                                body = message,
+                                icon = "/logo192.png",
+                                badge = "/favicon.ico",
+                                tag = notificationTag
+                            }
+                        },
+                        android = new
+                        {
+                            priority = "HIGH",
+                            notification = new
+                            {
+                                title = title,
+                                body = message,
+                                sound = "default",
+                                channel_id = "high_importance_channel",
+                                tag = notificationTag
+                            }
+                        },
+                        apns = new
+                        {
+                            headers = new { apns_priority = "10", apns_collapse_id = notificationTag },
+                            payload = new
+                            {
+                                aps = new
+                                {
+                                    alert = new
+                                    {
+                                        title = title,
+                                        body = message
+                                    },
+                                    sound = "default"
+                                }
+                            }
                         }
                     }
                 };

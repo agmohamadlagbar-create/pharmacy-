@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -19,11 +20,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   final _nameCtrl = TextEditingController();
   final _countryCtrl = TextEditingController();
+  final _cityCtrl = TextEditingController();
+  final _districtCtrl = TextEditingController();
+  final _neighborhoodCtrl = TextEditingController();
   final _streetCtrl = TextEditingController();
   final _buildingCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
+  final _floorCtrl = TextEditingController();
+  final _apartmentNoCtrl = TextEditingController();
   final _postalCtrl = TextEditingController();
-  
+
   final _descriptionCtrl = TextEditingController();
   final _openingTimeCtrl = TextEditingController();
   final _closingTimeCtrl = TextEditingController();
@@ -41,16 +46,39 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _fetchProfile();
   }
 
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _countryCtrl.dispose();
+    _cityCtrl.dispose();
+    _districtCtrl.dispose();
+    _neighborhoodCtrl.dispose();
+    _streetCtrl.dispose();
+    _buildingCtrl.dispose();
+    _floorCtrl.dispose();
+    _apartmentNoCtrl.dispose();
+    _postalCtrl.dispose();
+    _descriptionCtrl.dispose();
+    _openingTimeCtrl.dispose();
+    _closingTimeCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchProfile() async {
     try {
       final res = await Api.get('/api/me');
       setState(() {
         _nameCtrl.text = res['fullName']?.toString() ?? '';
         _countryCtrl.text = res['country']?.toString() ?? '';
+        _cityCtrl.text = res['city']?.toString() ?? '';
+        _districtCtrl.text = res['district']?.toString() ?? '';
+        _neighborhoodCtrl.text = res['neighborhood']?.toString() ?? '';
         _streetCtrl.text = res['street']?.toString() ?? '';
         _buildingCtrl.text = res['buildingNumber']?.toString() ?? '';
-        _cityCtrl.text = res['city']?.toString() ?? '';
+        _floorCtrl.text = res['floor']?.toString() ?? '';
+        _apartmentNoCtrl.text = res['apartmentNo']?.toString() ?? '';
         _postalCtrl.text = res['postalCode']?.toString() ?? '';
+
         _accountType = res['accountType']?.toString() ?? '';
         _descriptionCtrl.text = res['description']?.toString() ?? '';
         _openingTimeCtrl.text = res['openingTime']?.toString() ?? '';
@@ -64,7 +92,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         }
         _isLoading = false;
       });
-      // Small delay to ensure map is ready
+
       Future.delayed(const Duration(milliseconds: 500), () {
         _mapController.move(_selectedLocation, 14);
       });
@@ -79,7 +107,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
     _mapController.move(position, _mapController.camera.zoom);
 
-    // Reverse geocoding using Nominatim (free OSM service)
     try {
       final url = Uri.parse(
           'https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}&zoom=18&addressdetails=1');
@@ -92,6 +119,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
         if (addr != null) {
           setState(() {
             _streetCtrl.text = addr['road'] ?? addr['suburb'] ?? '';
+            _districtCtrl.text = addr['city_district'] ??
+                addr['suburb'] ??
+                addr['county'] ??
+                '';
+            _neighborhoodCtrl.text = addr['neighbourhood'] ??
+                addr['quarter'] ??
+                addr['residential'] ??
+                '';
             _cityCtrl.text = addr['city'] ??
                 addr['town'] ??
                 addr['village'] ??
@@ -102,9 +137,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           });
         }
       }
-    } catch (e) {
-      // ignore geocoding errors
-    }
+    } catch (_) {}
   }
 
   Future<void> _getCurrentLocation() async {
@@ -135,15 +168,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await Api.put('/api/me/profile', {
         'fullName': _nameCtrl.text,
         'country': _countryCtrl.text,
+        'city': _cityCtrl.text,
+        'district': _districtCtrl.text,
+        'neighborhood': _neighborhoodCtrl.text,
         'street': _streetCtrl.text,
         'buildingNumber': _buildingCtrl.text,
-        'city': _cityCtrl.text,
+        'floor': _floorCtrl.text,
+        'apartmentNo': _apartmentNoCtrl.text,
         'postalCode': _postalCtrl.text,
         'latitude': _selectedLocation.latitude,
         'longitude': _selectedLocation.longitude,
-        if (_descriptionCtrl.text.isNotEmpty) 'description': _descriptionCtrl.text,
-        if (_openingTimeCtrl.text.isNotEmpty) 'openingTime': _openingTimeCtrl.text,
-        if (_closingTimeCtrl.text.isNotEmpty) 'closingTime': _closingTimeCtrl.text,
+        if (_descriptionCtrl.text.isNotEmpty)
+          'description': _descriptionCtrl.text,
+        if (_openingTimeCtrl.text.isNotEmpty)
+          'openingTime': _openingTimeCtrl.text,
+        if (_closingTimeCtrl.text.isNotEmpty)
+          'closingTime': _closingTimeCtrl.text,
       });
       if (mounted) {
         Navigator.pop(context, true);
@@ -160,49 +200,82 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Center(child: CircularProgressIndicator(color: colorScheme.primary)),
+      );
     }
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Edit Profile'.tr()),
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        title: Text(
+          'Edit Profile'.tr(),
+          style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           if (_isSaving)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: colorScheme.primary),
+              ),
             )
           else
-            IconButton(icon: const Icon(Icons.check), onPressed: _save),
+            IconButton(
+              icon: Icon(Icons.check_rounded, color: colorScheme.primary),
+              onPressed: _save,
+            ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Personal Information'.tr(),
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              _buildSectionTitle(
+                  context,
+                  _accountType == 'Shop'
+                      ? 'Store Information'.tr()
+                      : 'Personal Information'.tr()),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _nameCtrl,
+                style: GoogleFonts.inter(color: colorScheme.onSurface),
                 decoration: InputDecoration(
-                  labelText: _accountType == 'Shop' ? 'Shop Name'.tr() : 'Full Name'.tr(),
+                  labelText: _accountType == 'Shop'
+                      ? 'Shop Name'.tr()
+                      : 'Full Name *'.tr(),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.person_outline),
                 ),
-                validator: (v) => v!.isEmpty ? 'This field is required'.tr() : null,
+                validator: (v) =>
+                    v!.isEmpty ? 'This field is required'.tr() : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _countryCtrl,
+                style: GoogleFonts.inter(color: colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Country'.tr(),
                   hintText: 'e.g. Iraq, Turkey...'.tr(),
@@ -212,13 +285,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
               ),
               const SizedBox(height: 24),
-              Text('Address Location'.tr(),
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+
+              _buildSectionTitle(context, 'Location Pin (Map)'.tr()),
               const SizedBox(height: 12),
               SizedBox(
-                height: 300,
+                height: 240,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   child: Stack(
                     children: [
                       FlutterMap(
@@ -239,19 +312,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             markers: [
                               Marker(
                                 point: _selectedLocation,
-                                width: 80,
-                                height: 80,
-                                child: const Icon(Icons.location_on,
-                                    color: Colors.red, size: 40),
+                                width: 50,
+                                height: 50,
+                                child: Icon(Icons.location_on_rounded,
+                                    color: colorScheme.primary, size: 40),
                               ),
                             ],
                           ),
                         ],
                       ),
                       Positioned(
-                        right: 8,
-                        top: 8,
+                        right: 12,
+                        top: 12,
                         child: FloatingActionButton.small(
+                          backgroundColor: colorScheme.surface,
+                          foregroundColor: colorScheme.primary,
                           onPressed: _getCurrentLocation,
                           child: const Icon(Icons.my_location),
                         ),
@@ -260,16 +335,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
+
               if (_accountType == 'Shop') ...[
-                Text('Store Information'.tr(),
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                _buildSectionTitle(context, 'Store Information'.tr()),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _descriptionCtrl,
+                  style: GoogleFonts.inter(color: colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Description'.tr(),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   maxLines: 3,
                 ),
@@ -279,9 +356,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     Expanded(
                       child: TextFormField(
                         controller: _openingTimeCtrl,
+                        style: GoogleFonts.inter(color: colorScheme.onSurface),
                         decoration: InputDecoration(
                           labelText: 'Opening Time (HH:mm)'.tr(),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                     ),
@@ -289,9 +368,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     Expanded(
                       child: TextFormField(
                         controller: _closingTimeCtrl,
+                        style: GoogleFonts.inter(color: colorScheme.onSurface),
                         decoration: InputDecoration(
                           labelText: 'Closing Time (HH:mm)'.tr(),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                     ),
@@ -299,48 +380,142 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 const SizedBox(height: 24),
               ],
-              Text('Address Details'.tr(),
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+
+              _buildSectionTitle(
+                  context,
+                  _accountType == 'User'
+                      ? 'Address Details (Required for Customer)'.tr()
+                      : 'Address Details (Partially Required)'.tr()),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _streetCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Street'.tr(),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
+
+              // City and District Row
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _buildingCtrl,
+                      controller: _cityCtrl,
+                      style: GoogleFonts.inter(color: colorScheme.onSurface),
                       decoration: InputDecoration(
-                        labelText: 'Building No'.tr(),
+                        labelText: 'City *'.tr(),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'City is required'.tr()
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
-                      controller: _postalCtrl,
+                      controller: _districtCtrl,
+                      style: GoogleFonts.inter(color: colorScheme.onSurface),
                       decoration: InputDecoration(
-                        labelText: 'Postal Code'.tr(),
+                        labelText: 'District *'.tr(),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'District is required'.tr()
+                          : null,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
+
+              // Neighborhood Field
               TextFormField(
-                controller: _cityCtrl,
+                controller: _neighborhoodCtrl,
+                style: GoogleFonts.inter(color: colorScheme.onSurface),
                 decoration: InputDecoration(
-                  labelText: 'City'.tr(),
+                  labelText: 'Neighborhood / Quarter *'.tr(),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Neighborhood is required'.tr()
+                    : null,
+              ),
+              const SizedBox(height: 12),
+
+              // Street Field
+              TextFormField(
+                controller: _streetCtrl,
+                style: GoogleFonts.inter(color: colorScheme.onSurface),
+                decoration: InputDecoration(
+                  labelText: 'Street / Address Line *'.tr(),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Street is required'.tr()
+                    : null,
+              ),
+              const SizedBox(height: 12),
+
+              // Building No, Floor, Apartment No Row
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _buildingCtrl,
+                      style: GoogleFonts.inter(color: colorScheme.onSurface),
+                      decoration: InputDecoration(
+                        labelText: _accountType == 'User'
+                            ? 'Bldg No *'.tr()
+                            : 'Bldg No'.tr(),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (v) => (_accountType == 'User' && (v == null || v.trim().isEmpty))
+                          ? 'Required'.tr()
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _floorCtrl,
+                      style: GoogleFonts.inter(color: colorScheme.onSurface),
+                      decoration: InputDecoration(
+                        labelText: _accountType == 'User'
+                            ? 'Floor *'.tr()
+                            : 'Floor'.tr(),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (v) => (_accountType == 'User' && (v == null || v.trim().isEmpty))
+                          ? 'Required'.tr()
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _apartmentNoCtrl,
+                      style: GoogleFonts.inter(color: colorScheme.onSurface),
+                      decoration: InputDecoration(
+                        labelText: _accountType == 'User'
+                            ? 'Apt No *'.tr()
+                            : 'Apt No'.tr(),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (v) => (_accountType == 'User' && (v == null || v.trim().isEmpty))
+                          ? 'Required'.tr()
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _postalCtrl,
+                style: GoogleFonts.inter(color: colorScheme.onSurface),
+                decoration: InputDecoration(
+                  labelText: 'Postal Code'.tr(),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -349,6 +524,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    return Text(
+      title,
+      style: GoogleFonts.inter(
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.2,
+        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }

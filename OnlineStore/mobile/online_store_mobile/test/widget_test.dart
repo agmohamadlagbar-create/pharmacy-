@@ -21,7 +21,7 @@ Widget _buildTestableApp() {
 void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    GoogleFonts.config.allowRuntimeFetching = false;
+    GoogleFonts.config.allowRuntimeFetching = true;
   });
 
   tearDown(() {
@@ -58,8 +58,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Settings'), findsOneWidget);
-    expect(find.text('Dark Mode'), findsOneWidget);
-    expect(find.byType(SwitchListTile), findsOneWidget);
+    expect(find.text('Theme Mode'), findsOneWidget);
+    expect(find.byType(SegmentedButton<ThemeMode>), findsOneWidget);
   });
 
   testWidgets('Favorites page shows empty-state message when list is empty', (WidgetTester tester) async {

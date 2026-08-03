@@ -1,9 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './CartIconButton.css';
 
 const CartIconButton = ({ cartCount, onClick }) => {
+    const { t } = useTranslation();
     return (
-        <button className="cart-icon-btn" onClick={onClick} title="View Cart">
+        <button className="cart-icon-btn" onClick={onClick} title={t('View Cart')}>
             <div className="cart-icon-container">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="9" cy="21" r="1"></circle>

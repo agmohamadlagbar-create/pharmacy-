@@ -47,7 +47,7 @@ export default function NavBar({
 }) {
   const { t, i18n } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
-  const isRTL = i18n.language === 'ar'
+  const isRTL = i18n.language?.startsWith('ar')
 
   const handleSearchSubmit = (e) => {
     e.preventDefault()

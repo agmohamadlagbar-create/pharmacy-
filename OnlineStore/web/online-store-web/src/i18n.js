@@ -17,8 +17,17 @@ i18n
       escapeValue: false, 
     },
     backend: {
-      loadPath: '/locales/{{lng}}/translation.json?v=2',
+      loadPath: '/locales/{{lng}}/translation.json?v=3',
     }
   });
+
+i18n.on('languageChanged', (lng) => {
+  document.documentElement.dir = lng === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.lang = lng;
+});
+
+const initialLng = i18n.language || 'en';
+document.documentElement.dir = initialLng === 'ar' ? 'rtl' : 'ltr';
+document.documentElement.lang = initialLng;
 
 export default i18n;

@@ -23,7 +23,16 @@ function getCustomerInfo(userId) {
 export default function StoreOrdersPage({ onBack }) {
     const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState('New')
-    const [stats, setStats] = useState({ revenue: 0, activeCount: 0, avgPrep: '14m', cancellation: '0.4%' })
+    const [stats, setStats] = useState({
+        revenue: 0,
+        activeCount: 0,
+        avgPrep: 'N/A',
+        cancellation: '0%',
+        revenueTrend: 0,
+        activeTrend: 0,
+        avgPrepTrend: 0,
+        cancellationTrend: 0
+    })
 
     // Helper for robust UTC date parsing
     const parseUtcDate = (dateString) => {
@@ -38,13 +47,16 @@ export default function StoreOrdersPage({ onBack }) {
         try {
             const { data } = await api.get(`/api/orders/stats?_=${Date.now()}`)
             if (data && typeof data.revenue === 'number') {
-                setStats(prev => ({
-                    ...prev,
+                setStats({
                     revenue: data.revenue,
                     activeCount: data.activeCount,
-                    avgPrep: data.avgPrep || prev.avgPrep,
-                    cancellation: data.cancellation || prev.cancellation
-                }))
+                    avgPrep: data.avgPrep || 'N/A',
+                    cancellation: data.cancellation || '0%',
+                    revenueTrend: data.revenueTrend || 0,
+                    activeTrend: data.activeTrend || 0,
+                    avgPrepTrend: data.avgPrepTrend || 0,
+                    cancellationTrend: data.cancellationTrend || 0
+                })
                 return
             }
         } catch (statsErr) {
@@ -231,28 +243,36 @@ export default function StoreOrdersPage({ onBack }) {
                         <div className="so-bento-value highlight">
                             {formatPrice(stats.revenue, 'USD')}
                         </div>
-                        <span className="so-bento-subtext">+12% {t('optimal')}</span>
+                        <span className={`so-bento-subtext ${stats.revenueTrend > 0 ? '' : stats.revenueTrend < 0 ? 'danger' : 'muted'}`}>
+                            {stats.revenueTrend > 0 ? `+${stats.revenueTrend}% ${t('vs prev 30d')}` : stats.revenueTrend < 0 ? `${stats.revenueTrend}% ${t('vs prev 30d')}` : t('Last 30d baseline')}
+                        </span>
                     </div>
                     <div className="so-bento-card">
                         <span className="so-bento-label">{t('Active Orders')}</span>
                         <div className="so-bento-value">
                             {stats.activeCount}
                         </div>
-                        <span className="so-bento-subtext muted">{t('In queue')}</span>
+                        <span className={`so-bento-subtext ${stats.activeTrend > 0 ? '' : stats.activeTrend < 0 ? 'danger' : 'muted'}`}>
+                            {stats.activeTrend > 0 ? `+${stats.activeTrend}% ${t('vs prev 30d')}` : stats.activeTrend < 0 ? `${stats.activeTrend}% ${t('vs prev 30d')}` : t('In queue')}
+                        </span>
                     </div>
                     <div className="so-bento-card emerald-border">
                         <span className="so-bento-label">{t('Avg. Prep Time')}</span>
                         <div className="so-bento-value">
                             {stats.avgPrep}
                         </div>
-                        <span className="so-bento-subtext">{t('Optimal')}</span>
+                        <span className={`so-bento-subtext ${stats.avgPrepTrend < 0 ? '' : stats.avgPrepTrend > 0 ? 'danger' : 'muted'}`}>
+                            {stats.avgPrepTrend < 0 ? `${stats.avgPrepTrend}% ${t('faster')}` : stats.avgPrepTrend > 0 ? `+${stats.avgPrepTrend}% ${t('slower')}` : t('30-day average')}
+                        </span>
                     </div>
                     <div className="so-bento-card">
                         <span className="so-bento-label">{t('Cancellation')}</span>
                         <div className="so-bento-value">
                             {stats.cancellation}
                         </div>
-                        <span className="so-bento-subtext danger">-2% {t('decreased')}</span>
+                        <span className={`so-bento-subtext ${stats.cancellation === '0%' || stats.cancellationTrend < 0 ? '' : stats.cancellationTrend > 0 ? 'danger' : 'muted'}`}>
+                            {stats.cancellation === '0%' ? t('No cancellations') : stats.cancellationTrend < 0 ? `${stats.cancellationTrend}% ${t('improved')}` : stats.cancellationTrend > 0 ? `+${stats.cancellationTrend}% ${t('increased')}` : t('30-day rate')}
+                        </span>
                     </div>
                 </section>
 

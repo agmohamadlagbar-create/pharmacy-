@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as signalR from '@microsoft/signalr';
 import { api } from '../apiClient';
 import AiMessageFeedback from './AiMessageFeedback';
@@ -10,6 +11,7 @@ import './ShopAiChatWidget.css';
  * natural language access to analytics, inventory, and product management AI agents.
  */
 export default function ShopAiChatWidget() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -97,7 +99,7 @@ export default function ShopAiChatWidget() {
           } else if (chunk.eventType === 'error') {
             setMessages(prev => {
               const newMsgs = [...prev];
-              newMsgs[newMsgs.length - 1] = { text: `Error: ${chunk.error}`, isUser: false };
+              newMsgs[newMsgs.length - 1] = { text: t('Error: {{error}}', { error: chunk.error }), isUser: false };
               return newMsgs;
             });
             setIsGenerating(false);
@@ -107,7 +109,7 @@ export default function ShopAiChatWidget() {
           console.error(err);
           setMessages(prev => {
             const newMsgs = [...prev];
-            newMsgs[newMsgs.length - 1] = { text: 'Connection error. Please try again.', isUser: false };
+            newMsgs[newMsgs.length - 1] = { text: t('Connection error. Please try again.'), isUser: false };
             return newMsgs;
           });
           setIsGenerating(false);
@@ -130,18 +132,18 @@ export default function ShopAiChatWidget() {
   };
 
   const quickActions = [
-    { label: '📊 Revenue Report', message: 'Show my revenue this month' },
-    { label: '📦 Low Stock', message: 'What products are running low on stock?' },
-    { label: '🔥 Top Sellers', message: 'Show my fast-selling products this week' },
-    { label: '📈 Sales Trend', message: 'Analyze my sales trend this month' },
+    { icon: '📊', label: 'Revenue Report', message: 'Show my revenue this month' },
+    { icon: '📦', label: 'Low Stock', message: 'What products are running low on stock?' },
+    { icon: '🔥', label: 'Top Sellers', message: 'Show my fast-selling products this week' },
+    { icon: '📈', label: 'Sales Trend', message: 'Analyze my sales trend this month' },
   ];
 
   return (
     <div className="shop-ai-widget">
       {!isOpen && (
-        <button className="shop-ai-toggle" onClick={toggleOpen} title="Shop AI Assistant">
+        <button className="shop-ai-toggle" onClick={toggleOpen} title={t('Shop AI Assistant')}>
           <span className="shop-ai-toggle-icon">🤖</span>
-          <span className="shop-ai-toggle-label">AI Assistant</span>
+          <span className="shop-ai-toggle-label">{t('AI Assistant')}</span>
         </button>
       )}
 
@@ -151,9 +153,9 @@ export default function ShopAiChatWidget() {
             <div className="shop-ai-header-info">
               <span className="shop-ai-header-icon">🤖</span>
               <div>
-                <h3>Shop AI Assistant</h3>
+                <h3>{t('Shop AI Assistant')}</h3>
                 <span className="shop-ai-status">
-                  {connection ? '● Connected' : '○ Connecting...'}
+                  {connection ? `● ${t('Connected')}` : `○ ${t('Connecting...')}`}
                 </span>
               </div>
             </div>
@@ -163,7 +165,7 @@ export default function ShopAiChatWidget() {
           {messages.length === 0 && (
             <div className="shop-ai-welcome">
               <p className="shop-ai-welcome-text">
-                I can help you with reports, inventory, analytics, and product management.
+                {t('I can help you with reports, inventory, analytics, and product management.')}
               </p>
               <div className="shop-ai-quick-actions">
                 {quickActions.map((action, i) => (
@@ -173,7 +175,7 @@ export default function ShopAiChatWidget() {
                     onClick={() => sendMessage(action.message)}
                     disabled={!connection || isGenerating}
                   >
-                    {action.label}
+                    {action.icon} {t(action.label)}
                   </button>
                 ))}
               </div>
@@ -211,7 +213,7 @@ export default function ShopAiChatWidget() {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about reports, inventory, analytics..."
+              placeholder={t('Ask about reports, inventory, analytics...')}
               disabled={!connection || isGenerating}
               rows={1}
             />

@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-import axios from 'axios';
+import { api } from '../apiClient.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAVcm1pQpLnhsHWGKwTYryaOag-oDTp30k",
@@ -80,16 +80,17 @@ export async function requestNotificationPermissionAndGetToken() {
     // Register the real token with backend API
     await registerTokenWithBackend(token);
 
-    // Listen for foreground FCM notifications (data-only messages)
+    // Listen for foreground FCM notifications
     onMessage(messaging, (payload) => {
       console.log('Foreground FCM notification received:', payload);
       const data = payload.data || {};
       const title = data.title || payload.notification?.title || 'Notification';
       const options = {
         body: data.body || payload.notification?.body || '',
-        icon: data.icon || '/logo192.png'
+        icon: data.icon || '/logo192.png',
+        tag: data.orderId ? `order_${data.orderId}` : 'online_store_notif'
       };
-      if ('Notification' in window && Notification.permission === 'granted') {
+      if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
         new Notification(title, options);
       }
     });
@@ -106,11 +107,9 @@ export async function registerTokenWithBackend(token) {
   if (!authToken || !token) return;
 
   try {
-    await axios.post('/api/devicetokens', {
+    await api.post('/api/devicetokens', {
       token: token,
       platform: 'Web'
-    }, {
-      headers: { Authorization: `Bearer ${authToken}` }
     });
     console.log('Successfully registered Web FCM token with backend API.');
   } catch (err) {
@@ -124,9 +123,7 @@ export async function unregisterTokenFromBackend() {
   if (!authToken || !token) return;
 
   try {
-    await axios.delete(`/api/devicetokens/${encodeURIComponent(token)}`, {
-      headers: { Authorization: `Bearer ${authToken}` }
-    });
+    await api.delete(`/api/devicetokens/${encodeURIComponent(token)}`);
     console.log('Unregistered Web FCM token from backend API.');
   } catch (err) {
     console.warn('Failed to unregister FCM token from backend:', err.message);

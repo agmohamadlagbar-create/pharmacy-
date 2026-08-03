@@ -4,7 +4,7 @@ import { requestNotificationPermissionAndGetToken, unregisterTokenFromBackend } 
 
 export default function SettingsPage({ onBack, theme, toggleTheme, onLogout }) {
     const { t, i18n } = useTranslation()
-    const isRTL = i18n.language === 'ar'
+    const isRTL = i18n.language?.startsWith('ar')
 
     const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
         const pref = localStorage.getItem('notifications_disabled');
@@ -123,9 +123,9 @@ export default function SettingsPage({ onBack, theme, toggleTheme, onLogout }) {
                             className="admin-input"
                             style={{ width: 'auto', minWidth: '140px', padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-container)', color: 'var(--on-surface)', border: '1px solid var(--outline-variant)', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}
                         >
-                            <option value="en">English</option>
-                            <option value="ar">العربية (Arabic)</option>
-                            <option value="tr">Türkçe (Turkish)</option>
+                            <option value="en">{t('English')}</option>
+                            <option value="ar">{t('Arabic')}</option>
+                            <option value="tr">{t('Turkish')}</option>
                         </select>
                     </div>
                 </div>
@@ -176,7 +176,7 @@ export default function SettingsPage({ onBack, theme, toggleTheme, onLogout }) {
                         </div>
                         <div>
                             <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>LagbarShop</h2>
-                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--on-surface-variant)' }}>Version 2.4.0 • Modern Commerce Nexus Edition</p>
+                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--on-surface-variant)' }}>{t('Version 2.4.0')}</p>
                         </div>
                     </div>
                 </div>

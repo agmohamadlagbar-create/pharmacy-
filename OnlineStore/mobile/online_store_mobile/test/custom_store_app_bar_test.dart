@@ -52,7 +52,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.menu));
+    await tester.tap(find.byIcon(Icons.menu_rounded));
     await tester.pump();
     expect(leadingTapped, isTrue);
 
@@ -65,21 +65,23 @@ void main() {
     expect(cartTapped, isTrue);
   });
 
-  testWidgets('uses readonly search field when only tap callback is provided',
+  testWidgets('uses clickable search container when tap callback is provided',
       (tester) async {
+    var tapped = false;
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           appBar: CustomStoreAppBar(
-            onSearchTap: _noop,
+            onSearchTap: () => tapped = true,
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    final textField = tester.widget<TextField>(find.byType(TextField));
-    expect(textField.readOnly, isTrue);
+    await tester.tap(find.text('Search products...'));
+    await tester.pump();
+    expect(tapped, isTrue);
   });
 
   testWidgets('default root leading action opens the drawer', (tester) async {
@@ -93,11 +95,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.menu));
+    await tester.tap(find.byIcon(Icons.menu_rounded));
     await tester.pumpAndSettle();
 
     expect(find.text('Drawer content'), findsOneWidget);
   });
 }
-
-void _noop() {}

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../apiClient.js'
 import * as signalR from '@microsoft/signalr'
 
 export default function NotificationBell({ onClick }) {
+    const { t } = useTranslation()
     const [notifications, setNotifications] = useState([])
     const [unreadCount, setUnreadCount] = useState(0)
     const connRef = useRef(null)
@@ -63,7 +65,7 @@ export default function NotificationBell({ onClick }) {
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                 </svg>
-                Notifications
+                {t('Notifications')}
                 {unreadCount > 0 && (
                     <span style={{
                         position: 'absolute', right: '12px',

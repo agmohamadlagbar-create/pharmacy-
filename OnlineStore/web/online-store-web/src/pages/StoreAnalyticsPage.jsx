@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../apiClient.js'
@@ -112,6 +112,7 @@ function StarRating({ rating, size = 18 }) {
 // ═══════════════════════════════════════════════════
 
 function CircularProgress({ percentage, size = 120 }) {
+  const { t } = useTranslation()
   const strokeWidth = 8
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
@@ -127,7 +128,7 @@ function CircularProgress({ percentage, size = 120 }) {
       </svg>
       <div className="returning-circle-text">
         <span className="returning-circle-pct">{percentage.toFixed(1)}%</span>
-        <span className="returning-circle-label">Returning</span>
+        <span className="returning-circle-label">{t('Returning')}</span>
       </div>
     </div>
   )
@@ -203,6 +204,8 @@ export default function StoreAnalyticsPage({ onBack }) {
   // Low stock threshold
   const [threshold, setThreshold] = useState(10)
   const [savingThreshold, setSavingThreshold] = useState(false)
+  const [thresholdSavedMsg, setThresholdSavedMsg] = useState(null)
+  const [thresholdErrorMsg, setThresholdErrorMsg] = useState(null)
 
   const baseURL = api.defaults.baseURL || ''
 
@@ -279,11 +282,17 @@ export default function StoreAnalyticsPage({ onBack }) {
 
   async function handleSaveThreshold() {
     setSavingThreshold(true)
+    setThresholdSavedMsg(null)
+    setThresholdErrorMsg(null)
     try {
       await api.put('/api/analytics/settings/low-stock-threshold', { threshold })
-      fetchDashboard(activePreset, customStart, customEnd)
+      setThresholdSavedMsg(t('Threshold updated successfully!'))
+      setTimeout(() => setThresholdSavedMsg(null), 3000)
+      await fetchDashboard(activePreset, customStart, customEnd)
     } catch (err) {
       console.error('Failed to save threshold', err)
+      setThresholdErrorMsg(err?.response?.data?.error || err?.message || t('Failed to save threshold'))
+      setTimeout(() => setThresholdErrorMsg(null), 4000)
     } finally {
       setSavingThreshold(false)
     }
@@ -497,6 +506,22 @@ export default function StoreAnalyticsPage({ onBack }) {
   }
 
   const currency = data?.summary?.currencySymbol || '$'
+
+  const activeLowStockProducts = useMemo(() => {
+    if (!data) return []
+    const previews = data.productPreviews
+    const lowStock = data.lowStockProducts
+    if (!previews || previews.length === 0) return lowStock || []
+    return previews
+      .filter(p => p.currentStock <= threshold)
+      .map(p => ({
+        productId: p.productId,
+        productName: p.productName,
+        imageUrl: p.imageUrl,
+        remainingQuantity: p.currentStock,
+        threshold: threshold
+      }))
+  }, [data, threshold])
 
   // ═══ Render ═══
 
@@ -865,12 +890,24 @@ export default function StoreAnalyticsPage({ onBack }) {
             {savingThreshold ? '...' : t('Save')}
           </button>
           <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>
-            {t('Products with stock below this number will be flagged')}
+            {t('Products with stock below or equal to this number will be flagged')}
           </span>
         </div>
-        {lowStockProducts?.length > 0 ? (
+
+        {thresholdSavedMsg && (
+          <div style={{ margin: '10px 0', padding: '10px 14px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10b981', borderRadius: '8px', color: '#10b981', fontSize: '13px', fontWeight: 600 }}>
+            ✅ {thresholdSavedMsg}
+          </div>
+        )}
+        {thresholdErrorMsg && (
+          <div style={{ margin: '10px 0', padding: '10px 14px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid #ef4444', borderRadius: '8px', color: '#ef4444', fontSize: '13px', fontWeight: 600 }}>
+            ⚠️ {thresholdErrorMsg}
+          </div>
+        )}
+
+        {activeLowStockProducts?.length > 0 ? (
           <div className="low-stock-grid">
-            {lowStockProducts.map(p => (
+            {activeLowStockProducts.map(p => (
               <div
                 key={p.productId}
                 className="low-stock-item"

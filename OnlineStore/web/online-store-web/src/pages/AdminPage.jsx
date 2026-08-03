@@ -526,7 +526,7 @@ export default function AdminPage({ onBack }) {
                     </button>
                     <button className={`admin-tab-btn ${tab === 'ai' ? 'active' : ''}`} onClick={() => setTab('ai')}>
                         <span className="material-symbols-outlined admin-tab-icon">auto_awesome</span>
-                        <span>AI Assistant</span>
+                        <span>{t('AI Assistant')}</span>
                     </button>
                 </div>
 
@@ -566,7 +566,7 @@ export default function AdminPage({ onBack }) {
                                             <div className="admin-file-upload-row">
                                                 {productForm.images.map((img, idx) => (
                                                     <div key={idx} className="admin-file-preview-card">
-                                                        <img src={getImageUrl(img)} alt="Preview" className="admin-file-preview-img" />
+                                                        <img src={getImageUrl(img)} alt={t('Preview')} className="admin-file-preview-img" />
                                                         <button type="button" onClick={() => setProductForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}
                                                             className="admin-file-remove-btn">✕</button>
                                                     </div>
@@ -740,7 +740,7 @@ export default function AdminPage({ onBack }) {
                                         <div className="admin-file-upload-row">
                                             {newCatImagePreview ? (
                                                 <div className="admin-file-preview-card">
-                                                    <img src={newCatImagePreview} alt="Preview" className="admin-file-preview-img" />
+                                                    <img src={newCatImagePreview} alt={t('Preview')} className="admin-file-preview-img" />
                                                     <button type="button" onClick={() => { setNewCatImageFile(null); setNewCatImagePreview(null); }} className="admin-file-remove-btn">✕</button>
                                                 </div>
                                             ) : (
@@ -822,7 +822,7 @@ export default function AdminPage({ onBack }) {
                                     <div className="admin-file-upload-row">
                                         {adImagePreview ? (
                                             <div className="admin-file-preview-card" style={{ width: '200px', height: '100px' }}>
-                                                <img src={adImagePreview} alt="Preview" className="admin-file-preview-img" />
+                                                <img src={adImagePreview} alt={t('Preview')} className="admin-file-preview-img" />
                                                 <button type="button" onClick={() => { setAdImageFile(null); setAdImagePreview(null); }} className="admin-file-remove-btn">✕</button>
                                             </div>
                                         ) : (

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../apiClient';
 import './AiDashboardTab.css';
 
 export default function AiDashboardTab() {
+  const { t } = useTranslation();
   const [summary, setSummary] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [knowledgeGaps, setKnowledgeGaps] = useState([]);
@@ -50,7 +52,7 @@ export default function AiDashboardTab() {
       const sumRes = await api.get('/api/feedback/summary');
       setSummary(sumRes.data);
     } catch (err) {
-      alert('Failed to submit review');
+      alert(t('Failed to submit review'));
       console.error(err);
     }
   };
@@ -58,7 +60,7 @@ export default function AiDashboardTab() {
   const handleResolveGap = async (id) => {
     const resolution = resolutionText[id] || '';
     if (!resolution.trim()) {
-      alert('Please enter a resolution note.');
+      alert(t('Please enter a resolution note.'));
       return;
     }
 
@@ -71,19 +73,19 @@ export default function AiDashboardTab() {
       const gapRes = await api.get('/api/learning/knowledge-gaps');
       setKnowledgeGaps(gapRes.data);
     } catch (err) {
-      alert('Failed to resolve knowledge gap');
+      alert(t('Failed to resolve knowledge gap'));
       console.error(err);
     }
   };
 
   const runManualAnalysis = async () => {
-    if (!confirm('Run daily learning analysis now? This compiles all conversation telemetry.')) return;
+    if (!confirm(t('Run daily learning analysis now? This compiles all conversation telemetry.'))) return;
     try {
       await api.post('/api/learning/run-analysis');
-      alert('Learning analysis executed successfully!');
+      alert(t('Learning analysis executed successfully!'));
       fetchDashboardData();
     } catch (err) {
-      alert('Failed to run analysis');
+      alert(t('Failed to run analysis'));
       console.error(err);
     }
   };
@@ -92,7 +94,7 @@ export default function AiDashboardTab() {
     return (
       <div className="ai-dashboard-loading">
         <div className="spinner"></div>
-        <p>Loading AI Agent Analytics...</p>
+        <p>{t('Loading AI Agent Analytics...')}</p>
       </div>
     );
   }
@@ -101,11 +103,11 @@ export default function AiDashboardTab() {
     <div className="ai-dashboard-container">
       <div className="ai-dashboard-header">
         <div>
-          <h3 className="dashboard-title">AI Performance & Learning Dashboard</h3>
-          <p className="dashboard-subtitle">Monitor agent ratings, review prompt optimization suggestions, and resolve identified knowledge gaps.</p>
+          <h3 className="dashboard-title">{t('AI Performance & Learning Dashboard')}</h3>
+          <p className="dashboard-subtitle">{t('Monitor agent ratings, review prompt optimization suggestions, and resolve identified knowledge gaps.')}</p>
         </div>
         <button className="primary manual-analysis-btn" onClick={runManualAnalysis}>
-          ⚙ Run Analytics Engine
+          ⚙ {t('Run Analytics Engine')}
         </button>
       </div>
 
@@ -115,19 +117,19 @@ export default function AiDashboardTab() {
           className={`d-tab-btn ${activeSubTab === 'ratings' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('ratings')}
         >
-          ⭐ Agent Ratings & Stats
+          ⭐ {t('Agent Ratings & Stats')}
         </button>
         <button 
           className={`d-tab-btn ${activeSubTab === 'suggestions' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('suggestions')}
         >
-          💡 Improvement Suggestions ({suggestions.length})
+          💡 {t('Improvement Suggestions ({{count}})', { count: suggestions.length })}
         </button>
         <button 
           className={`d-tab-btn ${activeSubTab === 'learning' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('learning')}
         >
-          🧠 What Agents Learned ({knowledgeGaps.filter(g => g.status === 'detected').length})
+          🧠 {t('What Agents Learned ({{count}})', { count: knowledgeGaps.filter(g => g.status === 'detected').length })}
         </button>
       </div>
 
@@ -137,7 +139,7 @@ export default function AiDashboardTab() {
           {/* Summary metrics */}
           <div className="metrics-row">
             <div className="metric-card">
-              <span className="m-label">Avg Agent Rating</span>
+              <span className="m-label">{t('Avg Agent Rating')}</span>
               <span className="m-val">{summary?.averageRating ? `${summary.averageRating} / 5` : 'N/A'}</span>
               <div className="stars-indicator">
                 {Array.from({ length: Math.round(summary?.averageRating || 0) }).map((_, i) => (
@@ -146,11 +148,11 @@ export default function AiDashboardTab() {
               </div>
             </div>
             <div className="metric-card">
-              <span className="m-label">Total Feedbacks Received</span>
+              <span className="m-label">{t('Total Feedbacks Received')}</span>
               <span className="m-val">{summary?.totalFeedback || 0}</span>
             </div>
             <div className="metric-card">
-              <span className="m-label">Telemetry Conversations</span>
+              <span className="m-label">{t('Telemetry Conversations')}</span>
               <span className="m-val">{latestAnalysis?.totalConversations || 0}</span>
             </div>
           </div>
@@ -158,7 +160,7 @@ export default function AiDashboardTab() {
           <div className="dashboard-panels-row">
             {/* Agent Satisfactions */}
             <div className="dashboard-panel">
-              <h4>Agent Ratings Breakdown</h4>
+              <h4>{t('Agent Ratings Breakdown')}</h4>
               <div className="agent-ratings-list">
                 {summary?.agentSatisfactionScores && Object.keys(summary.agentSatisfactionScores).length > 0 ? (
                   Object.entries(summary.agentSatisfactionScores).map(([agent, score]) => (
@@ -171,24 +173,24 @@ export default function AiDashboardTab() {
                     </div>
                   ))
                 ) : (
-                  <p className="no-data-msg">No ratings received for individual agents yet.</p>
+                  <p className="no-data-msg">{t('No ratings received for individual agents yet.')}</p>
                 )}
               </div>
             </div>
 
             {/* Common Feedback Categories */}
             <div className="dashboard-panel">
-              <h4>Feedback Type Breakdown</h4>
+              <h4>{t('Feedback Type Breakdown')}</h4>
               <div className="type-breakdown-list">
                 {summary?.feedbackTypeBreakdown && Object.keys(summary.feedbackTypeBreakdown).length > 0 ? (
                   Object.entries(summary.feedbackTypeBreakdown).map(([type, count]) => (
                     <div key={type} className="type-breakdown-item">
-                      <span className="type-name">{type}</span>
-                      <span className="type-count-badge">{count} times</span>
+                      <span className="type-name">{t(type)}</span>
+                      <span className="type-count-badge">{t('{{count}} times', { count })}</span>
                     </div>
                   ))
                 ) : (
-                  <p className="no-data-msg">No specific feedback types logged yet.</p>
+                  <p className="no-data-msg">{t('No specific feedback types logged yet.')}</p>
                 )}
               </div>
             </div>
@@ -196,7 +198,7 @@ export default function AiDashboardTab() {
 
           {/* Top complaints / comments */}
           <div className="dashboard-panel full-width">
-            <h4>Recent Complaints & Low Ratings</h4>
+            <h4>{t('Recent Complaints & Low Ratings')}</h4>
             {summary?.topComplaints && summary.topComplaints.length > 0 ? (
               <ul className="complaints-list">
                 {summary.topComplaints.map((comp, idx) => (
@@ -207,7 +209,7 @@ export default function AiDashboardTab() {
                 ))}
               </ul>
             ) : (
-              <p className="no-data-msg">No negative feedback comments received recently. Keep it up!</p>
+              <p className="no-data-msg">{t('No negative feedback comments received recently. Keep it up!')}</p>
             )}
           </div>
         </div>
@@ -217,8 +219,8 @@ export default function AiDashboardTab() {
       {activeSubTab === 'suggestions' && (
         <div className="suggestions-tab-container">
           <div className="suggestions-header">
-            <h4>Pending Prompts & Rules Optimization Suggestions</h4>
-            <p>The learning engine automatically flags agents with high negative feedback rates or low tool success rates.</p>
+            <h4>{t('Pending Prompts & Rules Optimization Suggestions')}</h4>
+            <p>{t('The learning engine automatically flags agents with high negative feedback rates or low tool success rates.')}</p>
           </div>
 
           <div className="suggestions-list">
@@ -227,11 +229,11 @@ export default function AiDashboardTab() {
                 <div className="suggestion-card-header">
                   <div>
                     <span className={`priority-badge p-${sug.priority}`}>
-                      Priority: {sug.priority === 1 ? 'High' : sug.priority === 2 ? 'Medium' : 'Low'}
+                      {t('Priority: {{level}}', { level: t(sug.priority === 1 ? 'High' : sug.priority === 2 ? 'Medium' : 'Low') })}
                     </span>
                     <span className="agent-name-badge">{sug.agentName}</span>
                   </div>
-                  <span className="sug-category">{sug.category} suggestion</span>
+                  <span className="sug-category">{t('{{category}} suggestion', { category: sug.category })}</span>
                 </div>
 
                 <div className="suggestion-body">
@@ -239,7 +241,7 @@ export default function AiDashboardTab() {
                   <p className="sug-desc">{sug.description}</p>
                   
                   <div className="sug-change-box">
-                    <strong>Suggested Action:</strong>
+                    <strong>{t('Suggested Action:')}</strong>
                     <pre className="sug-change-pre">{sug.suggestedChange}</pre>
                   </div>
                 </div>
@@ -247,7 +249,7 @@ export default function AiDashboardTab() {
                 <div className="suggestion-actions">
                   <input
                     type="text"
-                    placeholder="Add review notes (optional)..."
+                    placeholder={t('Add review notes (optional)...')}
                     value={notesText[sug.id] || ''}
                     onChange={(e) => setNotesText(prev => ({ ...prev, [sug.id]: e.target.value }))}
                     className="review-notes-input"
@@ -257,13 +259,13 @@ export default function AiDashboardTab() {
                       className="approve-btn"
                       onClick={() => handleReviewSuggestion(sug.id, true)}
                     >
-                      ✓ Approve Change
+                      ✓ {t('Approve Change')}
                     </button>
                     <button 
                       className="reject-btn"
                       onClick={() => handleReviewSuggestion(sug.id, false)}
                     >
-                      ✕ Reject
+                      ✕ {t('Reject')}
                     </button>
                   </div>
                 </div>
@@ -273,8 +275,8 @@ export default function AiDashboardTab() {
             {suggestions.length === 0 && (
               <div className="empty-state-suggestions">
                 <span className="empty-icon">✓</span>
-                <h5>All Agent Configs Clear</h5>
-                <p>There are no pending optimization suggestions. Satisfaction rates are healthy!</p>
+                <h5>{t('All Agent Configs Clear')}</h5>
+                <p>{t('There are no pending optimization suggestions. Satisfaction rates are healthy!')}</p>
               </div>
             )}
           </div>
@@ -285,36 +287,36 @@ export default function AiDashboardTab() {
       {activeSubTab === 'learning' && (
         <div className="learning-tab-container">
           <div className="learning-header">
-            <h4>Knowledge Gaps Identified by Telemetry</h4>
-            <p>These gaps represent areas where agents were unable to resolve queries (e.g. empty tool results, assistant uncertainty).</p>
+            <h4>{t('Knowledge Gaps Identified by Telemetry')}</h4>
+            <p>{t('These gaps represent areas where agents were unable to resolve queries (e.g. empty tool results, assistant uncertainty).')}</p>
           </div>
 
           <div className="gaps-list">
             {knowledgeGaps.map((gap) => (
               <div key={gap.id} className={`gap-card ${gap.status}`}>
                 <div className="gap-card-header">
-                  <span className="gap-topic">Topic: <code>{gap.topic}</code></span>
-                  <span className={`status-pill ${gap.status}`}>{gap.status}</span>
+                  <span className="gap-topic">{t('Topic:')} <code>{gap.topic}</code></span>
+                  <span className={`status-pill ${gap.status}`}>{t(gap.status)}</span>
                 </div>
 
                 <div className="gap-body">
                   <p className="gap-desc">{gap.description}</p>
                   {gap.exampleQuestions && (
                     <div className="gap-examples">
-                      <strong>Sample User Queries:</strong>
+                      <strong>{t('Sample User Queries:')}</strong>
                       <p className="example-text">"{gap.exampleQuestions}"</p>
                     </div>
                   )}
                   <div className="gap-stats">
-                    <span>Occurrences: <strong>{gap.occurrenceCount}</strong></span>
+                    <span>{t('Occurrences:')} <strong>{gap.occurrenceCount}</strong></span>
                     {gap.resolvedAtUtc && (
-                      <span>Resolved At: {new Date(gap.resolvedAtUtc).toLocaleDateString()}</span>
+                      <span>{t('Resolved At: {{date}}', { date: new Date(gap.resolvedAtUtc).toLocaleDateString() })}</span>
                     )}
                   </div>
 
                   {gap.resolution && (
                     <div className="gap-resolution-display">
-                      <strong>Resolution details:</strong>
+                      <strong>{t('Resolution details:')}</strong>
                       <p>{gap.resolution}</p>
                     </div>
                   )}
@@ -324,7 +326,7 @@ export default function AiDashboardTab() {
                   <div className="gap-resolve-area">
                     <input
                       type="text"
-                      placeholder="Explain how this gap was fixed (e.g. 'Added info to product desc')..."
+                      placeholder={t('Explain how this gap was fixed (e.g. adding info to product description)...')}
                       value={resolutionText[gap.id] || ''}
                       onChange={(e) => setResolutionText(prev => ({ ...prev, [gap.id]: e.target.value }))}
                       className="gap-resolution-input"
@@ -333,7 +335,7 @@ export default function AiDashboardTab() {
                       className="resolve-gap-btn"
                       onClick={() => handleResolveGap(gap.id)}
                     >
-                      Mark Resolved
+                      {t('Mark Resolved')}
                     </button>
                   </div>
                 )}
@@ -341,7 +343,7 @@ export default function AiDashboardTab() {
             ))}
 
             {knowledgeGaps.length === 0 && (
-              <p className="no-data-msg">No knowledge gaps detected from conversation telemetry yet.</p>
+              <p className="no-data-msg">{t('No knowledge gaps detected from conversation telemetry yet.')}</p>
             )}
           </div>
         </div>

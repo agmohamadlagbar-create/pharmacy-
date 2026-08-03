@@ -522,7 +522,7 @@ public class AnalyticsService : IAnalyticsService
 
         // ═══ Section 9: Low Stock Warnings ═══
         var lowStockProducts = allProducts
-            .Where(p => p.Status == ProductStatus.Approved && p.StockQuantity < lowStockThreshold)
+            .Where(p => p.Status == ProductStatus.Approved && p.StockQuantity <= lowStockThreshold)
             .OrderBy(p => p.StockQuantity)
             .Select(p => new LowStockProductDto(
                 p.Id, p.Name, p.ImageUrl, p.StockQuantity, lowStockThreshold

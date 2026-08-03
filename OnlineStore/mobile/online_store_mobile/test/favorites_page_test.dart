@@ -20,7 +20,7 @@ Widget _buildTestable(Widget child) {
 
 void main() {
   setUp(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
+    GoogleFonts.config.allowRuntimeFetching = true;
   });
 
   tearDown(() {
@@ -47,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Premium Dates'), findsOneWidget);
-    expect(find.text('\$12.5'), findsOneWidget);
+    expect(find.text('\$12.50'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.favorite));
     await tester.pumpAndSettle();

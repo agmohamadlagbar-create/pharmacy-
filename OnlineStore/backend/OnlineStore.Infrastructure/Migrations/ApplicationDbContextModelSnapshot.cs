@@ -1435,6 +1435,12 @@ namespace OnlineStore.Infrastructure.Migrations
                     b.Property<string>("PaymentMethod")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("PreparingAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ReadyForPickupAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 

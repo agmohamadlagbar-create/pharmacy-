@@ -10,6 +10,7 @@ import 'api.dart';
 
 import 'signalr_service.dart';
 import 'utils/grouped_order_utils.dart';
+import 'widgets/stitch_bottom_navigation_bar.dart';
 
 class ActiveOrdersPage extends StatefulWidget {
   const ActiveOrdersPage({super.key});
@@ -283,6 +284,20 @@ class _ActiveOrdersPageState extends State<ActiveOrdersPage> {
                         },
                       ),
                     ),
+      bottomNavigationBar: StitchBottomNavigationBar(
+        currentIndex: 3,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.popUntil(context, ModalRoute.withName('/categories'));
+          } else if (index == 1) {
+            Navigator.pushNamed(context, '/favorites');
+          } else if (index == 2) {
+            Navigator.pushNamed(context, '/cart');
+          } else if (index == 4) {
+            Navigator.pushNamed(context, '/profile');
+          }
+        },
+      ),
     );
   }
 

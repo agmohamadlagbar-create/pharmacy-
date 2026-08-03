@@ -83,7 +83,7 @@ function SideCard({ title, btnText, onClick, type, side, isPeeling }) {
 
 export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTheme, initialMode }) {
   const { t, i18n } = useTranslation()
-  const isRTL = i18n.language === 'ar'
+  const isRTL = i18n.language?.startsWith('ar')
   const navigate = useNavigate()
   const [accountType, setAccountType] = useState(ACCOUNT.USER)
   const [mode, setMode] = useState(initialMode === 'Sign Up' ? MODE.SIGNUP : MODE.LOGIN)
@@ -188,7 +188,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
     try {
       await api.post('/api/auth/send-code', { email })
       setCodeSent(true)
-      setMsg({ type: 'ok', text: `✅ ${t('Code sent! Check your email.')}` })
+      setMsg({ type: 'ok', text: '✅ ' + t('Code sent! Check your email.') })
     } catch (err) {
       setMsg({ type: 'error', text: err?.response?.data?.error || err.message || t('Failed to send code') })
     } finally {
@@ -234,7 +234,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
         err?.response?.data?.error ||
         (Array.isArray(err?.response?.data?.errors) ? err.response.data.errors.join('\n') : null) ||
         err.message ||
-        'Request failed'
+        t('Request failed')
       setMsg({ type: 'error', text })
     } finally {
       setLoading(false)
@@ -252,7 +252,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
     try {
       await api.post('/api/auth/forgot-password', { email: resetEmail })
       setResetCodeSent(true)
-      setMsg({ type: 'ok', text: '✅ Code sent!' })
+      setMsg({ type: 'ok', text: '✅ ' + t('Code sent! Check your email.') })
     } catch (err) {
       setMsg({ type: 'error', text: err?.response?.data?.error || err.message })
     } finally {
@@ -262,14 +262,14 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
 
   async function handleResetPassword(e) {
     e.preventDefault()
-    if (!resetCode.trim()) { setMsg({ type: 'error', text: 'Enter code' }); return }
-    if (!newPassword.trim() || newPassword.length < 8) { setMsg({ type: 'error', text: 'Password must be at least 8 chars' }); return }
+    if (!resetCode.trim()) { setMsg({ type: 'error', text: t('Enter code') }); return }
+    if (!newPassword.trim() || newPassword.length < 8) { setMsg({ type: 'error', text: t('Password must be at least 8 chars') }); return }
 
     setLoading(true)
     setMsg(null)
     try {
       await api.post('/api/auth/reset-password', { email: resetEmail, code: resetCode, newPassword })
-      setMsg({ type: 'ok', text: '✅ Password reset! Log in now.' })
+      setMsg({ type: 'ok', text: `✅ ${t('Password reset! Log in now.')}` })
       setTimeout(() => { setShowForgot(false); setMsg(null) }, 2000)
     } catch (err) {
       setMsg({ type: 'error', text: err?.response?.data?.error || err.message })
@@ -284,7 +284,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
       <div className="card" style={{ maxWidth: '440px', margin: '40px auto', width: '100%' }} dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="header" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 700 }}>{t('Reset Password')}</h2>
-          <button type="button" className="icon-btn" onClick={toggleTheme} title="Toggle Theme">
+          <button type="button" className="icon-btn" onClick={toggleTheme} title={t('Toggle Theme')}>
             <span className="material-symbols-outlined">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
           </button>
         </div>
@@ -303,13 +303,13 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
           {resetCodeSent && (
             <>
               <div className="field">
-                <label>Reset Code</label>
+                <label>{t('Reset Code')}</label>
                 <input value={resetCode} onChange={(e) => setResetCode(e.target.value)} placeholder="123456" maxLength={6} className="admin-input"
                   style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '4px', fontWeight: '700' }} />
               </div>
               <div className="field">
                 <label>{t('New Password')}</label>
-                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 8 chars" />
+                <input type="password" dir="ltr" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t('Min 8 chars')} />
               </div>
             </>
           )}
@@ -471,7 +471,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
               <img src="/lagbarshop-icon.svg" alt="LagbarShop Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
               LagbarShop
             </h1>
-            <button type="button" className="icon-btn" onClick={toggleTheme} title="Toggle Theme">
+            <button type="button" className="icon-btn" onClick={toggleTheme} title={t('Toggle Theme')}>
               <span className="material-symbols-outlined">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
             </button>
           </div>
@@ -560,7 +560,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
                 </div>
                 <div className="field">
                   <label>{t('Phone')}</label>
-                  <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1234567890" />
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1234567890" dir="ltr" />
                 </div>
                 <div className="field">
                   <label>{t('Vehicle Info')}</label>
@@ -575,11 +575,12 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
               <div style={{ position: 'relative' }}>
                 <input
                   type="email"
+                  dir="ltr"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t('name@example.com')}
                 />
-                <span className="material-symbols-outlined" style={{ position: 'absolute', right: '14px', insetInlineEnd: '14px', insetInlineStart: 'auto', top: '50%', transform: 'translateY(-50%)', color: 'var(--outline)', fontSize: '20px', pointerEvents: 'none' }}>
+                <span className="material-symbols-outlined" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--outline)', fontSize: '20px', pointerEvents: 'none' }}>
                   alternate_email
                 </span>
               </div>
@@ -591,6 +592,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
               <div style={{ position: 'relative' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  dir="ltr"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -598,7 +600,7 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: 'absolute', right: '14px', insetInlineEnd: '14px', insetInlineStart: 'auto', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--outline)', cursor: 'pointer', padding: 0, display: 'flex' }}
+                  style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--outline)', cursor: 'pointer', padding: 0, display: 'flex' }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
                     {showPassword ? 'visibility_off' : 'visibility'}
@@ -682,3 +684,4 @@ export default function AuthPage({ onLoginSuccess, onGuestLogin, theme, toggleTh
     </>
   )
 }
+

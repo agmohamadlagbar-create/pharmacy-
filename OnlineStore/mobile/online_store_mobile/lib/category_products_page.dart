@@ -4,9 +4,12 @@ import 'package:easy_localization/easy_localization.dart';
 import 'api.dart';
 import 'widgets/custom_store_app_bar.dart';
 import 'widgets/skeleton_loader.dart';
+import 'widgets/stitch_product_card.dart';
+import 'widgets/stitch_bottom_navigation_bar.dart';
+import 'widgets/status_chip.dart';
 import 'product_info_page.dart';
-import 'public_store_page.dart';
 import 'favorites_manager.dart';
+import 'utils/animation_utils.dart';
 
 class CategoryProductsPage extends StatefulWidget {
   final String categoryId;
@@ -29,7 +32,7 @@ class CategoryProductsPage extends StatefulWidget {
 }
 
 class _CategoryProductsPageState extends State<CategoryProductsPage> {
-  List<dynamic> _products = [];
+  List<Map<String, dynamic>> _products = [];
   List<dynamic> _subcategories = [];
   bool _isLoading = true;
   bool _loadingSubcategories = true;
@@ -37,6 +40,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   String? _selectedSubcategoryId;
   String? _userCountry;
   String? _userCity;
+  Set<String> _favoriteProductIds = {};
 
   @override
   void initState() {
@@ -45,9 +49,19 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   }
 
   Future<void> _initializeData() async {
+    await _loadFavorites();
     await _fetchProfile();
     await _fetchSubcategories();
     await _fetchProducts();
+  }
+
+  Future<void> _loadFavorites() async {
+    final favs = await FavoritesManager.getFavorites();
+    if (mounted) {
+      setState(() {
+        _favoriteProductIds = favs.map((e) => e['id'].toString()).toSet();
+      });
+    }
   }
 
   Future<void> _fetchProfile() async {
@@ -59,9 +73,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
           _userCity = res['city'];
         });
       }
-    } catch (_) {
-      // Ignore profile errors, proceed without location filtering
-    }
+    } catch (_) {}
   }
 
   Future<void> _fetchSubcategories() async {
@@ -88,16 +100,20 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     try {
       final targetId = _selectedSubcategoryId ?? widget.categoryId;
       String url = '/api/products/approved?categoryId=$targetId&limit=100';
-      
+
       if (_userCountry != null) url += '&country=${Uri.encodeComponent(_userCountry!)}';
       if (_userCity != null) url += '&city=${Uri.encodeComponent(_userCity!)}';
-      
+
       final res = await Api.get(url);
       final items = res['data'] ?? res;
-      
+
       if (mounted) {
         setState(() {
-          _products = items is List ? items : [];
+          if (items is List) {
+            _products = items.map((p) => Map<String, dynamic>.from(p)).toList();
+          } else {
+            _products = [];
+          }
           _isLoading = false;
         });
       }
@@ -111,12 +127,22 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     }
   }
 
+  Future<void> _toggleFavorite(Map<String, dynamic> product) async {
+    await FavoritesManager.toggleFavorite(product);
+    await _loadFavorites();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF7F5),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
+          // Custom App Bar with Search, Theme toggle, and Cart
           SliverToBoxAdapter(
             child: CustomStoreAppBar(
               cartCount: widget.cartCount,
@@ -124,49 +150,38 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
               onSearchTap: () => Navigator.pushNamed(context, '/search'),
             ),
           ),
-          
-          // Header section
+
+          // Header Section
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD85A30).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Category'.tr(),
-                          style: GoogleFonts.dmSans(
-                            color: const Color(0xFFD85A30),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                      StatusChip(
+                        label: 'Category'.tr().toUpperCase(),
+                        type: StatusChipType.info,
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.categoryName,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 32,
+                    style: GoogleFonts.inter(
+                      fontSize: 26,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1A0A00),
+                      letterSpacing: -0.5,
+                      color: colorScheme.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Container(
                     width: 40,
                     height: 3,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD85A30),
+                      color: colorScheme.primary,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -175,14 +190,15 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
             ),
           ),
 
-          // Subcategories Chips
+          // Subcategories Chips Filter
           if (!_loadingSubcategories && _subcategories.isNotEmpty)
             SliverToBoxAdapter(
               child: Container(
-                height: 40,
+                height: 42,
                 margin: const EdgeInsets.only(bottom: 16),
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: _subcategories.length + 1,
                   itemBuilder: (context, index) {
@@ -205,19 +221,21 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                             _fetchProducts();
                           }
                         },
-                        labelStyle: GoogleFonts.dmSans(
+                        labelStyle: GoogleFonts.inter(
                           fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected ? Colors.white : const Color(0xFF4A3F3B),
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : colorScheme.onSurface,
                         ),
-                        selectedColor: const Color(0xFFD85A30),
-                        backgroundColor: Colors.white,
+                        selectedColor: colorScheme.primary,
+                        backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
-                            color: isSelected 
-                                ? const Color(0xFFD85A30) 
-                                : const Color(0xFFD85A30).withValues(alpha: 0.1),
+                            color: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.outlineVariant.withValues(alpha: 0.5),
                           ),
                         ),
                         showCheckmark: false,
@@ -229,6 +247,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
               ),
             ),
 
+          // Loading Skeleton State
           if (_isLoading)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -237,14 +256,19 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.75,
+                  childAspectRatio: 0.72,
                 ),
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => const SkeletonLoader(),
+                  (context, index) => Shimmer(
+                    child: Skeleton(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
                   childCount: 6,
                 ),
               ),
             )
+          // Error State
           else if (_error != null)
             SliverFillRemaining(
               child: Center(
@@ -253,20 +277,16 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      Icon(Icons.error_outline_rounded, size: 48, color: colorScheme.error),
                       const SizedBox(height: 16),
                       Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(color: const Color(0xFF6B5E59)),
+                        style: GoogleFonts.inter(color: colorScheme.onSurfaceVariant),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: _fetchProducts,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD85A30),
-                          foregroundColor: Colors.white,
-                        ),
                         child: Text('Retry'.tr()),
                       ),
                     ],
@@ -274,31 +294,33 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                 ),
               ),
             )
+          // Empty State
           else if (_products.isEmpty)
             SliverFillRemaining(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.shopping_bag_outlined, size: 64, color: Color(0xFFA8948D)),
+                    Icon(Icons.shopping_bag_outlined, size: 64, color: colorScheme.onSurfaceVariant),
                     const SizedBox(height: 16),
                     Text(
                       'No products in this category'.tr(),
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF4A3F3B),
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Try another category or search for something else.'.tr(),
-                      style: GoogleFonts.dmSans(color: const Color(0xFF6B5E59)),
+                      style: GoogleFonts.inter(color: colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ),
               ),
             )
+          // Product 2-Column Grid (Stitch Product Cards)
           else
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
@@ -307,16 +329,36 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.65,
+                  childAspectRatio: 0.72,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final product = _products[index];
-                    return _ProductCard(
+                    final String productId = product['id'].toString();
+                    final bool isFav = _favoriteProductIds.contains(productId);
+
+                    return StitchProductCard(
                       product: product,
-                      onAddToCart: widget.onAddToCart,
-                      onNavigateCart: widget.onNavigateCart,
-                      cartCount: widget.cartCount,
+                      isFavorite: isFav,
+                      onTap: () {
+                        final pId = int.tryParse(productId) ?? 0;
+                        if (pId > 0) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProductInfoPage(productId: pId),
+                            ),
+                          );
+                        }
+                      },
+                      onFavoriteToggle: () => _toggleFavorite(product),
+                      onAddToCart: () {
+                        final pId = int.tryParse(productId) ?? 0;
+                        if (pId > 0) {
+                          widget.onAddToCart(pId);
+                          showAddToCartAnimation(context);
+                        }
+                      },
                     );
                   },
                   childCount: _products.length,
@@ -325,240 +367,22 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _ProductCard extends StatefulWidget {
-  final Map<String, dynamic> product;
-  final Function(int) onAddToCart;
-  final VoidCallback onNavigateCart;
-  final int cartCount;
-
-  const _ProductCard({
-    required this.product,
-    required this.onAddToCart,
-    required this.onNavigateCart,
-    required this.cartCount,
-  });
-
-  @override
-  State<_ProductCard> createState() => _ProductCardState();
-}
-
-class _ProductCardState extends State<_ProductCard> {
-  bool _isFavorite = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkFavorite();
-  }
-
-  Future<void> _checkFavorite() async {
-    final fav = await FavoritesManager.isFavorite(widget.product['id']);
-    if (mounted) setState(() => _isFavorite = fav);
-  }
-
-  Future<void> _toggleFavorite() async {
-    await FavoritesManager.toggleFavorite({
-      'id': widget.product['id'],
-      'name': widget.product['name'],
-      'price': widget.product['price'],
-      'imageUrl': widget.product['imageUrl'],
-    });
-    _checkFavorite();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final price = (widget.product['price'] as num?)?.toDouble() ?? 0.0;
-    final imageUrl = widget.product['imageUrl'] as String?;
-    final fullImageUrl = imageUrl != null
-        ? (imageUrl.startsWith('http') ? imageUrl : '${Api.baseUrl}$imageUrl')
-        : null;
-
-    return GestureDetector(
-      onTap: () async {
-        if (widget.product['id'] != null) {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProductInfoPage(
-                productId: widget.product['id'],
-                onAddToCart: widget.onAddToCart,
-                onNavigateCart: widget.onNavigateCart,
-                cartCount: widget.cartCount,
-              ),
-            ),
-          );
-          _checkFavorite();
-        }
-      },
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Color(0x14000000), width: 0.5),
-        ),
-        color: const Color(0xFFF9F5F3),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Container(
-                      color: const Color(0xFFF0E9E6),
-                      child: fullImageUrl != null
-                          ? Image.network(
-                              fullImageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.image_not_supported,
-                                  size: 40,
-                                  color: Color(0xFFA8948D)),
-                            )
-                          : const Icon(Icons.image_not_supported,
-                              size: 40, color: Color(0xFFA8948D)),
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2))
-                        ],
-                      ),
-                      child: Text(
-                        '\$${price.toStringAsFixed(2)}',
-                        style: GoogleFonts.dmSans(
-                          color: const Color(0xFF993C1D),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: InkWell(
-                      onTap: _toggleFavorite,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _isFavorite ? Icons.favorite : Icons.favorite_border,
-                          size: 18,
-                          color: _isFavorite ? Colors.red : Colors.grey,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.product['name'] ?? '',
-                    style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: const Color(0xFF1A0A00)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  if (widget.product['storeName'] != null &&
-                      widget.product['storeName'].toString().isNotEmpty)
-                    InkWell(
-                      onTap: () {
-                        if (widget.product['storeUserId'] != null) {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => PublicStorePage(
-                                        storeUserId:
-                                            widget.product['storeUserId'],
-                                        cartCount: widget.cartCount,
-                                        onNavigateCart: widget.onNavigateCart,
-                                        onAddToCart: widget.onAddToCart,
-                                      )));
-                        }
-                      },
-                      child: Row(
-                        children: [
-                          const Icon(Icons.storefront_outlined,
-                              size: 12, color: Color(0xFFD85A30)),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              widget.product['storeName'],
-                              style: GoogleFonts.dmSans(
-                                color: const Color(0xFFD85A30),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 36,
-                    child: ElevatedButton(
-                      onPressed: (widget.product['stockQuantity'] ?? 0) > 0
-                          ? () => widget.onAddToCart(widget.product['id'])
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        elevation: 0,
-                        backgroundColor: const Color(0xFFD85A30),
-                        disabledBackgroundColor:
-                            const Color(0xFFA8948D).withValues(alpha: 0.3),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: Text(
-                        (widget.product['stockQuantity'] ?? 0) > 0
-                            ? 'Add to Cart'.tr()
-                            : 'Out of Stock'.tr(),
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+      bottomNavigationBar: StitchBottomNavigationBar(
+        currentIndex: 0,
+        cartCount: widget.cartCount,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.popUntil(context, ModalRoute.withName('/categories'));
+          } else if (index == 1) {
+            Navigator.pushNamed(context, '/favorites');
+          } else if (index == 2) {
+            widget.onNavigateCart();
+          } else if (index == 3) {
+            Navigator.pushNamed(context, '/active-orders');
+          } else if (index == 4) {
+            Navigator.pushNamed(context, '/profile');
+          }
+        },
       ),
     );
   }

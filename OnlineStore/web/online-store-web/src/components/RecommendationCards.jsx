@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatPrice as formatPriceUtil } from '../utils/formatPrice.js';
 import './RecommendationCards.css';
 
@@ -68,16 +69,17 @@ function formatPrice(price, currencyCode) {
  */
 function getStockStatus(stock) {
   if (stock <= 0) return { label: 'Out of Stock', className: 'out-of-stock', urgency: true };
-  if (stock <= 3) return { label: `Only ${stock} left!`, className: 'low-stock', urgency: true };
+  if (stock <= 3) return { label: 'Only {{count}} left!', className: 'low-stock', urgency: true };
   if (stock <= 10) return { label: 'Low Stock', className: 'low-stock', urgency: false };
   return { label: 'In Stock', className: 'in-stock', urgency: false };
 }
 
 // ── Product Card ──────────────────────────────────────────────
 function ProductCard({ product, onAddToCart, onNavigateProduct, showTrendingBadge }) {
+  const { t } = useTranslation();
   const [addedState, setAddedState] = useState(false);
 
-  const name = product.ProductName || product.productName || 'Product';
+  const name = product.ProductName || product.productName || t('Product');
   const price = product.Price ?? product.price ?? 0;
   const stock = product.Stock ?? product.stock ?? 0;
   const imageUrl = product.ImageUrl || product.imageUrl;
@@ -85,6 +87,7 @@ function ProductCard({ product, onAddToCart, onNavigateProduct, showTrendingBadg
   const categoryName = product.CategoryName || product.categoryName || '';
   const storeName = product.StoreName || product.storeName || '';
   const stockStatus = getStockStatus(stock);
+  const stockLabel = stock <= 3 && stock > 0 ? t('Only {{count}} left!', { count: stock }) : t(stockStatus.label);
 
   const handleAddToCart = useCallback((e) => {
     e.stopPropagation();
@@ -129,12 +132,12 @@ function ProductCard({ product, onAddToCart, onNavigateProduct, showTrendingBadg
         {/* Badges */}
         <div className="rec-badge-row">
           <div>
-            {showTrendingBadge && <span className="rec-badge rec-badge-trending">🔥 Popular</span>}
+            {showTrendingBadge && <span className="rec-badge rec-badge-trending">🔥 {t('Popular')}</span>}
             {stockStatus.urgency && stock > 0 && (
-              <span className="rec-badge rec-badge-urgency">{stockStatus.label}</span>
+              <span className="rec-badge rec-badge-urgency">{stockLabel}</span>
             )}
             {!stockStatus.urgency && stock <= 10 && stock > 3 && (
-              <span className="rec-badge rec-badge-lowstock">{stockStatus.label}</span>
+              <span className="rec-badge rec-badge-lowstock">{stockLabel}</span>
             )}
           </div>
         </div>
@@ -143,7 +146,7 @@ function ProductCard({ product, onAddToCart, onNavigateProduct, showTrendingBadg
         <button
           className="rec-wishlist-btn"
           onClick={(e) => e.stopPropagation()}
-          title="Save for later"
+          title={t('Save for later')}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -165,7 +168,7 @@ function ProductCard({ product, onAddToCart, onNavigateProduct, showTrendingBadg
         {categoryName && <p className="rec-card-category">{categoryName}</p>}
         <div className="rec-card-price-row">
           <span className="rec-card-price">{formatPrice(price, product.CurrencyCode || product.currencyCode)}</span>
-          <span className={`rec-card-stock ${stockStatus.className}`}>{stockStatus.label}</span>
+          <span className={`rec-card-stock ${stockStatus.className}`}>{stockLabel}</span>
         </div>
 
         {/* Actions */}
@@ -176,7 +179,7 @@ function ProductCard({ product, onAddToCart, onNavigateProduct, showTrendingBadg
             disabled={stock <= 0}
           >
             {addedState ? (
-              'Added'
+              t('Added')
             ) : (
               <>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -184,11 +187,11 @@ function ProductCard({ product, onAddToCart, onNavigateProduct, showTrendingBadg
                   <circle cx="20" cy="21" r="1" />
                   <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
                 </svg>
-                Add
+                {t('Add')}
               </>
             )}
           </button>
-          <button className="rec-quick-view-btn" onClick={handleQuickView} title="Quick View">
+          <button className="rec-quick-view-btn" onClick={handleQuickView} title={t('Quick View')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
               <circle cx="12" cy="12" r="3" />
@@ -222,15 +225,16 @@ function SkeletonCards() {
 
 // ── Recommendation Section ────────────────────────────────────
 function RecommendationSection({ sectionKey, products, config, onAddToCart, onNavigateProduct }) {
+  const { t } = useTranslation();
   if (!products || products.length === 0) return null;
 
   return (
     <div className="rec-section">
       <div className="rec-section-header">
         <span className="rec-section-icon">{config.icon}</span>
-        <h4 className="rec-section-title">{config.title}</h4>
+        <h4 className="rec-section-title">{t(config.title)}</h4>
       </div>
-      <p className="rec-ai-explanation">{config.explanation}</p>
+      <p className="rec-ai-explanation">{t(config.explanation)}</p>
       <div className="rec-carousel">
         {products.map((product) => {
           const pid = product.ProductId || product.productId;

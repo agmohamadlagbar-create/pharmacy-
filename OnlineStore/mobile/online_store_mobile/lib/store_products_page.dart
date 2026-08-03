@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'api.dart';
 import 'widgets/skeleton_loader.dart';
+import 'widgets/stitch_bottom_navigation_bar.dart';
 
 class StoreProductsPage extends StatefulWidget {
   const StoreProductsPage({super.key});
@@ -22,6 +24,7 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
   int? _foodCategoryId;
 
   String _searchQuery = '';
+  final _searchCtrl = TextEditingController();
   String _statusFilter = 'All';
   int? _editingId;
 
@@ -43,6 +46,7 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
 
   @override
   void dispose() {
+    _searchCtrl.dispose();
     _nameCtrl.dispose();
     _descCtrl.dispose();
     _priceCtrl.dispose();
@@ -96,8 +100,8 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text('${'Error:'.tr()} ${e.toString().replaceAll("Exception: ", "")}'),
+              content: Text(
+                  '${'Error:'.tr()} ${e.toString().replaceAll("Exception: ", "")}'),
               backgroundColor: Colors.redAccent),
         );
       }
@@ -258,10 +262,62 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
     }
   }
 
+  Future<void> _confirmDeleteProduct(int id, String productName) async {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete Product'.tr(),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        content: Text(
+          '${'Are you sure you want to delete'.tr()} "${productName.isEmpty ? 'this product' : productName}"? ${'This action cannot be undone.'.tr()}',
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel'.tr(),
+                style: TextStyle(color: colorScheme.onSurfaceVariant)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      _deleteProduct(id);
+    }
+  }
+
   Future<void> _deleteProduct(int id) async {
     try {
       await Api.delete('/api/products/$id');
       _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Product deleted successfully'.tr()),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -294,7 +350,11 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor),
+        border: Border.all(
+          color: theme.brightness == Brightness.dark
+              ? Colors.white.withValues(alpha: 0.1)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
@@ -312,24 +372,27 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
   Widget _buildInput(String label, TextEditingController ctrl,
       {int maxLines = 1, TextInputType? type}) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor),
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
       ),
       child: TextField(
         controller: ctrl,
         maxLines: maxLines,
         keyboardType: type,
-        style: TextStyle(color: theme.colorScheme.onSurface),
+        style: TextStyle(color: colorScheme.onSurface),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+          labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
           border: InputBorder.none,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
     );
@@ -353,59 +416,92 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
       return matchesSearch && matchesStatus;
     }).toList();
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(24),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFD85A30).withValues(alpha: 0.1),
-                border: Border.all(color: const Color(0xFFD85A30).withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(24),
+    return PopScope(
+      canPop: !_showForm,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_showForm) {
+          setState(() {
+            _showForm = false;
+            _editingId = null;
+          });
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          elevation: 0,
+          scrolledUnderElevation: 1,
+          leading: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: InkWell(
+              onTap: () {
+                if (_showForm) {
+                  setState(() {
+                    _showForm = false;
+                    _editingId = null;
+                  });
+                } else {
+                  Navigator.pop(context);
+                }
+              },
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.1),
+                  border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.5)),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Icon(Icons.arrow_back_rounded,
+                    color: Theme.of(context).colorScheme.primary),
               ),
-              child: const Icon(Icons.arrow_back, color: Color(0xFFD85A30)),
             ),
           ),
+          title: Text(
+              _showForm
+                  ? (_editingId != null
+                      ? 'Edit Product'.tr()
+                      : 'Create Product'.tr())
+                  : 'My Products'.tr(),
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface)),
+          centerTitle: true,
+          actions: [
+            if (!_showForm)
+              IconButton(
+                icon: Icon(Icons.add_circle_outline,
+                    color: Theme.of(context).colorScheme.onSurface),
+                onPressed: () => setState(() {
+                  _showForm = true;
+                  _editingId = null;
+                  _nameCtrl.clear();
+                  _descCtrl.clear();
+                  _priceCtrl.clear();
+                  _imageCtrl.clear();
+                  if (_storeType != 'Restaurant') _selectedCategoryId = null;
+                  _selectedSubcategoryId = null;
+                }),
+              ),
+            if (_showForm)
+              IconButton(
+                icon: Icon(Icons.close,
+                    color: Theme.of(context).colorScheme.onSurface),
+                onPressed: () => setState(() {
+                  _showForm = false;
+                  _editingId = null;
+                }),
+              ),
+          ],
         ),
-        title: Text(
-            _showForm
-                ? (_editingId != null ? 'Edit Product'.tr() : 'Create Product'.tr())
-                : 'My Products'.tr(),
-            style: TextStyle(
-                fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
-        centerTitle: true,
-        actions: [
-          if (!_showForm)
-            IconButton(
-              icon: Icon(Icons.add_circle_outline, color: Theme.of(context).colorScheme.onSurface),
-              onPressed: () => setState(() {
-                _showForm = true;
-                _editingId = null;
-                _nameCtrl.clear();
-                _descCtrl.clear();
-                _priceCtrl.clear();
-                _imageCtrl.clear();
-                if (_storeType != 'Restaurant') _selectedCategoryId = null;
-                _selectedSubcategoryId = null;
-              }),
-            ),
-          if (_showForm)
-            IconButton(
-              icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
-              onPressed: () => setState(() {
-                _showForm = false;
-                _editingId = null;
-              }),
-            ),
-        ],
-      ),
-      body: SafeArea(
+        body: SafeArea(
           child: Column(
             children: [
               if (!_showForm) ...[
@@ -414,23 +510,62 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Container(
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Theme.of(context).dividerColor),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outlineVariant
+                            .withValues(alpha: 0.4),
+                      ),
                     ),
                     child: TextField(
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                      controller: _searchCtrl,
+                      textAlignVertical: TextAlignVertical.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                       onChanged: (v) => setState(() => _searchQuery = v),
                       decoration: InputDecoration(
+                        isDense: true,
                         hintText: 'Search products...'.tr(),
-                        hintStyle:
-                            TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
-                        prefixIcon: Icon(Icons.search,
-                            color: Theme.of(context).dividerColor),
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear_rounded,
+                                  size: 18,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
                         border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   ),
@@ -454,7 +589,8 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                 horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
                               color: isActive
-                                  ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                                  ? theme.colorScheme.primary
+                                      .withValues(alpha: 0.1)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
@@ -548,7 +684,10 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                       margin: const EdgeInsets.only(bottom: 12),
                                       height: 150,
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerHighest
+                                            .withValues(alpha: 0.3),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
                                             color:
@@ -612,12 +751,9 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                               BorderRadius
                                                                   .circular(12),
                                                           child: Image.network(
-                                                            _imageCtrl.text
-                                                                    .startsWith(
-                                                                        'http')
-                                                                ? _imageCtrl
-                                                                    .text
-                                                                : '${Api.baseUrl}${_imageCtrl.text}',
+                                                            Api.formatImageUrl(
+                                                                _imageCtrl
+                                                                    .text),
                                                             fit: BoxFit.cover,
                                                             errorBuilder: (_,
                                                                     __, ___) =>
@@ -672,16 +808,26 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                         Icon(
                                                             Icons
                                                                 .add_photo_alternate_outlined,
-                                                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 
-                                                                    0.3),
+                                                            color: Theme.of(
+                                                                    context)
+                                                                .colorScheme
+                                                                .onSurfaceVariant
+                                                                .withValues(
+                                                                    alpha: 0.3),
                                                             size: 40),
                                                         const SizedBox(
                                                             height: 8),
                                                         Text(
-                                                            'Tap to upload product image'.tr(),
+                                                            'Tap to upload product image'
+                                                                .tr(),
                                                             style: TextStyle(
-                                                                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 
-                                                                    0.3),
+                                                                color: Theme.of(
+                                                                        context)
+                                                                    .colorScheme
+                                                                    .onSurfaceVariant
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.3),
                                                                 fontSize: 13)),
                                                       ],
                                                     ),
@@ -693,9 +839,12 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                       padding:
                                           const EdgeInsets.only(bottom: 12),
                                       child: Text(
-                                          'Category: Food (Restaurant mapping)'.tr(),
-                                          style: const TextStyle(
-                                              color: Color(0xFFD85A30),
+                                          'Category: Food (Restaurant mapping)'
+                                              .tr(),
+                                          style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
                                               fontWeight: FontWeight.bold)),
                                     )
                                   else
@@ -704,8 +853,15 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 16),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerLow,
                                         borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .outlineVariant
+                                                .withValues(alpha: 0.4)),
                                       ),
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton<int>(
@@ -717,11 +873,17 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                               : null,
                                           hint: Text('Main Category'.tr(),
                                               style: TextStyle(
-                                                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5))),
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant
+                                                      .withValues(alpha: 0.5))),
                                           dropdownColor: Theme.of(context)
-                                              .colorScheme.surface,
+                                              .colorScheme
+                                              .surface,
                                           style: TextStyle(
-                                              color: Theme.of(context).colorScheme.onSurface),
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface),
                                           isExpanded: true,
                                           items: _categories.map((c) {
                                             return DropdownMenuItem<int>(
@@ -749,8 +911,15 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 16),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerLow,
                                         borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .outlineVariant
+                                                .withValues(alpha: 0.4)),
                                       ),
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton<int>(
@@ -761,13 +930,20 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                       _selectedSubcategoryId)
                                               ? _selectedSubcategoryId
                                               : null,
-                                          hint: Text('Subcategory (Optional)'.tr(),
+                                          hint: Text(
+                                              'Subcategory (Optional)'.tr(),
                                               style: TextStyle(
-                                                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5))),
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant
+                                                      .withValues(alpha: 0.5))),
                                           dropdownColor: Theme.of(context)
-                                              .colorScheme.surface,
+                                              .colorScheme
+                                              .surface,
                                           style: TextStyle(
-                                              color: Theme.of(context).colorScheme.onSurface),
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface),
                                           isExpanded: true,
                                           items: _subcategories.map((c) {
                                             return DropdownMenuItem<int>(
@@ -785,21 +961,22 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                   const SizedBox(height: 14),
                                   InkWell(
                                     onTap: _submitProduct,
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(14),
                                     child: Container(
                                       width: double.infinity,
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 16),
                                       decoration: BoxDecoration(
-                                        gradient: const LinearGradient(colors: [
-                                          Color(0xFFD85A30),
-                                          Color(0xFF993C1D)
-                                        ]),
-                                        borderRadius: BorderRadius.circular(12),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        borderRadius: BorderRadius.circular(14),
                                         boxShadow: [
                                           BoxShadow(
-                                              color: const Color(0xFFD85A30)
-                                                  .withValues(alpha: 0.4),
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                                  .withValues(alpha: 0.3),
                                               blurRadius: 12,
                                               offset: const Offset(0, 4))
                                         ],
@@ -824,7 +1001,10 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                         : filteredProducts.isEmpty
                             ? Center(
                                 child: Text('No products matched.'.tr(),
-                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant)),
                               )
                             : ListView.builder(
                                 padding: const EdgeInsets.only(bottom: 24),
@@ -851,18 +1031,19 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                             width: 70,
                                             height: 70,
                                             decoration: BoxDecoration(
-                                              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                              color: theme.colorScheme
+                                                  .surfaceContainerHighest
+                                                  .withValues(alpha: 0.3),
                                               borderRadius:
                                                   BorderRadius.circular(12),
-                                              border: Border.all(color: theme.dividerColor),
+                                              border: Border.all(
+                                                  color: theme.dividerColor),
                                               image: (imageUrl != null &&
                                                       imageUrl.isNotEmpty)
                                                   ? DecorationImage(
-                                                      image: NetworkImage(imageUrl
-                                                              .startsWith(
-                                                                  'http')
-                                                          ? imageUrl
-                                                          : '${Api.baseUrl}$imageUrl'),
+                                                      image: NetworkImage(
+                                                          Api.formatImageUrl(
+                                                              imageUrl)),
                                                       fit: BoxFit.cover,
                                                       onError: (_, __) =>
                                                           const SizedBox(),
@@ -892,7 +1073,9 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                       child: Text(
                                                         p['name'] ?? '',
                                                         style: TextStyle(
-                                                            color: theme.colorScheme.onSurface,
+                                                            color: theme
+                                                                .colorScheme
+                                                                .onSurface,
                                                             fontWeight:
                                                                 FontWeight.bold,
                                                             fontSize: 16),
@@ -907,17 +1090,20 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                           horizontal: 8,
                                                           vertical: 4),
                                                       decoration: BoxDecoration(
-                                                        color: _statusColor(
-                                                                status)
-                                                            .withValues(alpha: 0.15),
+                                                        color:
+                                                            _statusColor(status)
+                                                                .withValues(
+                                                                    alpha:
+                                                                        0.15),
                                                         borderRadius:
                                                             BorderRadius
                                                                 .circular(12),
                                                         border: Border.all(
                                                             color: _statusColor(
                                                                     status)
-                                                                .withValues(alpha: 
-                                                                    0.3)),
+                                                                .withValues(
+                                                                    alpha:
+                                                                        0.3)),
                                                       ),
                                                       child: Text(status.tr(),
                                                           style: TextStyle(
@@ -935,7 +1121,8 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                 Text(
                                                     '\$${price.toStringAsFixed(2)} • ${p['categoryName'] ?? ''}',
                                                     style: TextStyle(
-                                                        color: theme.colorScheme.onSurfaceVariant,
+                                                        color: theme.colorScheme
+                                                            .onSurfaceVariant,
                                                         fontSize: 13)),
                                                 if (p['rejectionReason'] !=
                                                         null &&
@@ -970,17 +1157,24 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                                 vertical: 8),
                                                         decoration:
                                                             BoxDecoration(
-                                                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                                          color: theme
+                                                              .colorScheme
+                                                              .primary
+                                                              .withValues(
+                                                                  alpha: 0.1),
                                                           border: Border.all(
-                                                              color: theme.colorScheme.primary),
+                                                              color: theme
+                                                                  .colorScheme
+                                                                  .primary),
                                                           borderRadius:
                                                               BorderRadius
                                                                   .circular(8),
                                                         ),
-                                                        child: Text(
-                                                            'Edit'.tr(),
+                                                        child: Text('Edit'.tr(),
                                                             style: TextStyle(
-                                                                color: theme.colorScheme.primary,
+                                                                color: theme
+                                                                    .colorScheme
+                                                                    .primary,
                                                                 fontSize: 12,
                                                                 fontWeight:
                                                                     FontWeight
@@ -990,8 +1184,11 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                     const SizedBox(width: 12),
                                                     InkWell(
                                                       onTap: () =>
-                                                          _deleteProduct(
-                                                              p['id'] as int),
+                                                          _confirmDeleteProduct(
+                                                              p['id'] as int,
+                                                              p['name']
+                                                                      ?.toString() ??
+                                                                  ''),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               8),
@@ -1003,9 +1200,11 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                                 vertical: 8),
                                                         decoration:
                                                             BoxDecoration(
-                                                          color: Colors.red.shade50,
+                                                          color: Colors
+                                                              .red.shade50,
                                                           border: Border.all(
-                                                              color: Colors.red.shade200),
+                                                              color: Colors.red
+                                                                  .shade200),
                                                           borderRadius:
                                                               BorderRadius
                                                                   .circular(8),
@@ -1013,7 +1212,9 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
                                                         child: Text(
                                                             'Delete'.tr(),
                                                             style: TextStyle(
-                                                                color: Colors.red.shade700,
+                                                                color: Colors
+                                                                    .red
+                                                                    .shade700,
                                                                 fontSize: 12,
                                                                 fontWeight:
                                                                     FontWeight
@@ -1035,7 +1236,23 @@ class _StoreProductsPageState extends State<StoreProductsPage> {
             ],
           ),
         ),
+        bottomNavigationBar: StitchBottomNavigationBar(
+          currentIndex: 1,
+          isShop: true,
+          onTap: (index) {
+            if (index == 1) return;
+            if (index == 0) {
+              Navigator.pushReplacementNamed(context, '/categories');
+            } else if (index == 2) {
+              Navigator.pushReplacementNamed(context, '/store-orders');
+            } else if (index == 3) {
+              Navigator.pushReplacementNamed(context, '/store-analytics');
+            } else if (index == 4) {
+              Navigator.pushReplacementNamed(context, '/profile');
+            }
+          },
+        ),
+      ),
     );
   }
 }
-

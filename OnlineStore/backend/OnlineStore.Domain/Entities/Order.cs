@@ -20,6 +20,8 @@ public class Order
     public string? CancellationReason { get; set; }
     public string? CancelledByRole { get; set; }
     public DateTime? CancelledAtUtc { get; set; }
+    public DateTime? PreparingAtUtc { get; set; }
+    public DateTime? ReadyForPickupAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 

@@ -146,6 +146,25 @@ export default function EditProfilePage({ onBack, onSave }) {
                 return
             }
         }
+        // Frontend validation for Delivery & Shop accounts (Building No, Floor, Apartment No are optional)
+        else if (formData.accountType === 'Delivery' || formData.accountType === 'Shop') {
+            const requiredFields = [
+                { key: 'street', label: t('Address Information') },
+                { key: 'district', label: t('District') },
+                { key: 'neighborhood', label: t('Neighborhood') },
+                { key: 'city', label: t('City') },
+            ]
+            const missing = requiredFields.filter(f => !(formData[f.key] || '').trim())
+            if (missing.length > 0) {
+                setSaving(false)
+                setErrorModal({
+                    open: true,
+                    title: t('Missing Required Fields'),
+                    message: `${t('Please fill in the following fields:')}\n\n${missing.map(f => '• ' + f.label).join('\n')}`
+                })
+                return
+            }
+        }
 
         const payload = {
             fullName: (formData.fullName || '').trim(),
@@ -284,7 +303,7 @@ export default function EditProfilePage({ onBack, onSave }) {
                         <div className="input-group">
                             <label>
                                 {t('Address Information')}
-                                {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                {(formData.accountType === 'User' || formData.accountType === 'Delivery' || formData.accountType === 'Shop') && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
                             </label>
                             <input
                                 type="text"
@@ -292,7 +311,7 @@ export default function EditProfilePage({ onBack, onSave }) {
                                 value={formData.street}
                                 onChange={handleChange}
                                 placeholder={t('Address (Street, Road, and Other Details)')}
-                                required={formData.accountType === 'User'}
+                                required={formData.accountType === 'User' || formData.accountType === 'Delivery' || formData.accountType === 'Shop'}
                             />
                         </div>
 
@@ -301,7 +320,7 @@ export default function EditProfilePage({ onBack, onSave }) {
                             <div className="input-group">
                                 <label>
                                     {t('District')}
-                                    {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                    {(formData.accountType === 'User' || formData.accountType === 'Delivery' || formData.accountType === 'Shop') && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
                                 </label>
                                 <input
                                     type="text"
@@ -309,13 +328,13 @@ export default function EditProfilePage({ onBack, onSave }) {
                                     value={formData.district}
                                     onChange={handleChange}
                                     placeholder={t('District')}
-                                    required={formData.accountType === 'User'}
+                                    required={formData.accountType === 'User' || formData.accountType === 'Delivery' || formData.accountType === 'Shop'}
                                 />
                             </div>
                             <div className="input-group">
                                 <label>
                                     {t('Neighborhood')}
-                                    {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                    {(formData.accountType === 'User' || formData.accountType === 'Delivery' || formData.accountType === 'Shop') && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
                                 </label>
                                 <input
                                     type="text"
@@ -323,7 +342,7 @@ export default function EditProfilePage({ onBack, onSave }) {
                                     value={formData.neighborhood}
                                     onChange={handleChange}
                                     placeholder={t('Neighborhood')}
-                                    required={formData.accountType === 'User'}
+                                    required={formData.accountType === 'User' || formData.accountType === 'Delivery' || formData.accountType === 'Shop'}
                                 />
                             </div>
                         </div>
@@ -379,7 +398,7 @@ export default function EditProfilePage({ onBack, onSave }) {
                             <div className="input-group">
                                 <label>
                                     {t('City')}
-                                    {formData.accountType === 'User' && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
+                                    {(formData.accountType === 'User' || formData.accountType === 'Delivery' || formData.accountType === 'Shop') && <span style={{ color: '#ef4444', marginInlineStart: '4px' }}>*</span>}
                                 </label>
                                 <input
                                     type="text"
@@ -388,7 +407,7 @@ export default function EditProfilePage({ onBack, onSave }) {
                                     onChange={handleChange}
                                     onBlur={(e) => setFormData(prev => ({ ...prev, city: e.target.value.trim() }))}
                                     placeholder={t('City')}
-                                    required={formData.accountType === 'User'}
+                                    required={formData.accountType === 'User' || formData.accountType === 'Delivery' || formData.accountType === 'Shop'}
                                 />
                             </div>
                         </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './ProfileRippleAvatar.css';
 
 const UserIcon = () => (
@@ -13,6 +14,7 @@ const ProfileRippleAvatar = ({
     size = 150,
     glowColor = '#FFD700'
 }) => {
+    const { t } = useTranslation();
     return (
         <div
             className="premium-avatar-container"
@@ -30,7 +32,7 @@ const ProfileRippleAvatar = ({
                 <div className="avatar-inner-glow"></div>
                 <div className="avatar-frame">
                     {src ? (
-                        <img src={src} alt="Profile" className="avatar-image" />
+                        <img src={src} alt={t('Profile')} className="avatar-image" />
                     ) : (
                         <div className="avatar-placeholder">
                             <UserIcon />

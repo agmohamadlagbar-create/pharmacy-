@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -39,6 +40,7 @@ const STATUS_STEPS = [
 ]
 
 function StatusBar({ currentStatus }) {
+    const { t } = useTranslation();
     const normalized = (currentStatus || '').toLowerCase()
     if (normalized === 'cancelled') return null
 
@@ -63,7 +65,7 @@ function StatusBar({ currentStatus }) {
                         fontWeight: index === currentIndex ? 'bold' : 'normal',
                         whiteSpace: 'nowrap'
                     }}>
-                        {step.label}
+                        {t(step.label)}
                     </div>
                 </div>
             ))}
@@ -93,6 +95,7 @@ function MapBoundsSetter({ points }) {
 }
 
 export default function OrderTrackingCard({ order, onDismiss, trackingConnection }) {
+    const { t } = useTranslation();
     const stores = order.stores || []
     const [driverPos, setDriverPos] = useState(null)
     const [trackingStatus, setTrackingStatus] = useState((order.status || '').toLowerCase())
@@ -192,7 +195,7 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
             setTrackingStatus('cancelled')
             setShowCancelModal(false)
         } catch (error) {
-            alert(error.response?.data?.error || 'Failed to cancel order')
+            alert(t('Failed to cancel order'))
         } finally {
             setIsCancelling(false)
         }
@@ -214,10 +217,10 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
             <div className="tracking-header">
                 <div className="header-top">
                     <div />
-                    <span className="eta-label">{info.eta}</span>
+                    <span className="eta-label">{info.eta.startsWith('Reason: ') ? t('Reason: {{reason}}', { reason: info.eta.slice('Reason: '.length) }) : t(info.eta)}</span>
                 </div>
                 <div className="header-bottom">
-                    <span className="status-text">{info.label}</span>
+                    <span className="status-text">{t(info.label)}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {(trackingStatus === 'pending' || trackingStatus === 'preparing') && (
                             <button
@@ -233,7 +236,7 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
                                     cursor: isCancelling ? 'not-allowed' : 'pointer'
                                 }}
                             >
-                                {isCancelling ? 'Cancelling...' : 'Cancel Order'}
+                                {isCancelling ? t('Cancelling...') : t('Cancel Order')}
                             </button>
                         )}
                         <span
@@ -259,7 +262,7 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
                 border: '1px solid var(--border)'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <strong style={{ color: 'var(--text-primary)' }}>{stores.length} stores, {totalItems} items</strong>
+                    <strong style={{ color: 'var(--text-primary)' }}>{t('{{stores}} stores, {{items}} items', { stores: stores.length, items: totalItems })}</strong>
                     <strong style={{ color: 'var(--text-primary)' }}>{formatPrice(order.totalAmount || 0, stores[0]?.currencyCode || 'USD')}</strong>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--muted)' }}>{order.deliveryAddress}</div>
@@ -290,7 +293,7 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
                                 borderRadius: 999,
                                 background: 'rgba(255,255,255,0.08)'
                             }}>
-                                {store.status}
+                                {t(store.status)}
                             </span>
                         </div>
                     ))}
@@ -308,9 +311,9 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
                         store.storeLat != null && store.storeLng != null ? (
                             <Marker key={store.orderId} position={[store.storeLat, store.storeLng]} icon={storeIcon}>
                                 <Popup>
-                                    {store.storeName || 'Store'}
+                                    {store.storeName || t('Store')}
                                     <br />
-                                    {store.status}
+                                    {t(store.status)}
                                 </Popup>
                             </Marker>
                         ) : null
@@ -318,19 +321,19 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
 
                     {order.customerLat != null && order.customerLng != null && (
                         <Marker position={[order.customerLat, order.customerLng]} icon={customerIcon}>
-                            <Popup>Delivery Address</Popup>
+                            <Popup>{t('Delivery Address')}</Popup>
                         </Marker>
                     )}
 
                     {driverPos && (
                         <Marker position={driverPos} icon={driverIcon}>
-                            <Popup>Courier</Popup>
+                            <Popup>{t('Courier')}</Popup>
                         </Marker>
                     )}
 
                     <MapBoundsSetter points={points} />
                 </MapContainer>
-                <div className="map-badge">Live tracking</div>
+                <div className="map-badge">{t('Live tracking')}</div>
             </div>
 
             {showCancelModal && (
@@ -343,16 +346,16 @@ export default function OrderTrackingCard({ order, onDismiss, trackingConnection
                                 <line x1="9" y1="9" x2="15" y2="15" />
                             </svg>
                         </div>
-                        <h4 className="cancel-modal-title">Cancel Grouped Order?</h4>
+                        <h4 className="cancel-modal-title">{t('Cancel Grouped Order?')}</h4>
                         <p className="cancel-modal-text">
-                            This will cancel every store order inside #{order.orderGroupId}.
+                            {t('This will cancel every store order inside #{{id}}.', { id: order.orderGroupId })}
                         </p>
                         <div className="cancel-modal-actions">
                             <button className="btn-cancel-keep" onClick={() => setShowCancelModal(false)} disabled={isCancelling}>
-                                No, Keep It
+                                {t('No, Keep It')}
                             </button>
                             <button className="btn-cancel-confirm" onClick={confirmCancelOrder} disabled={isCancelling}>
-                                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                                {isCancelling ? t('Cancelling...') : t('Yes, Cancel')}
                             </button>
                         </div>
                     </div>

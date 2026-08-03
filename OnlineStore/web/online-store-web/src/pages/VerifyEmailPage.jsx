@@ -79,6 +79,7 @@ export default function VerifyEmailPage({ onBack }) {
                         <input
                             type="email"
                             className="auth-input"
+                            dir="ltr"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder={t('name@example.com')}

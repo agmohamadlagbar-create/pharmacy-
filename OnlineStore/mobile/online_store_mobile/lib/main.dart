@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
-import 'package:lottie/lottie.dart' as lottie;
 import 'package:easy_localization/easy_localization.dart';
 import 'api.dart';
 import 'cart_page.dart';
@@ -26,6 +26,8 @@ import 'favorites_page.dart';
 import 'delivered_orders_page.dart';
 import 'active_orders_page.dart';
 import 'push_notification_service.dart';
+import 'utils/app_theme.dart';
+import 'utils/animation_utils.dart';
 
 enum AccountType { user, shop, delivery }
 
@@ -157,22 +159,80 @@ class OnlineStoreApp extends StatefulWidget {
 }
 
 class OnlineStoreAppState extends State<OnlineStoreApp> {
-  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeMode _themeMode = ThemeMode.system;
 
   Map<String, dynamic> _cart = {'items': [], 'totalAmount': 0.0};
 
   @override
   void initState() {
     super.initState();
+    _loadThemeMode();
     _checkToken();
     _initStripe();
+  }
+
+  Future<void> _loadThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedMode = prefs.getString('themeMode');
+    if (savedMode != null && mounted) {
+      setState(() {
+        if (savedMode == 'light') {
+          _themeMode = ThemeMode.light;
+        } else if (savedMode == 'dark') {
+          _themeMode = ThemeMode.dark;
+        } else {
+          _themeMode = ThemeMode.system;
+        }
+      });
+    } else {
+      // Legacy fallback check
+      final isLight = prefs.getBool('isLightTheme');
+      if (isLight != null && mounted) {
+        setState(() {
+          _themeMode = isLight ? ThemeMode.light : ThemeMode.dark;
+        });
+      }
+    }
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    setState(() {
+      _themeMode = mode;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    String modeStr = 'system';
+    if (mode == ThemeMode.light) modeStr = 'light';
+    if (mode == ThemeMode.dark) modeStr = 'dark';
+    await prefs.setString('themeMode', modeStr);
+    await prefs.setBool('isLightTheme', mode == ThemeMode.light);
+  }
+
+  void toggleTheme() {
+    if (_themeMode == ThemeMode.system) {
+      setThemeMode(ThemeMode.light);
+    } else if (_themeMode == ThemeMode.light) {
+      setThemeMode(ThemeMode.dark);
+    } else {
+      setThemeMode(ThemeMode.system);
+    }
+  }
+
+  ThemeMode get themeMode => _themeMode;
+
+  bool get isDark {
+    if (_themeMode == ThemeMode.system) {
+      return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+    }
+    return _themeMode == ThemeMode.dark;
   }
 
   Future<void> _initStripe() async {
     try {
       final config = await Api.get('/api/payment/config');
       Stripe.publishableKey = config['publishableKey'];
-      await Stripe.instance.applySettings();
+      if (!kIsWeb) {
+        await Stripe.instance.applySettings();
+      }
     } catch (e) {
       debugPrint('Failed to load Stripe config: $e');
     }
@@ -186,9 +246,20 @@ class OnlineStoreAppState extends State<OnlineStoreApp> {
     }
   }
 
+  void clearCart() {
+    if (mounted) {
+      setState(() {
+        _cart = {'items': [], 'totalAmount': 0.0};
+      });
+    }
+  }
+
   Future<void> fetchCart() async {
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getString('accountType') != 'User') return;
+    if (prefs.getString('accountType') != 'User') {
+      clearCart();
+      return;
+    }
 
     try {
       final data = await Api.getCart();
@@ -213,33 +284,7 @@ class OnlineStoreAppState extends State<OnlineStoreApp> {
       final data = await Api.addToCart(productId, quantity);
       if (mounted) setState(() => _cart = data);
       if (mounted) {
-        // Show Lottie Animation
-        showDialog(
-          context: context,
-          barrierColor: Colors.black45,
-          barrierDismissible: false,
-          builder: (ctx) {
-            Future.delayed(const Duration(milliseconds: 1500), () {
-              if (ctx.mounted && Navigator.canPop(ctx)) {
-                Navigator.pop(ctx);
-              }
-            });
-            return Center(
-              child: Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardTheme.color,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: lottie.Lottie.asset(
-                  'assets/lottie/add-to-cart.json',
-                  repeat: false,
-                ),
-              ),
-            );
-          },
-        );
+        showAddToCartAnimation(context);
       }
     } catch (e) {
       if (mounted) {
@@ -268,15 +313,6 @@ class OnlineStoreAppState extends State<OnlineStoreApp> {
     }
   }
 
-  void toggleTheme() {
-    setState(() {
-      _themeMode =
-          _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-    });
-  }
-
-  bool get isDark => _themeMode == ThemeMode.dark;
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -286,105 +322,8 @@ class OnlineStoreAppState extends State<OnlineStoreApp> {
       locale: context.locale,
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFFFFFFF),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFD85A30),
-          primary: const Color(0xFFD85A30),
-          surface: const Color(0xFFF9F5F3),
-          onSurface: const Color(0xFF1A0A00),
-          brightness: Brightness.light,
-        ),
-        textTheme: GoogleFonts.dmSansTextTheme(
-          ThemeData.light().textTheme.copyWith(
-                displayLarge: GoogleFonts.playfairDisplay(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 28,
-                  color: const Color(0xFF1A0A00),
-                ),
-                titleLarge: GoogleFonts.playfairDisplay(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: const Color(0xFF1A0A00),
-                ),
-                bodyLarge: GoogleFonts.dmSans(
-                    fontSize: 14, fontWeight: FontWeight.w400),
-                bodyMedium: GoogleFonts.dmSans(
-                    fontSize: 13, fontWeight: FontWeight.w400),
-                labelSmall: GoogleFonts.dmSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 1.4, // 0.1em
-                  color: const Color(0xFFA8948D),
-                ),
-              ),
-        ),
-        cardTheme: CardThemeData(
-          color: const Color(0xFFF9F5F3),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(color: Color(0x14000000), width: 0.5),
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          titleTextStyle: GoogleFonts.playfairDisplay(
-            color: const Color(0xFF1A0A00),
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-          iconTheme: const IconThemeData(color: Color(0xFF6B5C55)),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFD85A30),
-            foregroundColor: Colors.white,
-            textStyle:
-                GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 14),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF1A0A00),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFF0997B), // Lightened for dark bg
-          primary: const Color(0xFFF0997B),
-          surface: const Color(0xFF2C1A10),
-          brightness: Brightness.dark,
-        ),
-        textTheme: GoogleFonts.dmSansTextTheme(
-          ThemeData.dark().textTheme.copyWith(
-                displayLarge: GoogleFonts.playfairDisplay(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 28,
-                  color: const Color(0xFFFAF0EB),
-                ),
-                titleLarge: GoogleFonts.playfairDisplay(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: const Color(0xFFFAF0EB),
-                ),
-              ),
-        ),
-        cardTheme: CardThemeData(
-          color: const Color(0xFF2C1A10),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(color: Color(0x14FFFFFF), width: 0.5),
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       routes: {
         '/': (context) => const AuthScreen(),
         '/categories': (context) => CategoriesPage(
@@ -404,6 +343,7 @@ class OnlineStoreAppState extends State<OnlineStoreApp> {
                 await prefs.remove('accountType');
                 await prefs.remove('isGuest');
                 if (context.mounted) {
+                  OnlineStoreApp.of(context)?.clearCart();
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const AuthScreen()),
                     (route) => false,
@@ -625,6 +565,10 @@ class _AuthScreenState extends State<AuthScreen> {
       await prefs.setString('refreshToken', refreshToken);
       await prefs.setString('accountType', account);
 
+      if (mounted) {
+        OnlineStoreApp.of(context)?.fetchCart();
+      }
+
       _showMsg(
         mode == AuthMode.login
             ? 'Login successful ✅'.tr()
@@ -744,14 +688,14 @@ class _AuthScreenState extends State<AuthScreen> {
             end: Alignment.bottomRight,
             colors: isDark
                 ? [
-                    const Color(0xFF1A0A00),
-                    const Color(0xFF2C1A10),
-                    const Color(0xFF1A0A00)
+                    colorScheme.surface,
+                    colorScheme.surfaceContainerLow,
+                    colorScheme.surfaceContainerLowest,
                   ]
                 : [
-                    const Color(0xFFFFF8F5),
-                    const Color(0xFFF9F0EB),
-                    const Color(0xFFFFF5F0)
+                    const Color(0xFFF9F9FF),
+                    const Color(0xFFF0F3FF),
+                    const Color(0xFFE7EEFE),
                   ],
           ),
         ),
@@ -764,45 +708,44 @@ class _AuthScreenState extends State<AuthScreen> {
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Column(
                   children: [
-                    // Theme toggle
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: IconButton(
-                        icon: Icon(
-                          isDark
-                              ? Icons.light_mode_rounded
-                              : Icons.dark_mode_rounded,
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                        tooltip: 'Toggle theme'.tr(),
-                        onPressed: () => appState?.toggleTheme(),
-                      ),
-                    ),
-
-                    // Logo
+                    const SizedBox(height: 16),
+                    // Logo Container with web icon
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 86,
+                      height: 86,
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFF0997B),
-                            Color(0xFFD85A30),
-                            Color(0xFF4a1b0c)
-                          ],
+                        color: isDark
+                            ? colorScheme.surfaceContainerHigh
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: isDark
+                              ? colorScheme.outlineVariant.withValues(alpha: 0.4)
+                              : colorScheme.primary.withValues(alpha: 0.15),
+                          width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color:
-                                const Color(0xFFD85A30).withValues(alpha: 0.3),
-                            blurRadius: 20,
+                            color: isDark
+                                ? Colors.black.withValues(alpha: 0.4)
+                                : colorScheme.primary.withValues(alpha: 0.15),
+                            blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.store_rounded,
-                          color: Colors.white, size: 36),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 62,
+                        height: 62,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.store_rounded,
+                          size: 40,
+                          color: colorScheme.primary,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -819,7 +762,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       'Your one-stop marketplace'.tr(),
                       style: GoogleFonts.dmSans(
                         fontSize: 13,
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -829,16 +772,18 @@ class _AuthScreenState extends State<AuthScreen> {
                     Container(
                       decoration: BoxDecoration(
                         color: isDark
-                            ? colorScheme.surface.withValues(alpha: 0.8)
-                            : Colors.white.withValues(alpha: 0.9),
+                            ? colorScheme.surfaceContainer.withValues(alpha: 0.95)
+                            : Colors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: colorScheme.onSurface.withValues(alpha: 0.06),
+                          color: isDark
+                              ? colorScheme.outlineVariant.withValues(alpha: 0.35)
+                              : colorScheme.onSurface.withValues(alpha: 0.06),
                         ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black
-                                .withValues(alpha: isDark ? 0.3 : 0.06),
+                                .withValues(alpha: isDark ? 0.4 : 0.06),
                             blurRadius: 30,
                             offset: const Offset(0, 12),
                           ),

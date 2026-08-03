@@ -11,7 +11,7 @@ void main() {
   });
 
   test('Api exposes a configured mobile base URL', () {
-    expect(Api.baseUrl, startsWith('http://'));
+    expect(Api.baseUrl, startsWith('http'));
     expect(Api.baseUrl, contains('lagbar.runasp.net'));
   });
 

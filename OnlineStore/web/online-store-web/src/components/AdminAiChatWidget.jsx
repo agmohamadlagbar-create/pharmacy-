@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as signalR from '@microsoft/signalr';
 import { api } from '../apiClient';
 import AiMessageFeedback from './AiMessageFeedback';
 import './AdminAiChatWidget.css';
 
 export default function AdminAiChatWidget() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -88,7 +90,7 @@ export default function AdminAiChatWidget() {
           } else if (chunk.eventType === 'error') {
             setMessages(prev => {
               const newMsgs = [...prev];
-              newMsgs[newMsgs.length - 1] = { text: `Error: ${chunk.error}`, isUser: false };
+              newMsgs[newMsgs.length - 1] = { text: t('Error: {{error}}', { error: chunk.error }), isUser: false };
               return newMsgs;
             });
             setIsGenerating(false);
@@ -98,7 +100,7 @@ export default function AdminAiChatWidget() {
           console.error(err);
           setMessages(prev => {
             const newMsgs = [...prev];
-            newMsgs[newMsgs.length - 1] = { text: 'Connection error. Please try again.', isUser: false };
+            newMsgs[newMsgs.length - 1] = { text: t('Connection error. Please try again.'), isUser: false };
             return newMsgs;
           });
           setIsGenerating(false);
@@ -121,18 +123,18 @@ export default function AdminAiChatWidget() {
   };
 
   const quickActions = [
-    { label: ' Overview', message: 'Show me a platform overview with total users, products, orders, and revenue' },
-    { label: ' Recent Orders', message: 'Show recent orders and their statuses' },
-    { label: ' Low Stock Products', message: 'Which products are running low on stock across all stores?' },
-    { label: ' Pending Approvals', message: 'Show products pending approval' },
+    { icon: '📊', label: 'Overview', message: 'Show me a platform overview with total users, products, orders, and revenue' },
+    { icon: '🧾', label: 'Recent Orders', message: 'Show recent orders and their statuses' },
+    { icon: '📦', label: 'Low Stock Products', message: 'Which products are running low on stock across all stores?' },
+    { icon: '⏳', label: 'Pending Approvals', message: 'Show products pending approval' },
   ];
 
   return (
     <div className="admin-ai-widget">
       {!isOpen && (
-        <button className="admin-ai-toggle" onClick={toggleOpen} title="Admin AI Assistant">
+        <button className="admin-ai-toggle" onClick={toggleOpen} title={t('Admin AI Assistant')}>
           <span className="admin-ai-toggle-icon">🛡️</span>
-          <span className="admin-ai-toggle-label">Admin AI</span>
+          <span className="admin-ai-toggle-label">{t('Admin AI')}</span>
         </button>
       )}
 
@@ -142,9 +144,9 @@ export default function AdminAiChatWidget() {
             <div className="admin-ai-header-info">
               <span className="admin-ai-header-icon">🛡️</span>
               <div>
-                <h3>Admin AI Assistant</h3>
+                <h3>{t('Admin AI Assistant')}</h3>
                 <span className="admin-ai-status">
-                  {connection ? '● Connected' : '○ Connecting...'}
+                  {connection ? `● ${t('Connected')}` : `○ ${t('Connecting...')}`}
                 </span>
               </div>
             </div>
@@ -154,7 +156,7 @@ export default function AdminAiChatWidget() {
           {messages.length === 0 && (
             <div className="admin-ai-welcome">
               <p className="admin-ai-welcome-text">
-                I can help you manage the platform — overview, orders, products, users, and more.
+                {t('I can help you manage the platform — overview, orders, products, users, and more.')}
               </p>
               <div className="admin-ai-quick-actions">
                 {quickActions.map((action, i) => (
@@ -164,7 +166,7 @@ export default function AdminAiChatWidget() {
                     onClick={() => sendMessage(action.message)}
                     disabled={!connection || isGenerating}
                   >
-                    {action.label}
+                    {action.icon} {t(action.label)}
                   </button>
                 ))}
               </div>
@@ -202,7 +204,7 @@ export default function AdminAiChatWidget() {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about platform management..."
+              placeholder={t('Ask about platform management...')}
               disabled={!connection || isGenerating}
               rows={1}
             />

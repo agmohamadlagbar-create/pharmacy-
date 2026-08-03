@@ -35,12 +35,19 @@ try {
   messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Received background message: ', payload);
 
+    // If top-level notification object exists, browser Web Push agent already displayed it
+    if (payload.notification) {
+      console.log('[firebase-messaging-sw.js] Standard notification object present, skipping manual showNotification.');
+      return;
+    }
+
     const data = payload.data || {};
     const title = data.title || 'Online Store Update';
     const options = {
       body: data.body || 'You have a new update from Online Store.',
       icon: data.icon || '/logo192.png',
       badge: data.badge || '/favicon.ico',
+      tag: data.orderId ? `order_${data.orderId}` : 'online_store_notif',
       data: data
     };
 

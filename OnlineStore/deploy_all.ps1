@@ -103,7 +103,8 @@ foreach ($file in $allFiles) {
     $success = Upload-FtpFile -LocalFile $file.FullName -RemotePath $remotePath
     if ($success) {
         Write-Host " OK" -ForegroundColor Green
-    } else {
+    }
+    else {
         $failedFiles += $relativePath
     }
 }
@@ -116,7 +117,8 @@ try {
     $request.Method = [System.Net.WebRequestMethods+Ftp]::DeleteFile
     $request.GetResponse().Close()
     Write-Host "  App is back online." -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Host "  Could not delete app_offline.htm: $_" -ForegroundColor Red
 }
 Remove-Item "$localPublishPath\app_offline.htm" -ErrorAction SilentlyContinue
@@ -131,6 +133,7 @@ if ($failedFiles.Count -gt 0) {
         Write-Host "    - $f" -ForegroundColor Red
     }
     exit 1
-} else {
+}
+else {
     Write-Host "`n  All files uploaded successfully to lagbar.runasp.net!" -ForegroundColor Green
 }

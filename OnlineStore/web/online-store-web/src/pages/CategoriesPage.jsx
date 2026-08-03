@@ -12,7 +12,7 @@ export default function CategoriesPage({
     onSelectCategory
 }) {
     const { t, i18n } = useTranslation()
-    const isRTL = i18n.language === 'ar'
+    const isRTL = i18n.language?.startsWith('ar')
     const [adIndex, setAdIndex] = useState(0)
     const timerRef = useRef(null)
 
@@ -234,7 +234,7 @@ export default function CategoriesPage({
                                     const content = (
                                         <img
                                             src={imgUrl}
-                                            alt={ad.title || `Ad ${i + 1}`}
+                                            alt={ad.title || t('Ad {{number}}', { number: i + 1 })}
                                             className={`ad-slide ${i === adIndex ? 'active' : ''}`}
                                             draggable="false"
                                         />
@@ -251,7 +251,7 @@ export default function CategoriesPage({
                                         <button 
                                             className="icon-btn" 
                                             onClick={goToPrevAd} 
-                                            title="Previous"
+                                            title={t('Previous')}
                                             style={{ background: 'var(--surface-glass)', backdropFilter: 'blur(8px)' }}
                                         >
                                             <span className="material-symbols-outlined">chevron_left</span>
@@ -259,7 +259,7 @@ export default function CategoriesPage({
                                         <button 
                                             className="icon-btn" 
                                             onClick={goToNextAd} 
-                                            title="Next"
+                                            title={t('Next')}
                                             style={{ background: 'var(--surface-glass)', backdropFilter: 'blur(8px)' }}
                                         >
                                             <span className="material-symbols-outlined">chevron_right</span>

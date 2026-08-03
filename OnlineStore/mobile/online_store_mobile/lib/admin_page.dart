@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'api.dart';
 import 'widgets/skeleton_loader.dart';
+import 'widgets/stitch_bottom_navigation_bar.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({super.key});
@@ -51,14 +52,38 @@ class _AdminPageState extends State<AdminPage>
   File? _prodImageFile;
   bool _prodSubmitting = false;
 
+  bool _initializedTab = false;
+
+  int get _currentBottomNavIndex {
+    if (_tabCtrl.index == 4) return 2;
+    if (_tabCtrl.index == 3) return 3;
+    return 1;
+  }
+
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 5, vsync: this);
     _tabCtrl.addListener(() {
       if (!_tabCtrl.indexIsChanging) _load();
+      if (mounted) setState(() {});
     });
     _load();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initializedTab) {
+      _initializedTab = true;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map && args.containsKey('initialTab')) {
+        final initTab = (args['initialTab'] as num?)?.toInt() ?? 0;
+        if (initTab >= 0 && initTab < 5) {
+          _tabCtrl.index = initTab;
+        }
+      }
+    }
   }
 
   @override
@@ -491,6 +516,23 @@ class _AdminPageState extends State<AdminPage>
           _buildCategoriesTab(theme),
           _buildAdsTab(theme),
         ],
+      ),
+      bottomNavigationBar: StitchBottomNavigationBar(
+        currentIndex: _currentBottomNavIndex,
+        isAdmin: true,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacementNamed(context, '/categories');
+          } else if (index == 1) {
+            _tabCtrl.animateTo(0);
+          } else if (index == 2) {
+            _tabCtrl.animateTo(4);
+          } else if (index == 3) {
+            _tabCtrl.animateTo(3);
+          } else if (index == 4) {
+            Navigator.pushReplacementNamed(context, '/profile');
+          }
+        },
       ),
     );
   }
