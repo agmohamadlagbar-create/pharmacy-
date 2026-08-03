@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api.dart';
 import 'widgets/custom_store_app_bar.dart';
 import 'widgets/skeleton_loader.dart';
@@ -41,6 +42,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   String? _userCountry;
   String? _userCity;
   Set<String> _favoriteProductIds = {};
+  bool _isGuest = false;
 
   @override
   void initState() {
@@ -49,8 +51,14 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   }
 
   Future<void> _initializeData() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _isGuest = prefs.getBool('isGuest') ?? false;
+      });
+    }
     await _loadFavorites();
-    await _fetchProfile();
+    if (!_isGuest) await _fetchProfile();
     await _fetchSubcategories();
     await _fetchProducts();
   }
@@ -370,7 +378,20 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       bottomNavigationBar: StitchBottomNavigationBar(
         currentIndex: 0,
         cartCount: widget.cartCount,
-        onTap: (index) {
+        isGuest: _isGuest,
+        onTap: (index) async {
+          if (_isGuest) {
+            if (index == 0) {
+              Navigator.popUntil(context, ModalRoute.withName('/categories'));
+            } else if (index == 1) {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('isGuest');
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              }
+            }
+            return;
+          }
           if (index == 0) {
             Navigator.popUntil(context, ModalRoute.withName('/categories'));
           } else if (index == 1) {

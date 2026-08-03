@@ -6,6 +6,7 @@ class StitchBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final int cartCount;
+  final bool isGuest;
   final bool isShop;
   final bool isDelivery;
   final bool isAdmin;
@@ -15,6 +16,7 @@ class StitchBottomNavigationBar extends StatelessWidget {
     required this.currentIndex,
     required this.onTap,
     this.cartCount = 0,
+    this.isGuest = false,
     this.isShop = false,
     this.isDelivery = false,
     this.isAdmin = false,
@@ -26,7 +28,7 @@ class StitchBottomNavigationBar extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    final items = isAdmin
+    final items = isGuest
         ? [
             _NavItemData(
               icon: Icons.storefront_outlined,
@@ -34,27 +36,12 @@ class StitchBottomNavigationBar extends StatelessWidget {
               label: 'Home'.tr(),
             ),
             _NavItemData(
-              icon: Icons.admin_panel_settings_outlined,
-              activeIcon: Icons.admin_panel_settings_rounded,
-              label: 'Admin Panel'.tr(),
-            ),
-            _NavItemData(
-              icon: Icons.campaign_outlined,
-              activeIcon: Icons.campaign_rounded,
-              label: 'Ads'.tr(),
-            ),
-            _NavItemData(
-              icon: Icons.category_outlined,
-              activeIcon: Icons.category_rounded,
-              label: 'Categories'.tr(),
-            ),
-            _NavItemData(
-              icon: Icons.person_outline_rounded,
-              activeIcon: Icons.person_rounded,
-              label: 'Profile'.tr(),
+              icon: Icons.login_outlined,
+              activeIcon: Icons.login_rounded,
+              label: 'Sign In'.tr(),
             ),
           ]
-        : isDelivery
+        : isAdmin
             ? [
                 _NavItemData(
                   icon: Icons.storefront_outlined,
@@ -62,19 +49,19 @@ class StitchBottomNavigationBar extends StatelessWidget {
                   label: 'Home'.tr(),
                 ),
                 _NavItemData(
-                  icon: Icons.local_shipping_outlined,
-                  activeIcon: Icons.local_shipping_rounded,
-                  label: 'Delivery Jobs'.tr(),
+                  icon: Icons.admin_panel_settings_outlined,
+                  activeIcon: Icons.admin_panel_settings_rounded,
+                  label: 'Admin Panel'.tr(),
                 ),
                 _NavItemData(
-                  icon: Icons.notifications_outlined,
-                  activeIcon: Icons.notifications_rounded,
-                  label: 'Notifications'.tr(),
+                  icon: Icons.campaign_outlined,
+                  activeIcon: Icons.campaign_rounded,
+                  label: 'Ads'.tr(),
                 ),
                 _NavItemData(
-                  icon: Icons.settings_outlined,
-                  activeIcon: Icons.settings_rounded,
-                  label: 'Settings'.tr(),
+                  icon: Icons.category_outlined,
+                  activeIcon: Icons.category_rounded,
+                  label: 'Categories'.tr(),
                 ),
                 _NavItemData(
                   icon: Icons.person_outline_rounded,
@@ -82,7 +69,7 @@ class StitchBottomNavigationBar extends StatelessWidget {
                   label: 'Profile'.tr(),
                 ),
               ]
-            : isShop
+            : isDelivery
                 ? [
                     _NavItemData(
                       icon: Icons.storefront_outlined,
@@ -90,19 +77,19 @@ class StitchBottomNavigationBar extends StatelessWidget {
                       label: 'Home'.tr(),
                     ),
                     _NavItemData(
-                      icon: Icons.inventory_2_outlined,
-                      activeIcon: Icons.inventory_2_rounded,
-                      label: 'My Products'.tr(),
+                      icon: Icons.local_shipping_outlined,
+                      activeIcon: Icons.local_shipping_rounded,
+                      label: 'Delivery Jobs'.tr(),
                     ),
                     _NavItemData(
-                      icon: Icons.receipt_long_outlined,
-                      activeIcon: Icons.receipt_long_rounded,
-                      label: 'Store Orders'.tr(),
+                      icon: Icons.notifications_outlined,
+                      activeIcon: Icons.notifications_rounded,
+                      label: 'Notifications'.tr(),
                     ),
                     _NavItemData(
-                      icon: Icons.analytics_outlined,
-                      activeIcon: Icons.analytics_rounded,
-                      label: 'Analytics'.tr(),
+                      icon: Icons.settings_outlined,
+                      activeIcon: Icons.settings_rounded,
+                      label: 'Settings'.tr(),
                     ),
                     _NavItemData(
                       icon: Icons.person_outline_rounded,
@@ -110,34 +97,62 @@ class StitchBottomNavigationBar extends StatelessWidget {
                       label: 'Profile'.tr(),
                     ),
                   ]
-                : [
-                    _NavItemData(
-                      icon: Icons.storefront_outlined,
-                      activeIcon: Icons.storefront_rounded,
-                      label: 'Home'.tr(),
-                    ),
-                    _NavItemData(
-                      icon: Icons.favorite_border_rounded,
-                      activeIcon: Icons.favorite_rounded,
-                      label: 'Favorites'.tr(),
-                    ),
-                    _NavItemData(
-                      icon: Icons.shopping_bag_outlined,
-                      activeIcon: Icons.shopping_bag_rounded,
-                      label: 'Cart'.tr(),
-                      badgeCount: cartCount,
-                    ),
-                    _NavItemData(
-                      icon: Icons.local_shipping_outlined,
-                      activeIcon: Icons.local_shipping_rounded,
-                      label: 'Orders'.tr(),
-                    ),
-                    _NavItemData(
-                      icon: Icons.person_outline_rounded,
-                      activeIcon: Icons.person_rounded,
-                      label: 'Profile'.tr(),
-                    ),
-                  ];
+                : isShop
+                    ? [
+                        _NavItemData(
+                          icon: Icons.storefront_outlined,
+                          activeIcon: Icons.storefront_rounded,
+                          label: 'Home'.tr(),
+                        ),
+                        _NavItemData(
+                          icon: Icons.inventory_2_outlined,
+                          activeIcon: Icons.inventory_2_rounded,
+                          label: 'My Products'.tr(),
+                        ),
+                        _NavItemData(
+                          icon: Icons.receipt_long_outlined,
+                          activeIcon: Icons.receipt_long_rounded,
+                          label: 'Store Orders'.tr(),
+                        ),
+                        _NavItemData(
+                          icon: Icons.analytics_outlined,
+                          activeIcon: Icons.analytics_rounded,
+                          label: 'Analytics'.tr(),
+                        ),
+                        _NavItemData(
+                          icon: Icons.person_outline_rounded,
+                          activeIcon: Icons.person_rounded,
+                          label: 'Profile'.tr(),
+                        ),
+                      ]
+                    : [
+                        _NavItemData(
+                          icon: Icons.storefront_outlined,
+                          activeIcon: Icons.storefront_rounded,
+                          label: 'Home'.tr(),
+                        ),
+                        _NavItemData(
+                          icon: Icons.favorite_border_rounded,
+                          activeIcon: Icons.favorite_rounded,
+                          label: 'Favorites'.tr(),
+                        ),
+                        _NavItemData(
+                          icon: Icons.shopping_bag_outlined,
+                          activeIcon: Icons.shopping_bag_rounded,
+                          label: 'Cart'.tr(),
+                          badgeCount: cartCount,
+                        ),
+                        _NavItemData(
+                          icon: Icons.local_shipping_outlined,
+                          activeIcon: Icons.local_shipping_rounded,
+                          label: 'Orders'.tr(),
+                        ),
+                        _NavItemData(
+                          icon: Icons.person_outline_rounded,
+                          activeIcon: Icons.person_rounded,
+                          label: 'Profile'.tr(),
+                        ),
+                      ];
 
     return Container(
       decoration: BoxDecoration(

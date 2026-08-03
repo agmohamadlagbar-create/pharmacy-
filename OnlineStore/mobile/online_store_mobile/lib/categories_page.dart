@@ -664,10 +664,18 @@ class _CategoriesPageState extends State<CategoriesPage> {
       bottomNavigationBar: StitchBottomNavigationBar(
         currentIndex: 0,
         cartCount: widget.cartCount,
+        isGuest: _isGuest,
         isShop: _accountType == 'Shop',
         isDelivery: _accountType == 'Delivery',
         isAdmin: _accountType == 'Admin',
         onTap: (index) {
+          if (_isGuest) {
+            if (index == 0) return;
+            if (index == 1) {
+              widget.onLogout();
+            }
+            return;
+          }
           if (index == 0) return;
           if (_accountType == 'Admin') {
             if (index == 1) {

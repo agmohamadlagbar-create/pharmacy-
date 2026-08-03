@@ -32,6 +32,7 @@ class _SearchProductsPageState extends State<SearchProductsPage> {
   Timer? _debounce;
   Map<String, dynamic>? _userLocation;
   Set<String> _favoriteProductIds = {};
+  bool _isGuest = false;
 
   @override
   void initState() {
@@ -63,7 +64,10 @@ class _SearchProductsPageState extends State<SearchProductsPage> {
 
   Future<void> _fetchProfileLocation() async {
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool('isGuest') == true) return;
+    if (prefs.getBool('isGuest') == true) {
+      if (mounted) setState(() => _isGuest = true);
+      return;
+    }
     try {
       final res = await Api.get('/api/me');
       if (res['city'] != null) {
@@ -430,7 +434,20 @@ class _SearchProductsPageState extends State<SearchProductsPage> {
       ),
       bottomNavigationBar: StitchBottomNavigationBar(
         currentIndex: -1,
-        onTap: (index) {
+        isGuest: _isGuest,
+        onTap: (index) async {
+          if (_isGuest) {
+            if (index == 0) {
+              Navigator.popUntil(context, ModalRoute.withName('/categories'));
+            } else if (index == 1) {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('isGuest');
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              }
+            }
+            return;
+          }
           if (index == 0) {
             Navigator.popUntil(context, ModalRoute.withName('/categories'));
           } else if (index == 1) {
