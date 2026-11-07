@@ -27,7 +27,6 @@ public interface IJwtTokenService
 /// - Access Tokens (Short-lived 15-30m): Store in memory or a secure local variable. 
 ///   Do NOT store in localStorage if possible, to prevent XSS attacks.
 /// - Refresh Tokens (Long-lived): For Web, store in an HttpOnly, Secure, SameSite=Strict cookie.
-///   For Mobile (Flutter/React Native), store in secure encrypted storage (e.g., flutter_secure_storage).
 /// </summary>
 public class JwtTokenService : IJwtTokenService
 {

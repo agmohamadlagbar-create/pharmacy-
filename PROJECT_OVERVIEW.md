@@ -14,10 +14,6 @@ This is a modern, multi-platform e-commerce application divided into three main 
    - **Framework:** React (built with Vite)
    - **Features:** User and Shop interfaces, login/signup flows, real-time map tracking with Leaflet.
 
-3. **Mobile App**
-   - **Framework:** Flutter (Android)
-   - **Features:** Native mobile interfaces for customers and delivery agents.
-
 ---
 
 ## ✨ Key Features
@@ -36,7 +32,7 @@ This is a modern, multi-platform e-commerce application divided into three main 
   - `Picked Up` (Agent collects the order)
   - `On the Way` (Agent is heading to customer)
   - `Delivered` (Order complete)
-- **Live Updates:** Status changes are broadcasted instantly to the customer's web or mobile app using SignalR, requiring no page refreshes. Push notifications are also integrated.
+- **Live Updates:** Status changes are broadcasted instantly to the customer's web app using SignalR, requiring no page refreshes.
 
 ### 3. Real-Time Delivery Location Tracking
 - **Live Map:** Customers can watch their delivery agent's real-time movement on a map.
@@ -74,11 +70,4 @@ Navigate to `web/online-store-web` and run:
 ```bash
 npm install
 npm run dev
-```
-
-### Mobile
-Navigate to `mobile/online_store_mobile` and run:
-```bash
-flutter pub get
-flutter run
 ```

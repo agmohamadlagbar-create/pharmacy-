@@ -71,14 +71,6 @@ OnlineStore/backend/OnlineStore.Api/wwwroot/assets/
 OnlineStore/backend/OnlineStore.Api/wwwroot/index.html
 OnlineStore/backend/scratch/
 
-# Flutter and Android local output
-.dart_tool/
-**/.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-android/local.properties
-
 # Local secrets and environment config
 .env
 .env.*

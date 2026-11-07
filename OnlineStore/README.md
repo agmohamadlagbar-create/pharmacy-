@@ -3,7 +3,6 @@
 Stack:
 - Backend: ASP.NET Core Web API (C#) + EF Core Code-First + SQL Server + ASP.NET Identity + JWT
 - Web: React (Vite) UI for login/signup with Shop/User toggle
-- Mobile: Flutter (Android) UI for login/signup with Shop/User toggle
 
 ---
 
@@ -51,18 +50,3 @@ Create `.env.local` in `web/online-store-web` (or copy `.env.example`):
 ```
 VITE_API_BASE_URL=http://localhost:5000
 ```
-
----
-
-## 3) Mobile (Flutter Android)
-
-```bash
-cd mobile/online_store_mobile
-flutter pub get
-flutter run
-```
-
-Set API URL inside:
-`mobile/online_store_mobile/lib/api.dart`
-
-> Tip: On Android Emulator, use `http://10.0.2.2:5000` to reach localhost.

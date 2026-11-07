@@ -308,7 +308,7 @@ builder.Services.AddHostedService<OnlineStore.Api.Helpers.SecurityEventBackgroun
 // Configure ImageSharp for HEIF support
 SixLabors.ImageSharp.Configuration.Default.Configure(new HeifConfigurationModule());
 
-// CORS for React dev server + Flutter
+// CORS for React dev server
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("dev", policy =>
@@ -429,10 +429,6 @@ app.UseStaticFiles(new StaticFileOptions
         }
     }
 });
-
-// Explicitly serve the mobile-app folder if needed (though it is in wwwroot)
-var mobileAppPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "mobile-app");
-if (!Directory.Exists(mobileAppPath)) Directory.CreateDirectory(mobileAppPath);
 
 app.UseCors("dev");
 
