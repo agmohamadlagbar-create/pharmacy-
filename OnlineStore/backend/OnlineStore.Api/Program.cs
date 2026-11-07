@@ -179,11 +179,6 @@ builder.Services.AddScoped<OnlineStore.Api.Services.IAiMemoryService, OnlineStor
 builder.Services.AddScoped<OnlineStore.Api.Services.IAbTestingService, OnlineStore.Api.Services.AbTestingService>();
 builder.Services.AddHostedService<OnlineStore.Api.Services.MemoryCleanupBackgroundService>();
 
-// Telegram services
-builder.Services.AddHttpClient("TelegramBot");
-builder.Services.AddScoped<OnlineStore.Api.Services.ITelegramService, OnlineStore.Api.Services.TelegramService>();
-builder.Services.AddHostedService<OnlineStore.Api.Services.TelegramNotificationBackgroundService>();
-
 builder.Services.AddHttpClient<OnlineStore.Api.Services.IGroqAiService, OnlineStore.Api.Services.GroqAiService>(client =>
 {
     client.BaseAddress = new Uri("https://api.groq.com/openai/v1/");

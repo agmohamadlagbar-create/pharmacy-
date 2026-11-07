@@ -998,50 +998,6 @@ public static class ToolRegistrationService
                 return JsonSerializer.Serialize(new { goal.Id, goal.Title, Status = goal.Status.ToString(), Message = "Business goal created successfully." });
             });
 
-        registry.RegisterTool(
-            "get_telegram_connection",
-            ToolDefinitions.GetTelegramConnection,
-            allowedAgents: new HashSet<string> { "business_advisor", "reporting", "general_chat" },
-            allowedRoles: new HashSet<string> { "Shop" },
-            executor: async (_, userId, _2) =>
-            {
-                using var scope = services.CreateScope();
-                var telegramService = scope.ServiceProvider.GetRequiredService<ITelegramService>();
-                var status = await telegramService.GetConnectionStatusAsync(userId);
-                var settings = await telegramService.GetNotificationSettingsAsync(userId);
-                return JsonSerializer.Serialize(new { connection = status, settings });
-            });
-
-        registry.RegisterTool(
-            "toggle_telegram_notification",
-            ToolDefinitions.ToggleTelegramNotification,
-            allowedAgents: new HashSet<string> { "business_advisor", "reporting", "general_chat" },
-            allowedRoles: new HashSet<string> { "Shop" },
-            executor: async (argsJson, userId, _) =>
-            {
-                using var scope = services.CreateScope();
-                var telegramService = scope.ServiceProvider.GetRequiredService<ITelegramService>();
-                var args = JsonSerializer.Deserialize<ToggleTelegramNotificationArgs>(argsJson);
-                if (args == null || string.IsNullOrWhiteSpace(args.NotificationType))
-                    return "Error: notificationType is required.";
-
-                var currentSettings = await telegramService.GetNotificationSettingsAsync(userId);
-                var match = currentSettings.FirstOrDefault(s => s.NotificationType.Equals(args.NotificationType, StringComparison.OrdinalIgnoreCase));
-
-                var settingDto = new TelegramNotificationSettingDto(
-                    args.NotificationType,
-                    args.Enabled,
-                    match?.Frequency ?? "Instant",
-                    match?.IntervalDays,
-                    match?.WeeklyDay,
-                    match?.Hour ?? 9,
-                    match?.Minute ?? 0,
-                    match?.TimeZone ?? "UTC"
-                );
-
-                await telegramService.UpdateNotificationSettingsAsync(userId, new List<TelegramNotificationSettingDto> { settingDto });
-                return JsonSerializer.Serialize(new { notificationType = args.NotificationType, enabled = args.Enabled, Message = "Telegram notification preference updated successfully." });
-            });
     }
 
     // ═══════════════════════════════════════════════════
@@ -1200,12 +1156,6 @@ public static class ToolRegistrationService
         [JsonPropertyName("description")] public string? Description { get; set; }
         [JsonPropertyName("targetMetric")] public string? TargetMetric { get; set; }
         [JsonPropertyName("targetValue")] public decimal? TargetValue { get; set; }
-    }
-
-    private class ToggleTelegramNotificationArgs
-    {
-        [JsonPropertyName("notificationType")] public string NotificationType { get; set; } = "";
-        [JsonPropertyName("enabled")] public bool Enabled { get; set; }
     }
 }
 

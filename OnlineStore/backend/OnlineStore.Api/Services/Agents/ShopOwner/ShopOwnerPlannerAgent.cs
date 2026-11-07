@@ -35,9 +35,7 @@ public class ShopOwnerPlannerAgent : BaseAgent
         "User: 'Who are my best customers?' → {\"intent\": \"customer_insights\", \"tasks\": [\"get_top_customers\"], \"language\": \"en\"}\n" +
         "User: 'Help me increase my revenue by 20% and grow my business' → {\"intent\": \"business_advisor\", \"tasks\": [\"manage_goals\"], \"language\": \"en\"}\n" +
         "User: 'Be my business advisor' → {\"intent\": \"business_advisor\", \"tasks\": [\"start_coaching\"], \"language\": \"en\"}\n" +
-        "User: 'Help me improve my store' → {\"intent\": \"business_advisor\", \"tasks\": [\"inspect_store\"], \"language\": \"en\"}\n" +
-        "User: 'send these messages to my telegram every day' → {\"intent\": \"business_advisor\", \"tasks\": [\"toggle_telegram_notification\"], \"language\": \"en\"}\n" +
-        "User: 'enable daily telegram reports' → {\"intent\": \"business_advisor\", \"tasks\": [\"toggle_telegram_notification\"], \"language\": \"en\"}";
+        "User: 'Help me improve my store' → {\"intent\": \"business_advisor\", \"tasks\": [\"inspect_store\"], \"language\": \"en\"}";
 
     public override TaskComplexity DefaultComplexity => TaskComplexity.Complex;
 

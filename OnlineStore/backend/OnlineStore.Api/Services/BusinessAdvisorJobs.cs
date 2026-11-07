@@ -163,32 +163,6 @@ public class BusinessAdvisorJobs
             healthScore.Score,
             JsonSerializer.Serialize(inspection));
 
-        // Send notification via Telegram
-        try
-        {
-            var telegramService = scope.ServiceProvider.GetRequiredService<ITelegramService>();
-            var notificationType = $"BusinessAdvisor{reportType}";
-            var title = reportType switch
-            {
-                "Daily" => "📊 Daily Business Report",
-                "Weekly" => "📈 Weekly Business Summary",
-                "Monthly" => "🎯 Monthly Strategy Report",
-                _ => "📊 Business Advisor Report"
-            };
-
-            // Truncate for Telegram (4096 char limit)
-            var messageBody = result.ResponseText.Length > 3900
-                ? result.ResponseText[..3900] + "\n\n[Report truncated. View full report in the app.]"
-                : result.ResponseText;
-
-            await telegramService.TrySendEventNotificationAsync(
-                storeUserId, notificationType, $"{title}\n\n{messageBody}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "[BusinessAdvisorJobs] Failed to send Telegram notification for store {StoreUserId}", storeUserId);
-        }
-
         _logger.LogInformation("[BusinessAdvisorJobs] Generated {ReportType} report for store {StoreUserId} (Health: {Score}/100)",
             reportType, storeUserId, healthScore.Score);
     }

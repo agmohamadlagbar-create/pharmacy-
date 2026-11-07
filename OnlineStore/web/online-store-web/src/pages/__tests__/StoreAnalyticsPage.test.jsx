@@ -88,26 +88,12 @@ const mockAnalyticsData = {
   lowStockThreshold: 10
 }
 
-const mockTelegramSettings = {
-  connection: {
-    connected: true,
-    maskedChatId: '123***789',
-    connectedAt: '2026-06-26T00:00:00Z'
-  },
-  notifications: [
-    { notificationType: 'DailyIncome', enabled: true, frequency: 'Daily', hour: 9, minute: 0, timeZone: 'UTC' }
-  ]
-}
-
 describe('StoreAnalyticsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.get.mockImplementation(async (url) => {
       if (url.includes('/api/analytics/dashboard')) {
         return { data: mockAnalyticsData }
-      }
-      if (url.includes('/api/telegram/settings')) {
-        return { data: mockTelegramSettings }
       }
       return { data: {} }
     })
@@ -130,29 +116,5 @@ describe('StoreAnalyticsPage', () => {
 
     expect(screen.getByText('Total Revenue')).toBeInTheDocument()
     expect(screen.getByText('$5,000')).toBeInTheDocument()
-  })
-
-  it('handles telegram test message connection and sending', async () => {
-    const user = userEvent.setup()
-    render(
-      <MemoryRouter>
-        <StoreAnalyticsPage onBack={vi.fn()} />
-      </MemoryRouter>
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText(/Telegram Reports & Notifications/i)).toBeInTheDocument()
-    })
-
-    const toggleBtn = screen.getByRole('button', { name: /Configure Settings/i })
-    await user.click(toggleBtn)
-
-    await waitFor(() => {
-      expect(screen.getByText(/Test Message/i)).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText(/Test Message/i))
-
-    expect(mocks.post).toHaveBeenCalledWith('/api/telegram/test')
   })
 })

@@ -55,9 +55,7 @@ public class BusinessAdvisorAgent : BaseAgent
         "- Use create_recommendation to create new actionable recommendations.\n" +
         "- Use update_recommendation_status to mark recommendations as Completed/Skipped/Expired.\n" +
         "- Use get_advisor_memories to recall past strategies and observations.\n" +
-        "- Use save_advisor_memory to persist important observations for future sessions.\n" +
-        "- Use get_telegram_connection to check if the store's Telegram bot is connected and see enabled reports.\n" +
-        "- Use toggle_telegram_notification to enable or disable specific Telegram reports (e.g. DailyIncome, WeeklyReport, MonthlyReport, TopProducts, AiInsights, AiWeeklyReport) on behalf of the user when requested.\n\n" +
+        "- Use save_advisor_memory to persist important observations for future sessions.\n\n" +
 
         "RULES:\n" +
         "1. ALWAYS call get_store_inspection first to ground your analysis in real data.\n" +

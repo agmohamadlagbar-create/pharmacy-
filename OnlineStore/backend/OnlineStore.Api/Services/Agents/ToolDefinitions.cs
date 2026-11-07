@@ -1057,42 +1057,10 @@ public static class ToolDefinitions
         }
     };
 
-    public static GroqToolDto GetTelegramConnection => new()
-    {
-        Type = "function",
-        Function = new GroqFunctionDto
-        {
-            Name = "get_telegram_connection",
-            Description = "Check if the store owner's Telegram bot is connected and retrieve the status and enabled/disabled notification settings.",
-            Parameters = new { type = "object", properties = new { }, required = Array.Empty<string>() }
-        }
-    };
-
-    public static GroqToolDto ToggleTelegramNotification => new()
-    {
-        Type = "function",
-        Function = new GroqFunctionDto
-        {
-            Name = "toggle_telegram_notification",
-            Description = "Enable or disable a specific Telegram notification type (e.g. BusinessAdvisorDaily, BusinessAdvisorWeekly, BusinessAdvisorMonthly, LowStock).",
-            Parameters = new
-            {
-                type = "object",
-                properties = new
-                {
-                    notificationType = new { type = "string", description = "The notification type key, e.g. BusinessAdvisorDaily, BusinessAdvisorWeekly, BusinessAdvisorMonthly, LowStock." },
-                    enabled = new { type = "boolean", description = "True to enable, false to disable." }
-                },
-                required = new[] { "notificationType", "enabled" }
-            }
-        }
-    };
-
     public static List<GroqToolDto> GetBusinessAdvisorTools() => new()
     {
         GetStoreInspection, GetBusinessGoals, GetRecommendationHistory,
         GetBusinessHealthScore, CreateRecommendation, UpdateRecommendationStatus,
-        GetAdvisorMemories, SaveAdvisorMemory, CreateBusinessGoal,
-        GetTelegramConnection, ToggleTelegramNotification
+        GetAdvisorMemories, SaveAdvisorMemory, CreateBusinessGoal
     };
 }
