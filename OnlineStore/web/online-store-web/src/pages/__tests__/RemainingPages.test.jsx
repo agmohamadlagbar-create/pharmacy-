@@ -132,10 +132,6 @@ vi.mock('../../components/StripeAddCard.jsx', () => ({
   )
 }))
 
-vi.mock('../../components/DeliverySimulationMap.jsx', () => ({
-  default: ({ job }) => <div data-testid="delivery-map">{job ? 'with-job' : 'no-job'}</div>
-}))
-
 vi.mock('../../components/NotificationBell.jsx', () => ({
   default: () => <button data-testid="notification-bell">bell</button>
 }))

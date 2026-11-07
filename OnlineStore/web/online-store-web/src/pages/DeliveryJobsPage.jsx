@@ -1,25 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../apiClient.js'
 import { formatPrice } from '../utils/formatPrice.js'
-import * as signalR from '@microsoft/signalr'
-import DeliverySimulationMap from '../components/DeliverySimulationMap.jsx'
-
-const NORMALIZE_STATUS_MAP = {
-    assigned: 'Assigned',
-    pickedup: 'PickedUp',
-    picked_up: 'PickedUp',
-    ontheway: 'OnTheWay',
-    on_the_way: 'OnTheWay',
-    delivered: 'Delivered',
-    unassigned: 'Unassigned'
-}
-
-function normalizeToPascal(raw) {
-    if (!raw) return raw
-    const key = raw.toLowerCase().replace(/\s+/g, '')
-    return NORMALIZE_STATUS_MAP[key] || raw
-}
 
 export default function DeliveryJobsPage({ onBack }) {
     const { t } = useTranslation()
@@ -27,99 +9,10 @@ export default function DeliveryJobsPage({ onBack }) {
     const [availableJobs, setAvailableJobs] = useState([])
     const [myJobs, setMyJobs] = useState([])
     const [loading, setLoading] = useState(true)
-    const [simJob, setSimJob] = useState(null)
-    const trackingConnRef = useRef(null)
-
-    useEffect(() => {
-        const token = localStorage.getItem('token')
-        if (!token) return
-
-        const baseURL = import.meta.env.VITE_API_BASE_URL
-        const conn = new signalR.HubConnectionBuilder()
-            .withUrl(`${baseURL}/hubs/tracking?access_token=${token}`)
-            .withAutomaticReconnect()
-            .build()
-
-        conn.start().catch(err => console.error('TrackingHub connect error:', err))
-        trackingConnRef.current = conn
-
-        return () => {
-            conn.stop()
-        }
-    }, [])
-
-    useEffect(() => {
-        const conn = trackingConnRef.current
-        if (!conn) return
-
-        const handleStatusUpdate = (data) => {
-            const orderGroupId = data.orderGroupId ?? data.OrderGroupId
-            const status = normalizeToPascal(data.status ?? data.Status)
-
-            if (!orderGroupId || !status) return
-
-            const applyUpdate = prev => prev.map(job =>
-                String(job.orderGroupId) === String(orderGroupId)
-                    ? {
-                        ...job,
-                        status: job.status === 'Unassigned' ? job.status : status,
-                        orderGroup: job.orderGroup ? { ...job.orderGroup, status } : job.orderGroup
-                    }
-                    : job
-            )
-
-            setMyJobs(applyUpdate)
-            setAvailableJobs(applyUpdate)
-            setSimJob(prev => (
-                prev && String(prev.orderGroupId) === String(orderGroupId)
-                    ? {
-                        ...prev,
-                        status: prev.status === 'Unassigned' ? prev.status : status,
-                        orderGroup: prev.orderGroup ? { ...prev.orderGroup, status } : prev.orderGroup
-                    }
-                    : prev
-            ))
-        }
-
-        conn.on('order:status_updated', handleStatusUpdate)
-
-        return () => {
-            conn.off('order:status_updated', handleStatusUpdate)
-        }
-    }, [])
 
     useEffect(() => {
         load()
     }, [tab])
-
-    useEffect(() => {
-        const conn = trackingConnRef.current
-        if (!conn) return
-
-        const activeJobs = myJobs.filter(job => job.orderGroupId && job.status !== 'Delivered')
-
-        const joinGroups = async () => {
-            while (conn.state === 'Connecting') {
-                await new Promise(resolve => setTimeout(resolve, 100))
-            }
-
-            if (conn.state !== 'Connected') return
-
-            for (const job of activeJobs) {
-                await conn.invoke('JoinGroupedOrderGroup', job.orderGroupId).catch(() => {})
-            }
-        }
-
-        joinGroups()
-
-        return () => {
-            if (conn.state === 'Connected') {
-                activeJobs.forEach(job => {
-                    conn.invoke('LeaveGroupedOrderGroup', job.orderGroupId).catch(() => {})
-                })
-            }
-        }
-    }, [myJobs])
 
     async function load() {
         setLoading(true)
@@ -145,11 +38,7 @@ export default function DeliveryJobsPage({ onBack }) {
             const { data } = await api.get('/api/delivery/my-jobs')
             const jobs = Array.isArray(data) ? data : []
             setMyJobs(jobs)
-            const accepted = jobs.find(job => job.id === jobId)
-            if (accepted) {
-                setSimJob(accepted)
-                setTab('mine')
-            }
+            setTab('mine')
             load()
         } catch (err) {
             alert(err?.response?.data?.error || err.message)
@@ -159,9 +48,6 @@ export default function DeliveryJobsPage({ onBack }) {
     async function updateStatus(jobId, newStatus) {
         try {
             await api.put(`/api/delivery/${jobId}/status`, { status: newStatus })
-            if (newStatus === 'Delivered' && simJob?.id === jobId) {
-                setSimJob(null)
-            }
             load()
         } catch (err) {
             alert(err?.response?.data?.error || err.message)
@@ -260,37 +146,16 @@ export default function DeliveryJobsPage({ onBack }) {
                                         <button onClick={() => acceptJob(job.id)} className="primary">{t('Accept Job')}</button>
                                     )}
 
-                                    {tab === 'mine' && (
-                                        <>
-                                            {(job.status === 'Assigned' || job.status === 'PickedUp' || job.status === 'OnTheWay') && (
-                                                <button
-                                                    onClick={() => setSimJob(job)}
-                                                    className="glass-btn"
-                                                    style={{ border: simJob?.id === job.id ? '1px solid #22c55e' : '1px solid var(--border)', fontWeight: 600 }}
-                                                >
-                                                    {t('Open Route Map')}
-                                                </button>
-                                            )}
-                                            {nextStatus(job.status) && (
-                                                <button onClick={() => updateStatus(job.id, nextStatus(job.status))} className="primary">
-                                                    {t('Mark as')} {t(nextStatus(job.status))}
-                                                </button>
-                                            )}
-                                        </>
+                                    {tab === 'mine' && nextStatus(job.status) && (
+                                        <button onClick={() => updateStatus(job.id, nextStatus(job.status))} className="primary">
+                                            {t('Mark as')} {t(nextStatus(job.status))}
+                                        </button>
                                     )}
                                 </div>
                             </div>
                         )
                     })}
                 </div>
-            )}
-
-            {simJob && (
-                <DeliverySimulationMap
-                    order={simJob}
-                    hubConnection={trackingConnRef.current}
-                    onClose={() => setSimJob(null)}
-                />
             )}
         </div>
     )

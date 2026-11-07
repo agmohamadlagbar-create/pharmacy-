@@ -42,7 +42,6 @@ export default function CategoriesPage({ onLogout, theme, onToggleTheme, account
             if (accountType === 'User') {
                 fetchActiveOrders()
                 setupOrderHub()
-                setupTrackingHub()
             }
         }
         fetchCategories()
@@ -50,14 +49,10 @@ export default function CategoriesPage({ onLogout, theme, onToggleTheme, account
 
         return () => {
             connRef.current?.stop()
-            trackingConnRef.current?.stop()
         }
     }, [isGuest, accountType])
 
     const connRef = useRef(null)
-    const trackingConnRef = useRef(null)
-    const [hubConnection, setHubConnection] = useState(null)
-    const [trackingConnection, setTrackingConnection] = useState(null)
     const [activeOrders, setActiveOrders] = useState([])
 
     async function fetchActiveOrders() {
@@ -91,23 +86,6 @@ export default function CategoriesPage({ onLogout, theme, onToggleTheme, account
 
         conn.start().catch(console.error)
         connRef.current = conn
-        setHubConnection(conn)
-    }
-
-    function setupTrackingHub() {
-        const token = localStorage.getItem('token')
-        if (!token) return
-
-        const baseURL = import.meta.env.VITE_API_BASE_URL
-        const trackingConn = new signalR.HubConnectionBuilder()
-            .withUrl(`${baseURL}/hubs/tracking?access_token=${token}`)
-            .withAutomaticReconnect()
-            .build()
-
-        trackingConn.start().then(() => {
-            trackingConnRef.current = trackingConn
-            setTrackingConnection(trackingConn)
-        }).catch(err => console.error('TrackingHub connect error:', err))
     }
 
     const handleDismissOrder = (orderGroupId) => {
@@ -487,8 +465,6 @@ export default function CategoriesPage({ onLogout, theme, onToggleTheme, account
                                 key={order.orderGroupId} 
                                 order={order} 
                                 onDismiss={handleDismissOrder} 
-                                hubConnection={hubConnection}
-                                trackingConnection={trackingConnection}
                             />
                         ))}
                     </div>

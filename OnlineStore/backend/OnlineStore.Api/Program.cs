@@ -289,7 +289,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
-app.MapHub<OnlineStore.Api.Hubs.TrackingHub>("/hubs/tracking");
 
 // Auto-create roles + seed Admin on startup
 var isDesignTime = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name?.Contains("ef", StringComparison.OrdinalIgnoreCase) == true

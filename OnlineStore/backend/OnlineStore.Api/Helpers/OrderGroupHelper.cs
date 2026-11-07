@@ -10,8 +10,6 @@ public static class OrderGroupHelper
     public static string ResolveGroupId(Order order) =>
         string.IsNullOrWhiteSpace(order.OrderGroupId) ? $"S-{order.Id}" : order.OrderGroupId!;
 
-    public static string BuildTrackingGroupName(string orderGroupId) => $"order_group_{orderGroupId}";
-
     public static string ComputeGroupedStatus(IReadOnlyCollection<Order> orders, DeliveryStatus? deliveryStatus = null)
     {
         if (orders.Count == 0) return OrderStatus.Pending.ToString();

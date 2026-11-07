@@ -21,15 +21,13 @@ public class DeliveryController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly UserManager<AppUser> _userManager;
     private readonly INotificationService _notif;
-    private readonly IHubContext<OnlineStore.Api.Hubs.TrackingHub> _trackingHub;
     private readonly ILogger<DeliveryController> _logger;
 
-    public DeliveryController(ApplicationDbContext db, UserManager<AppUser> userManager, INotificationService notif, IHubContext<OnlineStore.Api.Hubs.TrackingHub> trackingHub, ILogger<DeliveryController> logger)
+    public DeliveryController(ApplicationDbContext db, UserManager<AppUser> userManager, INotificationService notif, ILogger<DeliveryController> logger)
     {
         _db = db;
         _userManager = userManager;
         _notif = notif;
-        _trackingHub = trackingHub;
         _logger = logger;
     }
 
@@ -97,9 +95,6 @@ public class DeliveryController : ControllerBase
                 await _notif.NotifyUserAsync(job.Order.UserId, "Delivery Assigned", $"A driver is collecting items for order #{orderGroupId} from {groupedOrders.Count} stores.");
 
                 await _notif.NotifyOrderStatusChangedAsync(job.Order.UserId, job.Order.Id, DeliveryStatus.Assigned.ToString());
-
-            _logger.LogInformation("[SignalR] Sending order:status_updated → group: order_{OrderId}, status: {Status}", job.OrderId, OrderStatus.PickedUp);
-                await BroadcastGroupedOrderStatusAsync(groupedOrders, job);
             }
             catch (Exception ex)
             {
@@ -166,9 +161,6 @@ public class DeliveryController : ControllerBase
             {
                 await _notif.NotifyUserAsync(job.Order.UserId, "Delivery Update", $"Your order #{orderGroupId} is now {newStatus}.");
                 await _notif.NotifyOrderStatusChangedAsync(job.Order.UserId, job.Order.Id, mappedOrderStatus.ToString());
-
-            _logger.LogInformation("[SignalR] Sending order:status_updated → group: order_{OrderId}, status: {Status}", job.OrderId, job.Order.Status);
-                await BroadcastGroupedOrderStatusAsync(groupedOrders, job);
             }
             catch (Exception ex)
             {
@@ -284,37 +276,5 @@ public class DeliveryController : ControllerBase
             .OrderBy(order => order.CreatedAtUtc)
             .ThenBy(order => order.Id)
             .ToListAsync();
-    }
-
-    private async Task BroadcastGroupedOrderStatusAsync(
-        IReadOnlyCollection<Order> groupedOrders,
-        DeliveryJob job)
-    {
-        if (groupedOrders.Count == 0) return;
-
-        var orderGroupId = OrderGroupHelper.ResolveGroupId(groupedOrders.First());
-        var groupedStatus = OrderGroupHelper.ComputeGroupedStatus(groupedOrders, job.Status);
-
-        await _trackingHub.Clients.Group(OrderGroupHelper.BuildTrackingGroupName(orderGroupId))
-            .SendAsync("order:status_updated", new
-            {
-                orderGroupId,
-                status = groupedStatus,
-                deliveryJobId = job.Id,
-                deliveryStatus = job.Status.ToString()
-            });
-
-        foreach (var groupedOrder in groupedOrders)
-        {
-            await _trackingHub.Clients.Group($"order_{groupedOrder.Id}")
-                .SendAsync("order:status_updated", new
-                {
-                    orderId = groupedOrder.Id,
-                    orderGroupId,
-                    status = groupedOrder.Status.ToString(),
-                    deliveryJobId = job.Id,
-                    deliveryStatus = job.Status.ToString()
-                });
-        }
     }
 }

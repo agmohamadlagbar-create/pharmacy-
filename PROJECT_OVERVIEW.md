@@ -8,11 +8,11 @@ This is a modern e-commerce application divided into two main components:
    - **Database:** SQL Server
    - **ORM:** Entity Framework Core (Code-First)
    - **Authentication:** ASP.NET Identity + JWT (JSON Web Tokens)
-   - **Real-Time Communication:** SignalR (for live location and order status tracking)
+   - **Real-Time Communication:** SignalR (for notifications and order status updates)
 
 2. **Web Frontend**
    - **Framework:** React (built with Vite)
-   - **Features:** User and Shop interfaces, login/signup flows, real-time map tracking with Leaflet.
+   - **Features:** User, Shop, Delivery, and Admin interfaces, login/signup flows, and interactive address selection.
 
 ---
 
@@ -34,21 +34,16 @@ This is a modern e-commerce application divided into two main components:
   - `Delivered` (Order complete)
 - **Live Updates:** Status changes are broadcasted instantly to the customer's web app using SignalR, requiring no page refreshes.
 
-### 3. Real-Time Delivery Location Tracking
-- **Live Map:** Customers can watch their delivery agent's real-time movement on a map.
-- **Technology:** Uses Leaflet/React-Leaflet on the frontend and SignalR `TrackingHub` on the backend.
-- **Agent Tracking:** Delivery agents stream their GPS coordinates (or via simulation mode during testing) directly to the server, which broadcasts it to the specific customer's active session.
-
-### 4. Payments
+### 3. Payments
 - Integration capabilities for order checkouts and status notifications from payment to shop preparation.
 
-### 5. Media & Photo Storage
+### 4. Media & Photo Storage
 - Support for uploading and storing photos (e.g., product images, user avatars).
 
-### 6. Internationalization
+### 5. Internationalization
 - Includes translation synchronization (`sync_translations.py`) for supporting multiple languages across the platform.
 
-### 7. Load Testing & Infrastructure
+### 6. Load Testing & Infrastructure
 - Dedicated `load_tests` scripts to ensure the backend and real-time hubs scale appropriately.
 - Support for local testing using `LocalDB` or SQL Server.
 

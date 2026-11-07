@@ -40,8 +40,7 @@ public class ApiSurfaceTests
     {
         var hubTypes = new[]
         {
-            typeof(NotificationHub),
-            typeof(TrackingHub)
+            typeof(NotificationHub)
         };
 
         foreach (var hubType in hubTypes)

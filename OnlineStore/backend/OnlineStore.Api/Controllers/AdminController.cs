@@ -23,17 +23,15 @@ public class AdminController : ControllerBase
     private readonly INotificationService _notif;
     private readonly IFileStorageService _fileStorage;
     private readonly IStoreCacheService _cache;
-    private readonly Microsoft.AspNetCore.SignalR.IHubContext<OnlineStore.Api.Hubs.TrackingHub> _trackingHub;
     private readonly ILogger<AdminController> _logger;
 
-    public AdminController(ApplicationDbContext db, UserManager<AppUser> userManager, INotificationService notif, IFileStorageService fileStorage, IStoreCacheService cache, Microsoft.AspNetCore.SignalR.IHubContext<OnlineStore.Api.Hubs.TrackingHub> trackingHub, ILogger<AdminController> logger)
+    public AdminController(ApplicationDbContext db, UserManager<AppUser> userManager, INotificationService notif, IFileStorageService fileStorage, IStoreCacheService cache, ILogger<AdminController> logger)
     {
         _db = db;
         _userManager = userManager;
         _notif = notif;
         _fileStorage = fileStorage;
         _cache = cache;
-        _trackingHub = trackingHub;
         _logger = logger;
     }
 
@@ -405,16 +403,6 @@ public class AdminController : ControllerBase
 
             await _notif.NotifyUserAsync(job.Order.UserId, "Delivery Assigned", $"A driver is collecting items for order #{orderGroupId}.");
             await _notif.NotifyOrderStatusChangedAsync(job.Order.UserId, job.Order.Id, DeliveryStatus.Assigned.ToString());
-
-            _logger.LogInformation("[SignalR] Sending order:status_updated → group: order_{OrderId}, status: {Status}", job.OrderId, OrderStatus.PickedUp);
-            await _trackingHub.Clients.Group(OrderGroupHelper.BuildTrackingGroupName(orderGroupId))
-                .SendAsync("order:status_updated", new
-                {
-                    orderGroupId,
-                    status = DeliveryStatus.Assigned.ToString(),
-                    deliveryJobId = job.Id,
-                    deliveryStatus = job.Status.ToString()
-                });
         }
 
         return Ok(new MessageResponse("Driver assigned successfully"));
