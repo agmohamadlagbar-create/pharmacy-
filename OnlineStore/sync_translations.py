@@ -2,24 +2,9 @@ import os
 import re
 import json
 
-def extract_keys_from_dart(directory):
-    pattern = re.compile(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"")
-    # Match strings followed by .tr
-    keys = set()
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if file.endswith('.dart'):
-                with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    # A simplistic approach: find all occurrences of .tr() and look back at the string before it
-                    # E.g. 'Hello'.tr()
-                    matches = re.findall(r"('([^'\\]*(?:\\.[^'\\]*)*)'|\"([^\"\\]*(?:\\.[^\"\\]*)*)\")\.tr", content)
-                    for match in matches:
-                        if match[1]:
-                            keys.add(match[1])
-                        elif match[2]:
-                            keys.add(match[2])
-    return keys
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+WEB_DIR = os.path.join(SCRIPT_DIR, "web", "online-store-web")
+
 
 def extract_keys_from_jsx(directory):
     keys = set()
@@ -35,6 +20,7 @@ def extract_keys_from_jsx(directory):
                         elif match[2]:
                             keys.add(match[2])
     return keys
+
 
 def update_json_file(filepath, keys):
     if os.path.exists(filepath):
@@ -57,34 +43,22 @@ def update_json_file(filepath, keys):
         json.dump(data, f, ensure_ascii=False, indent=2)
     return added
 
+
 def main():
-    mobile_dir = r"d:\LAGBAR SHOP\OnlineStore_updated\OnlineStore\mobile\online_store_mobile\lib"
-    web_dir = r"d:\LAGBAR SHOP\OnlineStore_updated\OnlineStore\web\online-store-web\src"
+    src_dir = os.path.join(WEB_DIR, "src")
 
-    dart_keys = extract_keys_from_dart(mobile_dir)
-    print(f"Found {len(dart_keys)} keys in Dart.")
-
-    jsx_keys = extract_keys_from_jsx(web_dir)
+    jsx_keys = extract_keys_from_jsx(src_dir)
     print(f"Found {len(jsx_keys)} keys in JSX.")
 
-    all_keys = dart_keys.union(jsx_keys)
-    print(f"Total unique keys: {len(all_keys)}")
-
-    mobile_locales = [
-        r"d:\LAGBAR SHOP\OnlineStore_updated\OnlineStore\mobile\online_store_mobile\assets\translations\en.json",
-        r"d:\LAGBAR SHOP\OnlineStore_updated\OnlineStore\mobile\online_store_mobile\assets\translations\ar.json",
-        r"d:\LAGBAR SHOP\OnlineStore_updated\OnlineStore\mobile\online_store_mobile\assets\translations\tr.json"
-    ]
-
     web_locales = [
-        r"d:\LAGBAR SHOP\OnlineStore_updated\OnlineStore\web\online-store-web\public\locales\en\translation.json",
-        r"d:\LAGBAR SHOP\OnlineStore_updated\OnlineStore\web\online-store-web\public\locales\ar\translation.json",
-        r"d:\LAGBAR SHOP\OnlineStore_updated\OnlineStore\web\online-store-web\public\locales\tr\translation.json"
+        os.path.join(WEB_DIR, "public", "locales", lang, "translation.json")
+        for lang in ("en", "ar", "tr")
     ]
 
-    for path in mobile_locales + web_locales:
-        added = update_json_file(path, all_keys)
+    for path in web_locales:
+        added = update_json_file(path, jsx_keys)
         print(f"Added {added} keys to {path}")
+
 
 if __name__ == '__main__':
     main()
