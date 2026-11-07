@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using OnlineStore.Api.Contracts;
 using OnlineStore.Domain.Entities;
+using OnlineStore.Infrastructure.Persistence;
 
 namespace OnlineStore.Api.Helpers;
 
@@ -9,6 +11,44 @@ public static class OrderGroupHelper
 {
     public static string ResolveGroupId(Order order) =>
         string.IsNullOrWhiteSpace(order.OrderGroupId) ? $"S-{order.Id}" : order.OrderGroupId!;
+
+    public static async Task<(Dictionary<string, ShopSummary> ShopsByUserId, Dictionary<string, (double? Latitude, double? Longitude, string? Country)> CoordinatesByUserId)> LoadGroupMetadataAsync(
+        ApplicationDbContext db,
+        IReadOnlyCollection<Order> orders)
+    {
+        var storeUserIds = orders.Select(o => o.StoreUserId).Distinct().ToList();
+        var customerUserIds = orders.Select(o => o.UserId).Distinct().ToList();
+        var allRelatedUserIds = storeUserIds.Concat(customerUserIds).Distinct().ToList();
+
+        var shopProfilesList = await db.ShopProfiles
+            .AsNoTracking()
+            .Where(shop => storeUserIds.Contains(shop.UserId))
+            .ToListAsync();
+        var shopsByUserId = shopProfilesList
+            .GroupBy(shop => shop.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                {
+                    var shop = group
+                        .OrderByDescending(x => x.Id)
+                        .First();
+                    return new ShopSummary(shop.ShopName, shop.Location);
+                }
+            );
+
+        var usersList = await db.Users
+            .AsNoTracking()
+            .Where(user => allRelatedUserIds.Contains(user.Id))
+            .ToListAsync();
+        var coordinatesByUserId = usersList
+            .ToDictionary(
+                user => user.Id,
+                user => (user.Latitude, user.Longitude, user.Country)
+            );
+
+        return (shopsByUserId, coordinatesByUserId);
+    }
 
     public static string ComputeGroupedStatus(IReadOnlyCollection<Order> orders, DeliveryStatus? deliveryStatus = null)
     {

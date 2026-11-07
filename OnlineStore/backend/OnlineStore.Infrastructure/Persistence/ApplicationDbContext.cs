@@ -26,9 +26,6 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<UserImage> UserImages => Set<UserImage>();
     public DbSet<UserAddress> UserAddresses => Set<UserAddress>();
-    public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
-    public DbSet<FraudAlert> FraudAlerts => Set<FraudAlert>();
-    public DbSet<ModerationFlag> ModerationFlags => Set<ModerationFlag>();
 
     // Store Analytics Aggregations & Events
     public DbSet<StoreAnalyticsEvent> StoreAnalyticsEvents => Set<StoreAnalyticsEvent>();
@@ -238,50 +235,6 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
             b.Property(x => x.City).HasMaxLength(100);
             b.Property(x => x.PostalCode).HasMaxLength(20);
             b.HasIndex(x => x.UserId);
-        });
-
-        // Phase 5: SecurityEvent
-        builder.Entity<SecurityEvent>(b =>
-        {
-            b.HasKey(x => x.Id);
-            b.Property(x => x.EventType).HasMaxLength(50).IsRequired();
-            b.Property(x => x.UserId).HasMaxLength(450);
-            b.Property(x => x.IpAddress).HasMaxLength(50);
-            b.Property(x => x.UserAgent).HasMaxLength(500);
-            b.Property(x => x.RequestPath).HasMaxLength(500);
-            b.Property(x => x.Severity).HasMaxLength(20).IsRequired();
-            b.HasIndex(x => new { x.EventType, x.CreatedAtUtc });
-            b.HasIndex(x => x.IpAddress);
-        });
-
-        // Phase 5: FraudAlert
-        builder.Entity<FraudAlert>(b =>
-        {
-            b.HasKey(x => x.Id);
-            b.Property(x => x.AlertType).HasMaxLength(50).IsRequired();
-            b.Property(x => x.UserId).HasMaxLength(450);
-            b.Property(x => x.OrderIds).HasMaxLength(500);
-            b.Property(x => x.Description).HasMaxLength(2000).IsRequired();
-            b.Property(x => x.Severity).HasMaxLength(20).IsRequired();
-            b.Property(x => x.Status).HasMaxLength(30).IsRequired();
-            b.Property(x => x.ResolvedBy).HasMaxLength(450);
-            b.Property(x => x.ResolutionNotes).HasMaxLength(2000);
-            b.HasIndex(x => x.Status);
-            b.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
-        });
-
-        // Phase 5: ModerationFlag
-        builder.Entity<ModerationFlag>(b =>
-        {
-            b.HasKey(x => x.Id);
-            b.Property(x => x.ContentType).HasMaxLength(30).IsRequired();
-            b.Property(x => x.FlagType).HasMaxLength(50).IsRequired();
-            b.Property(x => x.Description).HasMaxLength(2000).IsRequired();
-            b.Property(x => x.Severity).HasMaxLength(20).IsRequired();
-            b.Property(x => x.Status).HasMaxLength(30).IsRequired();
-            b.Property(x => x.ResolvedBy).HasMaxLength(450);
-            b.HasIndex(x => x.Status);
-            b.HasIndex(x => new { x.ContentType, x.ContentId });
         });
 
         // Store Analytics Configurations

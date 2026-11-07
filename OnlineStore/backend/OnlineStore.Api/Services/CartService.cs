@@ -81,61 +81,12 @@ public class CartService : ICartService
             : $"Quantity updated to {quantity}.";
     }
 
-    public async Task<string> RemoveFromCartAsync(string userId, int productId)
-    {
-        if (string.IsNullOrWhiteSpace(userId))
-            return "Error: User authentication is required.";
-
-        var cart = await GetOrCreateCart(userId);
-        var item = cart.Items.FirstOrDefault(i => i.ProductId == productId);
-
-        if (item != null)
-        {
-            cart.Items.Remove(item);
-            cart.UpdatedAtUtc = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-            return "Item successfully removed from cart.";
-        }
-
-        return "Item was not found in your cart.";
-    }
-
-    public async Task<string> GetCartSummaryAsync(string userId)
-    {
-        if (string.IsNullOrWhiteSpace(userId))
-            return "Error: User authentication is required. Session may have expired.";
-
-        var cart = await _db.Carts
-            .AsNoTracking()
-            .Include(c => c.Items)
-            .ThenInclude(i => i.Product)
-            .FirstOrDefaultAsync(c => c.UserId == userId);
-
-        if (cart == null || !cart.Items.Any())
-            return "Your cart is currently empty.";
-
-        var summary = new
-        {
-            Items = cart.Items.Select(i => new
-            {
-                i.ProductId,
-                ProductName = i.Product?.Name ?? "Unknown",
-                i.Quantity,
-                UnitPrice = i.Product?.Price ?? 0,
-                TotalLinePrice = (i.Product?.Price ?? 0) * i.Quantity
-            }),
-            TotalPrice = cart.Items.Sum(i => (i.Product?.Price ?? 0) * i.Quantity),
-            UpdatedAt = cart.UpdatedAtUtc
-        };
-
-        return System.Text.Json.JsonSerializer.Serialize(summary);
-    }
-
     private async Task<Cart> GetOrCreateCart(string userId)
     {
         var cart = await _db.Carts
             .AsTracking()
             .Include(c => c.Items)
+            .ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
         if (cart == null)

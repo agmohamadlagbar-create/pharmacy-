@@ -199,14 +199,12 @@ public class OrdersController : ControllerBase
         
         var groupedItems = cart.Items.GroupBy(i => i.Product!.StoreUserId).ToList();
         
-        // Batch-load store users to validate cities (avoids N+1 inside loop)
+        // Batch-load store users to validate cities in a single query
         var storeUserIds = groupedItems.Select(g => g.Key).ToList();
-        var storeUsersDict = new Dictionary<string, AppUser>();
-        foreach (var sid in storeUserIds)
-        {
-            var su = await _userManager.FindByIdAsync(sid);
-            if (su != null) storeUsersDict[sid] = su;
-        }
+        var storeUsersDict = await _db.Users
+            .AsNoTracking()
+            .Where(u => storeUserIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
 
         // Validate cities for all stores in the cart
         // Use the delivery city from the selected address, fall back to profile city
@@ -788,36 +786,7 @@ public class OrdersController : ControllerBase
         List<Order> orders,
         IReadOnlyDictionary<string, DeliveryJob>? deliveryJobsByGroup = null)
     {
-        var storeUserIds = orders.Select(o => o.StoreUserId).Distinct().ToList();
-        var customerUserIds = orders.Select(o => o.UserId).Distinct().ToList();
-        var allRelatedUserIds = storeUserIds.Concat(customerUserIds).Distinct().ToList();
-
-        var shopProfilesList = await _db.ShopProfiles
-            .AsNoTracking()
-            .Where(shop => storeUserIds.Contains(shop.UserId))
-            .ToListAsync();
-        var shopsByUserId = shopProfilesList
-            .GroupBy(shop => shop.UserId)
-            .ToDictionary(
-                group => group.Key,
-                group =>
-                {
-                    var shop = group
-                        .OrderByDescending(x => x.Id)
-                        .First();
-                    return new ShopSummary(shop.ShopName, shop.Location);
-                }
-            );
-
-        var usersList = await _db.Users
-            .AsNoTracking()
-            .Where(user => allRelatedUserIds.Contains(user.Id))
-            .ToListAsync();
-        var coordinatesByUserId = usersList
-            .ToDictionary(
-                user => user.Id,
-                user => (user.Latitude, user.Longitude, user.Country)
-            );
+        var (shopsByUserId, coordinatesByUserId) = await OrderGroupHelper.LoadGroupMetadataAsync(_db, orders);
 
         return orders
             .GroupBy(OrderGroupHelper.ResolveGroupId)

@@ -159,13 +159,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<OnlineStore.Api.Services.ICacheService, OnlineStore.Api.Services.LocalCacheService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IStoreCacheService, OnlineStore.Api.Services.StoreCacheService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.ICartService, OnlineStore.Api.Services.CartService>();
-builder.Services.AddScoped<OnlineStore.Api.Services.IStoreSelectionService, OnlineStore.Api.Services.StoreSelectionService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IAnalyticsService, OnlineStore.Api.Services.AnalyticsService>();
 builder.Services.AddScoped<OnlineStore.Api.Services.IReportExportService, OnlineStore.Api.Services.ReportExportService>();
-
-// Security Event Middleware (singleton channel + background service)
-builder.Services.AddSingleton<OnlineStore.Api.Helpers.SecurityEventChannel>();
-builder.Services.AddHostedService<OnlineStore.Api.Helpers.SecurityEventBackgroundService>();
 
 // Configure ImageSharp for HEIF support
 SixLabors.ImageSharp.Configuration.Default.Configure(new HeifConfigurationModule());
@@ -281,9 +276,6 @@ app.UseCors("dev");
 
 app.UseRateLimiter();
 
-// Security event middleware
-app.UseMiddleware<OnlineStore.Api.Helpers.SecurityEventMiddleware>();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -354,12 +346,12 @@ if (!isDesignTime)
         {
             var defaultCategories = new[]
             {
-                new OnlineStore.Domain.Entities.Category { Name = "Food", Code = "FOOD", ImageUrl = "/uploads/category_food.png" },
-                new OnlineStore.Domain.Entities.Category { Name = "Beverages", Code = "BEV", ImageUrl = "/uploads/category_beverages.png" },
-                new OnlineStore.Domain.Entities.Category { Name = "Cleaning Supplies", Code = "CLEAN", ImageUrl = "/uploads/category_cleaning.png" },
-                new OnlineStore.Domain.Entities.Category { Name = "House Needs", Code = "HOUSE", ImageUrl = "/uploads/category_house.png" },
-                new OnlineStore.Domain.Entities.Category { Name = "Electronics", Code = "ELEC", ImageUrl = "/uploads/category_electronics.png" },
-                new OnlineStore.Domain.Entities.Category { Name = "Clothing", Code = "CLOTH", ImageUrl = "/uploads/category_clothing.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "Food", Code = "FOOD", ImageUrl = "/images/category_food.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "Beverages", Code = "BEV", ImageUrl = "/images/category_beverages.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "Cleaning Supplies", Code = "CLEAN", ImageUrl = "/images/category_cleaning.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "House Needs", Code = "HOUSE", ImageUrl = "/images/category_house.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "Electronics", Code = "ELEC", ImageUrl = "/images/category_electronics.png" },
+                new OnlineStore.Domain.Entities.Category { Name = "Clothing", Code = "CLOTH", ImageUrl = "/images/category_clothing.png" },
             };
             db.Categories.AddRange(defaultCategories);
             await db.SaveChangesAsync();

@@ -60,7 +60,6 @@ public class ApiSurfaceTests
         Assert.True(typeof(IJwtTokenService).IsAssignableFrom(typeof(JwtTokenService)));
         Assert.True(typeof(INotificationService).IsAssignableFrom(typeof(NotificationService)));
         Assert.True(typeof(IStoreCacheService).IsAssignableFrom(typeof(StoreCacheService)));
-        Assert.True(typeof(IStoreSelectionService).IsAssignableFrom(typeof(StoreSelectionService)));
         Assert.True(typeof(IVerificationCodeStore).IsAssignableFrom(typeof(InMemoryVerificationCodeStore)));
     }
 }

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using OnlineStore.Api.Contracts;
+using OnlineStore.Api.Helpers;
 using OnlineStore.Domain.Entities;
 using OnlineStore.Infrastructure.Persistence;
 
@@ -168,70 +169,6 @@ public class AnalyticsService : IAnalyticsService
     }
 
     // ═══════════════════════════════════════════════════
-    //  Currency Helper — Country → Symbol
-    // ═══════════════════════════════════════════════════
-
-    private static readonly Dictionary<string, string> CountryCurrencyMap = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Turkey"] = "₺", ["Türkiye"] = "₺", ["TR"] = "₺",
-        ["United States"] = "$", ["US"] = "$", ["USA"] = "$",
-        ["United Kingdom"] = "£", ["UK"] = "£", ["GB"] = "£",
-        ["Germany"] = "€", ["France"] = "€", ["Italy"] = "€", ["Spain"] = "€",
-        ["Netherlands"] = "€", ["Belgium"] = "€", ["Austria"] = "€",
-        ["Ireland"] = "€", ["Portugal"] = "€", ["Greece"] = "€", ["Finland"] = "€",
-        ["EU"] = "€",
-        ["Japan"] = "¥", ["JP"] = "¥",
-        ["China"] = "¥", ["CN"] = "¥",
-        ["India"] = "₹", ["IN"] = "₹",
-        ["Russia"] = "₽", ["RU"] = "₽",
-        ["Brazil"] = "R$", ["BR"] = "R$",
-        ["South Korea"] = "₩", ["KR"] = "₩",
-        ["Saudi Arabia"] = "﷼", ["SA"] = "﷼",
-        ["UAE"] = "د.إ", ["United Arab Emirates"] = "د.إ",
-        ["Egypt"] = "£", ["EG"] = "E£",
-
-        ["Iraq"] = "ع.د", ["IQ"] = "ع.د",
-        ["Syria"] = "£", ["SY"] = "S£",
-        ["Lebanon"] = "ل.ل", ["LB"] = "ل.ل",
-        ["Jordan"] = "د.ا", ["JO"] = "د.ا",
-        ["Kuwait"] = "د.ك", ["KW"] = "د.ك",
-        ["Qatar"] = "ر.ق", ["QA"] = "ر.ق",
-        ["Bahrain"] = "د.ب", ["BH"] = "د.ب",
-        ["Oman"] = "ر.ع", ["OM"] = "ر.ع",
-        ["Pakistan"] = "₨", ["PK"] = "₨",
-        ["Nigeria"] = "₦", ["NG"] = "₦",
-        ["South Africa"] = "R", ["ZA"] = "R",
-        ["Mexico"] = "$", ["MX"] = "MX$",
-        ["Canada"] = "C$", ["CA"] = "C$",
-        ["Australia"] = "A$", ["AU"] = "A$",
-        ["Switzerland"] = "CHF", ["CH"] = "CHF",
-        ["Sweden"] = "kr", ["SE"] = "kr",
-        ["Norway"] = "kr", ["NO"] = "kr",
-        ["Denmark"] = "kr", ["DK"] = "kr",
-        ["Poland"] = "zł", ["PL"] = "zł",
-        ["Czech Republic"] = "Kč", ["CZ"] = "Kč",
-        ["Hungary"] = "Ft", ["HU"] = "Ft",
-        ["Romania"] = "lei", ["RO"] = "lei",
-        ["Thailand"] = "฿", ["TH"] = "฿",
-        ["Malaysia"] = "RM", ["MY"] = "RM",
-        ["Indonesia"] = "Rp", ["ID"] = "Rp",
-        ["Philippines"] = "₱", ["PH"] = "₱",
-        ["Vietnam"] = "₫", ["VN"] = "₫",
-        ["Singapore"] = "S$", ["SG"] = "S$",
-        ["Israel"] = "₪", ["IL"] = "₪",
-        ["Argentina"] = "AR$", ["AR"] = "AR$",
-        ["Colombia"] = "COL$", ["CO"] = "COL$",
-        ["Chile"] = "CLP$", ["CL"] = "CLP$",
-        ["Peru"] = "S/", ["PE"] = "S/"
-    };
-
-    private static string GetCurrencySymbol(string? country)
-    {
-        if (string.IsNullOrWhiteSpace(country)) return "$";
-        return CountryCurrencyMap.TryGetValue(country.Trim(), out var symbol) ? symbol : "$";
-    }
-
-    // ═══════════════════════════════════════════════════
     //  Full Dashboard
     // ═══════════════════════════════════════════════════
 
@@ -264,7 +201,7 @@ public class AnalyticsService : IAnalyticsService
             .Select(u => new { u.Country })
             .FirstOrDefaultAsync();
 
-        var currencySymbol = GetCurrencySymbol(storeUser?.Country);
+        var currencySymbol = CurrencyHelper.GetCurrencySymbol(storeUser?.Country);
         var lowStockThreshold = shopProfile?.LowStockThreshold ?? 10;
 
         // ── Load all store products (single query) ──
@@ -659,7 +596,7 @@ public class AnalyticsService : IAnalyticsService
             .Select(u => new { u.Country })
             .FirstOrDefaultAsync();
 
-        var currencySymbol = GetCurrencySymbol(storeUser?.Country);
+        var currencySymbol = CurrencyHelper.GetCurrencySymbol(storeUser?.Country);
 
         var monthStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
         var monthEnd = monthStart.AddMonths(1);
@@ -744,7 +681,7 @@ public class AnalyticsService : IAnalyticsService
             .Select(u => new { u.Country })
             .FirstOrDefaultAsync();
 
-        var currencySymbol = GetCurrencySymbol(storeUser?.Country);
+        var currencySymbol = CurrencyHelper.GetCurrencySymbol(storeUser?.Country);
 
         var yearStart = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var yearEnd = yearStart.AddYears(1);

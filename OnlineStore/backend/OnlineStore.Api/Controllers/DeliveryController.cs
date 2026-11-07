@@ -191,36 +191,7 @@ public class DeliveryController : ControllerBase
             .Where(order => order.OrderGroupId != null && orderGroupIds.Contains(order.OrderGroupId))
             .ToListAsync();
 
-        var storeUserIds = groupedOrders.Select(order => order.StoreUserId).Distinct().ToList();
-        var customerUserIds = groupedOrders.Select(order => order.UserId).Distinct().ToList();
-        var allRelatedUserIds = storeUserIds.Concat(customerUserIds).Distinct().ToList();
-
-        var shopProfilesList = await _db.ShopProfiles
-            .AsNoTracking()
-            .Where(shop => storeUserIds.Contains(shop.UserId))
-            .ToListAsync();
-        var shopsByUserId = shopProfilesList
-            .GroupBy(shop => shop.UserId)
-            .ToDictionary(
-                group => group.Key,
-                group =>
-                {
-                    var shop = group
-                        .OrderByDescending(x => x.Id)
-                        .First();
-                    return new ShopSummary(shop.ShopName, shop.Location);
-                }
-            );
-
-        var usersList = await _db.Users
-            .AsNoTracking()
-            .Where(user => allRelatedUserIds.Contains(user.Id))
-            .ToListAsync();
-        var coordinatesByUserId = usersList
-            .ToDictionary(
-                user => user.Id,
-                user => (user.Latitude, user.Longitude, user.Country)
-            );
+        var (shopsByUserId, coordinatesByUserId) = await OrderGroupHelper.LoadGroupMetadataAsync(_db, groupedOrders);
 
         var groupedOrdersById = groupedOrders
             .GroupBy(OrderGroupHelper.ResolveGroupId)
