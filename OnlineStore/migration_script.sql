@@ -1379,3 +1379,1573 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521091002_AddCreatedAtUtcIndexes'
+)
+BEGIN
+    CREATE INDEX [IX_Products_CreatedAtUtc] ON [Products] ([CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521091002_AddCreatedAtUtcIndexes'
+)
+BEGIN
+    CREATE INDEX [IX_Products_Price] ON [Products] ([Price]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521091002_AddCreatedAtUtcIndexes'
+)
+BEGIN
+    CREATE INDEX [IX_Orders_CreatedAtUtc] ON [Orders] ([CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521091002_AddCreatedAtUtcIndexes'
+)
+BEGIN
+    CREATE INDEX [IX_Orders_Status] ON [Orders] ([Status]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521091002_AddCreatedAtUtcIndexes'
+)
+BEGIN
+    CREATE INDEX [IX_Notifications_CreatedAtUtc] ON [Notifications] ([CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521091002_AddCreatedAtUtcIndexes'
+)
+BEGIN
+    CREATE INDEX [IX_AiMessages_ConversationId_UserId] ON [AiMessages] ([ConversationId], [UserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521091002_AddCreatedAtUtcIndexes'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260521091002_AddCreatedAtUtcIndexes', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521105728_AddAnalyticsAndPayments'
+)
+BEGIN
+    CREATE TABLE [Payments] (
+        [Id] int NOT NULL IDENTITY,
+        [OrderId] int NOT NULL,
+        [Amount] decimal(18,2) NOT NULL,
+        [PaidAtUtc] datetime2 NOT NULL,
+        [PaymentMethod] nvarchar(50) NOT NULL,
+        CONSTRAINT [PK_Payments] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_Payments_Orders_OrderId] FOREIGN KEY ([OrderId]) REFERENCES [Orders] ([Id]) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521105728_AddAnalyticsAndPayments'
+)
+BEGIN
+    CREATE TABLE [StoreMonthlyAnalytics] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreId] nvarchar(450) NOT NULL,
+        [Year] int NOT NULL,
+        [Month] int NOT NULL,
+        [TotalSales] decimal(18,2) NOT NULL,
+        [TotalOrders] int NOT NULL,
+        [AverageOrderValue] decimal(18,2) NOT NULL,
+        [GrowthPercentage] decimal(18,2) NOT NULL,
+        [GeneratedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_StoreMonthlyAnalytics] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521105728_AddAnalyticsAndPayments'
+)
+BEGIN
+    CREATE TABLE [StoreYearlyAnalytics] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreId] nvarchar(450) NOT NULL,
+        [Year] int NOT NULL,
+        [TotalSales] decimal(18,2) NOT NULL,
+        [TotalOrders] int NOT NULL,
+        [GrowthPercentage] decimal(18,2) NOT NULL,
+        [GeneratedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_StoreYearlyAnalytics] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521105728_AddAnalyticsAndPayments'
+)
+BEGIN
+    CREATE INDEX [IX_Payments_OrderId] ON [Payments] ([OrderId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521105728_AddAnalyticsAndPayments'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_StoreMonthlyAnalytics_StoreId_Year_Month] ON [StoreMonthlyAnalytics] ([StoreId], [Year], [Month]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521105728_AddAnalyticsAndPayments'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_StoreYearlyAnalytics_StoreId_Year] ON [StoreYearlyAnalytics] ([StoreId], [Year]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260521105728_AddAnalyticsAndPayments'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260521105728_AddAnalyticsAndPayments', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260624193558_AddLowStockThreshold'
+)
+BEGIN
+    DROP TABLE [Payments];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260624193558_AddLowStockThreshold'
+)
+BEGIN
+    DROP TABLE [StoreMonthlyAnalytics];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260624193558_AddLowStockThreshold'
+)
+BEGIN
+    DROP TABLE [StoreYearlyAnalytics];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260624193558_AddLowStockThreshold'
+)
+BEGIN
+    ALTER TABLE [ShopProfiles] ADD [LowStockThreshold] int NOT NULL DEFAULT 10;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260624193558_AddLowStockThreshold'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260624193558_AddLowStockThreshold', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260625042339_AddTelegramNotifications'
+)
+BEGIN
+    CREATE TABLE [StoreTelegramNotificationSettings] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [NotificationType] nvarchar(100) NOT NULL,
+        [Enabled] bit NOT NULL,
+        [Frequency] nvarchar(50) NOT NULL DEFAULT N'Daily',
+        [IntervalDays] int NULL,
+        [WeeklyDay] int NULL,
+        [Hour] int NOT NULL DEFAULT 9,
+        [Minute] int NOT NULL DEFAULT 0,
+        [TimeZone] nvarchar(100) NOT NULL DEFAULT N'UTC',
+        [LastSentAtUtc] datetime2 NULL,
+        CONSTRAINT [PK_StoreTelegramNotificationSettings] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260625042339_AddTelegramNotifications'
+)
+BEGIN
+    CREATE TABLE [StoreTelegramSettings] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [ChatId] bigint NOT NULL,
+        [BotConnected] bit NOT NULL,
+        [ConnectedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_StoreTelegramSettings] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260625042339_AddTelegramNotifications'
+)
+BEGIN
+    CREATE INDEX [IX_StoreTelegramNotificationSettings_Enabled_NotificationType] ON [StoreTelegramNotificationSettings] ([Enabled], [NotificationType]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260625042339_AddTelegramNotifications'
+)
+BEGIN
+    CREATE INDEX [IX_StoreTelegramNotificationSettings_StoreUserId] ON [StoreTelegramNotificationSettings] ([StoreUserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260625042339_AddTelegramNotifications'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_StoreTelegramNotificationSettings_StoreUserId_NotificationType] ON [StoreTelegramNotificationSettings] ([StoreUserId], [NotificationType]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260625042339_AddTelegramNotifications'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_StoreTelegramSettings_StoreUserId] ON [StoreTelegramSettings] ([StoreUserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260625042339_AddTelegramNotifications'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260625042339_AddTelegramNotifications', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707220513_AddMultiAgentFields'
+)
+BEGIN
+    ALTER TABLE [AiConversations] ADD [AgentType] nvarchar(50) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707220513_AddMultiAgentFields'
+)
+BEGIN
+    ALTER TABLE [AiConversations] ADD [LastAgentUsed] nvarchar(120) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707220513_AddMultiAgentFields'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260707220513_AddMultiAgentFields', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    ALTER TABLE [AiConversations] ADD [PromptVariantId] int NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE TABLE [AiConversationAnalyses] (
+        [Id] int NOT NULL IDENTITY,
+        [AnalysisDate] datetime2 NOT NULL,
+        [TotalConversations] int NOT NULL,
+        [SuccessfulConversations] int NOT NULL,
+        [FailedConversations] int NOT NULL,
+        [AbandonedConversations] int NOT NULL,
+        [AverageSatisfactionRating] float NOT NULL,
+        [TotalFeedbackCount] int NOT NULL,
+        [NegativeFeedbackCount] int NOT NULL,
+        [AgentPerformanceJson] nvarchar(max) NULL,
+        [TopIssuesJson] nvarchar(max) NULL,
+        [CommonQuestionsJson] nvarchar(max) NULL,
+        [ToolPerformanceJson] nvarchar(max) NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_AiConversationAnalyses] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE TABLE [AiFeedbacks] (
+        [Id] int NOT NULL IDENTITY,
+        [ConversationId] int NOT NULL,
+        [MessageId] int NULL,
+        [UserId] nvarchar(450) NOT NULL,
+        [Rating] int NULL,
+        [FeedbackType] nvarchar(50) NULL,
+        [Comment] nvarchar(2000) NULL,
+        [ImplicitSignal] nvarchar(50) NULL,
+        [AgentName] nvarchar(120) NULL,
+        [FeedbackSource] nvarchar(20) NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_AiFeedbacks] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_AiFeedbacks_AiConversations_ConversationId] FOREIGN KEY ([ConversationId]) REFERENCES [AiConversations] ([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_AiFeedbacks_AiMessages_MessageId] FOREIGN KEY ([MessageId]) REFERENCES [AiMessages] ([Id]) ON DELETE NO ACTION
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE TABLE [AiImprovementSuggestions] (
+        [Id] int NOT NULL IDENTITY,
+        [Category] nvarchar(50) NOT NULL,
+        [AgentName] nvarchar(120) NOT NULL,
+        [Title] nvarchar(300) NOT NULL,
+        [Description] nvarchar(4000) NOT NULL,
+        [SuggestedChange] nvarchar(max) NULL,
+        [EvidenceJson] nvarchar(max) NULL,
+        [Status] nvarchar(30) NOT NULL,
+        [ReviewedBy] nvarchar(450) NULL,
+        [ReviewNotes] nvarchar(2000) NULL,
+        [Priority] int NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [ReviewedAtUtc] datetime2 NULL,
+        CONSTRAINT [PK_AiImprovementSuggestions] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE TABLE [AiKnowledgeGaps] (
+        [Id] int NOT NULL IDENTITY,
+        [Topic] nvarchar(200) NOT NULL,
+        [Description] nvarchar(2000) NOT NULL,
+        [ExampleQuestions] nvarchar(max) NULL,
+        [OccurrenceCount] int NOT NULL,
+        [Status] nvarchar(30) NOT NULL,
+        [Resolution] nvarchar(2000) NULL,
+        [FirstDetectedAtUtc] datetime2 NOT NULL,
+        [LastDetectedAtUtc] datetime2 NOT NULL,
+        [ResolvedAtUtc] datetime2 NULL,
+        CONSTRAINT [PK_AiKnowledgeGaps] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE TABLE [AiPromptVariants] (
+        [Id] int NOT NULL IDENTITY,
+        [AgentName] nvarchar(120) NOT NULL,
+        [VariantName] nvarchar(200) NOT NULL,
+        [SystemPrompt] nvarchar(max) NOT NULL,
+        [IsActive] bit NOT NULL,
+        [IsDefault] bit NOT NULL,
+        [TotalConversations] int NOT NULL,
+        [AverageSatisfaction] float NOT NULL,
+        [ConversionRate] float NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_AiPromptVariants] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_AiConversationAnalyses_AnalysisDate] ON [AiConversationAnalyses] ([AnalysisDate]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE INDEX [IX_AiFeedbacks_AgentName] ON [AiFeedbacks] ([AgentName]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE INDEX [IX_AiFeedbacks_ConversationId_CreatedAtUtc] ON [AiFeedbacks] ([ConversationId], [CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE INDEX [IX_AiFeedbacks_MessageId] ON [AiFeedbacks] ([MessageId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE INDEX [IX_AiFeedbacks_UserId] ON [AiFeedbacks] ([UserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE INDEX [IX_AiImprovementSuggestions_AgentName] ON [AiImprovementSuggestions] ([AgentName]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE INDEX [IX_AiImprovementSuggestions_Status] ON [AiImprovementSuggestions] ([Status]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE INDEX [IX_AiKnowledgeGaps_Status] ON [AiKnowledgeGaps] ([Status]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE INDEX [IX_AiKnowledgeGaps_Topic] ON [AiKnowledgeGaps] ([Topic]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_AiPromptVariants_AgentName_VariantName] ON [AiPromptVariants] ([AgentName], [VariantName]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260707231041_Phase4_ContinuousImprovement'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260707231041_Phase4_ContinuousImprovement', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    ALTER TABLE [AspNetUsers] ADD [CreatedAtUtc] datetime2 NOT NULL DEFAULT '0001-01-01T00:00:00.0000000';
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    CREATE TABLE [FraudAlerts] (
+        [Id] int NOT NULL IDENTITY,
+        [AlertType] nvarchar(50) NOT NULL,
+        [UserId] nvarchar(450) NULL,
+        [OrderIds] nvarchar(500) NULL,
+        [Description] nvarchar(2000) NOT NULL,
+        [EvidenceJson] nvarchar(max) NULL,
+        [Severity] nvarchar(20) NOT NULL,
+        [Status] nvarchar(30) NOT NULL,
+        [ResolvedBy] nvarchar(450) NULL,
+        [ResolutionNotes] nvarchar(2000) NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [ResolvedAtUtc] datetime2 NULL,
+        CONSTRAINT [PK_FraudAlerts] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    CREATE TABLE [ModerationFlags] (
+        [Id] int NOT NULL IDENTITY,
+        [ContentType] nvarchar(30) NOT NULL,
+        [ContentId] int NULL,
+        [FlagType] nvarchar(50) NOT NULL,
+        [Description] nvarchar(2000) NOT NULL,
+        [EvidenceJson] nvarchar(max) NULL,
+        [Severity] nvarchar(20) NOT NULL,
+        [Status] nvarchar(30) NOT NULL,
+        [ResolvedBy] nvarchar(450) NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [ResolvedAtUtc] datetime2 NULL,
+        CONSTRAINT [PK_ModerationFlags] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    CREATE TABLE [SecurityEvents] (
+        [Id] int NOT NULL IDENTITY,
+        [EventType] nvarchar(50) NOT NULL,
+        [UserId] nvarchar(450) NULL,
+        [IpAddress] nvarchar(50) NULL,
+        [UserAgent] nvarchar(500) NULL,
+        [RequestPath] nvarchar(500) NULL,
+        [Details] nvarchar(max) NULL,
+        [Severity] nvarchar(20) NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_SecurityEvents] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    CREATE INDEX [IX_FraudAlerts_Status] ON [FraudAlerts] ([Status]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    CREATE INDEX [IX_FraudAlerts_UserId_CreatedAtUtc] ON [FraudAlerts] ([UserId], [CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    CREATE INDEX [IX_ModerationFlags_ContentType_ContentId] ON [ModerationFlags] ([ContentType], [ContentId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    CREATE INDEX [IX_ModerationFlags_Status] ON [ModerationFlags] ([Status]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    CREATE INDEX [IX_SecurityEvents_EventType_CreatedAtUtc] ON [SecurityEvents] ([EventType], [CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    CREATE INDEX [IX_SecurityEvents_IpAddress] ON [SecurityEvents] ([IpAddress]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260708012201_AddUserCreatedAtUtc'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260708012201_AddUserCreatedAtUtc', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    ALTER TABLE [AiPromptVariants] ADD [ExperimentEndedAtUtc] datetime2 NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    ALTER TABLE [AiPromptVariants] ADD [ExperimentName] nvarchar(200) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    ALTER TABLE [AiPromptVariants] ADD [ExperimentStartedAtUtc] datetime2 NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    ALTER TABLE [AiPromptVariants] ADD [SuccessfulOutcomes] int NOT NULL DEFAULT 0;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    ALTER TABLE [AiPromptVariants] ADD [TotalOutcomes] int NOT NULL DEFAULT 0;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    ALTER TABLE [AiPromptVariants] ADD [TrafficPercentage] float NOT NULL DEFAULT 0.0E0;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    ALTER TABLE [AiPromptVariants] ADD [WinnerDecision] nvarchar(30) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE TABLE [AiEpisodicMemories] (
+        [Id] int NOT NULL IDENTITY,
+        [UserId] nvarchar(450) NOT NULL,
+        [ConversationId] int NOT NULL,
+        [EpisodeType] nvarchar(50) NOT NULL,
+        [Summary] nvarchar(2000) NOT NULL,
+        [Outcome] nvarchar(30) NULL,
+        [SentimentAtEnd] nvarchar(20) NULL,
+        [KeyEntitiesJson] nvarchar(2000) NULL,
+        [Importance] float NOT NULL,
+        [EpisodeDateUtc] datetime2 NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_AiEpisodicMemories] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_AiEpisodicMemories_AiConversations_ConversationId] FOREIGN KEY ([ConversationId]) REFERENCES [AiConversations] ([Id]) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE TABLE [AiLongTermMemories] (
+        [Id] int NOT NULL IDENTITY,
+        [UserId] nvarchar(450) NOT NULL,
+        [MemoryType] nvarchar(30) NOT NULL,
+        [Content] nvarchar(2000) NOT NULL,
+        [SourceConversationSummary] nvarchar(500) NULL,
+        [SourceConversationId] int NOT NULL,
+        [Importance] float NOT NULL,
+        [AccessCount] int NOT NULL,
+        [LastAccessedAtUtc] datetime2 NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [ExpiresAtUtc] datetime2 NULL,
+        CONSTRAINT [PK_AiLongTermMemories] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE TABLE [AiShopContexts] (
+        [Id] int NOT NULL IDENTITY,
+        [UserId] nvarchar(450) NOT NULL,
+        [ShopProfileId] int NOT NULL,
+        [PreferredLanguage] nvarchar(10) NULL,
+        [PreferredCurrency] nvarchar(10) NULL,
+        [ShopPoliciesJson] nvarchar(4000) NULL,
+        [ReportingPreferencesJson] nvarchar(2000) NULL,
+        [CustomInstructionsJson] nvarchar(2000) NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_AiShopContexts] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE TABLE [AiUserPreferences] (
+        [Id] int NOT NULL IDENTITY,
+        [UserId] nvarchar(450) NOT NULL,
+        [PreferenceKey] nvarchar(100) NOT NULL,
+        [PreferenceValue] nvarchar(500) NOT NULL,
+        [Source] nvarchar(20) NOT NULL,
+        [Confidence] float NOT NULL,
+        [OccurrenceCount] int NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_AiUserPreferences] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE INDEX [IX_AiPromptVariants_AgentName_IsActive] ON [AiPromptVariants] ([AgentName], [IsActive]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE INDEX [IX_AiPromptVariants_ExperimentName] ON [AiPromptVariants] ([ExperimentName]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE INDEX [IX_AiEpisodicMemories_ConversationId] ON [AiEpisodicMemories] ([ConversationId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE INDEX [IX_AiEpisodicMemories_UserId] ON [AiEpisodicMemories] ([UserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE INDEX [IX_AiEpisodicMemories_UserId_EpisodeType] ON [AiEpisodicMemories] ([UserId], [EpisodeType]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE INDEX [IX_AiLongTermMemories_ExpiresAtUtc] ON [AiLongTermMemories] ([ExpiresAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE INDEX [IX_AiLongTermMemories_UserId] ON [AiLongTermMemories] ([UserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE INDEX [IX_AiLongTermMemories_UserId_MemoryType] ON [AiLongTermMemories] ([UserId], [MemoryType]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_AiShopContexts_UserId] ON [AiShopContexts] ([UserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_AiUserPreferences_UserId_PreferenceKey] ON [AiUserPreferences] ([UserId], [PreferenceKey]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260709231931_AddMemoryAndAbTesting'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260709231931_AddMemoryAndAbTesting', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710002254_AddPendingIntentState'
+)
+BEGIN
+    ALTER TABLE [AiConversations] ADD [State_LastShoppingIntentJson] nvarchar(2000) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710002254_AddPendingIntentState'
+)
+BEGIN
+    ALTER TABLE [AiConversations] ADD [State_LastSuccessfulToolResult] nvarchar(4000) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710002254_AddPendingIntentState'
+)
+BEGIN
+    ALTER TABLE [AiConversations] ADD [State_PendingIntentJson] nvarchar(2000) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710002254_AddPendingIntentState'
+)
+BEGIN
+    ALTER TABLE [AiConversations] ADD [State_SelectedProductId] int NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710002254_AddPendingIntentState'
+)
+BEGIN
+    ALTER TABLE [AiConversations] ADD [State_SelectedStoreName] nvarchar(200) NULL;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710002254_AddPendingIntentState'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260710002254_AddPendingIntentState', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE TABLE [BusinessAdvisorMemories] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [MemoryType] nvarchar(50) NOT NULL,
+        [Content] nvarchar(4000) NOT NULL,
+        [Importance] int NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [ExpiresAtUtc] datetime2 NULL,
+        CONSTRAINT [PK_BusinessAdvisorMemories] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE TABLE [BusinessAdvisorReports] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [ReportType] nvarchar(30) NOT NULL,
+        [ReportContent] nvarchar(max) NOT NULL,
+        [HealthScore] int NULL,
+        [ReportDataJson] nvarchar(max) NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_BusinessAdvisorReports] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE TABLE [BusinessGoals] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [Title] nvarchar(500) NOT NULL,
+        [Description] nvarchar(2000) NULL,
+        [TargetMetric] nvarchar(100) NULL,
+        [TargetValue] decimal(18,2) NULL,
+        [CurrentProgress] decimal(18,2) NOT NULL,
+        [Status] nvarchar(30) NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [UpdatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_BusinessGoals] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE TABLE [BusinessRecommendations] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [GoalId] int NULL,
+        [Title] nvarchar(500) NOT NULL,
+        [Description] nvarchar(4000) NOT NULL,
+        [Reason] nvarchar(2000) NOT NULL,
+        [Priority] nvarchar(30) NOT NULL,
+        [Status] nvarchar(30) NOT NULL,
+        [VerificationCriteria] nvarchar(2000) NULL,
+        [VerificationResult] nvarchar(2000) NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        [DueDate] datetime2 NULL,
+        [CompletedAtUtc] datetime2 NULL,
+        CONSTRAINT [PK_BusinessRecommendations] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_BusinessRecommendations_BusinessGoals_GoalId] FOREIGN KEY ([GoalId]) REFERENCES [BusinessGoals] ([Id]) ON DELETE SET NULL
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessAdvisorMemories_ExpiresAtUtc] ON [BusinessAdvisorMemories] ([ExpiresAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessAdvisorMemories_StoreUserId] ON [BusinessAdvisorMemories] ([StoreUserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessAdvisorMemories_StoreUserId_MemoryType] ON [BusinessAdvisorMemories] ([StoreUserId], [MemoryType]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessAdvisorReports_StoreUserId] ON [BusinessAdvisorReports] ([StoreUserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessAdvisorReports_StoreUserId_ReportType_CreatedAtUtc] ON [BusinessAdvisorReports] ([StoreUserId], [ReportType], [CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessGoals_StoreUserId] ON [BusinessGoals] ([StoreUserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessGoals_StoreUserId_Status] ON [BusinessGoals] ([StoreUserId], [Status]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessRecommendations_CreatedAtUtc] ON [BusinessRecommendations] ([CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessRecommendations_GoalId] ON [BusinessRecommendations] ([GoalId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessRecommendations_StoreUserId] ON [BusinessRecommendations] ([StoreUserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    CREATE INDEX [IX_BusinessRecommendations_StoreUserId_Status] ON [BusinessRecommendations] ([StoreUserId], [Status]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260710195802_AddBusinessAdvisorEntities'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260710195802_AddBusinessAdvisorEntities', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE TABLE [StoreAnalyticsDailies] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [Date] datetime2 NOT NULL,
+        [TotalSales] decimal(18,2) NOT NULL,
+        [TotalOrders] int NOT NULL,
+        [AverageOrderValue] decimal(18,2) NOT NULL,
+        [ProductSalesJson] nvarchar(max) NOT NULL,
+        [CustomersJson] nvarchar(max) NOT NULL,
+        [GeneratedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_StoreAnalyticsDailies] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE TABLE [StoreAnalyticsEvents] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [UserId] nvarchar(450) NOT NULL,
+        [OrderId] int NOT NULL,
+        [ProductId] int NOT NULL,
+        [Quantity] int NOT NULL,
+        [UnitPrice] decimal(18,2) NOT NULL,
+        [TotalAmount] decimal(18,2) NOT NULL,
+        [CreatedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_StoreAnalyticsEvents] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE TABLE [StoreAnalyticsMonthlies] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [Year] int NOT NULL,
+        [Month] int NOT NULL,
+        [TotalSales] decimal(18,2) NOT NULL,
+        [TotalOrders] int NOT NULL,
+        [AverageOrderValue] decimal(18,2) NOT NULL,
+        [ProductSalesJson] nvarchar(max) NOT NULL,
+        [CustomersJson] nvarchar(max) NOT NULL,
+        [GeneratedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_StoreAnalyticsMonthlies] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE TABLE [StoreAnalyticsYearlies] (
+        [Id] int NOT NULL IDENTITY,
+        [StoreUserId] nvarchar(450) NOT NULL,
+        [Year] int NOT NULL,
+        [TotalSales] decimal(18,2) NOT NULL,
+        [TotalOrders] int NOT NULL,
+        [AverageOrderValue] decimal(18,2) NOT NULL,
+        [ProductSalesJson] nvarchar(max) NOT NULL,
+        [CustomersJson] nvarchar(max) NOT NULL,
+        [GeneratedAtUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_StoreAnalyticsYearlies] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE INDEX [IX_StoreAnalyticsDailies_Date] ON [StoreAnalyticsDailies] ([Date]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_StoreAnalyticsDailies_StoreUserId_Date] ON [StoreAnalyticsDailies] ([StoreUserId], [Date]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE INDEX [IX_StoreAnalyticsEvents_CreatedAtUtc] ON [StoreAnalyticsEvents] ([CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE INDEX [IX_StoreAnalyticsEvents_StoreUserId] ON [StoreAnalyticsEvents] ([StoreUserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE INDEX [IX_StoreAnalyticsEvents_StoreUserId_CreatedAtUtc] ON [StoreAnalyticsEvents] ([StoreUserId], [CreatedAtUtc]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_StoreAnalyticsMonthlies_StoreUserId_Year_Month] ON [StoreAnalyticsMonthlies] ([StoreUserId], [Year], [Month]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_StoreAnalyticsYearlies_StoreUserId_Year] ON [StoreAnalyticsYearlies] ([StoreUserId], [Year]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260711235519_AddStoreAnalyticsRestructuring'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260711235519_AddStoreAnalyticsRestructuring', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiConversationAnalyses];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiEpisodicMemories];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiFeedbacks];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiImprovementSuggestions];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiKnowledgeGaps];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiLongTermMemories];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiPromptVariants];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiShopContexts];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiToolCalls];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiUserPreferences];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [BusinessAdvisorMemories];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [BusinessAdvisorReports];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [BusinessRecommendations];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [StoreTelegramNotificationSettings];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [StoreTelegramSettings];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiMessages];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [BusinessGoals];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    DROP TABLE [AiConversations];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261107185734_RemoveAiAndTelegram'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261107185734_RemoveAiAndTelegram', N'8.0.2');
+END;
+GO
+
+COMMIT;
+GO
+

@@ -9,9 +9,6 @@ import paymentSuccessAnim from './assets/lottie/payment-success.json'
 import { api, setAuthToken } from './apiClient.js'
 import { ErrorProvider, useError } from './context/ErrorContext'
 import ErrorOverlay from './components/ErrorOverlay'
-import AiChatWidget from './components/AiChatWidget.jsx'
-import ShopAiChatWidget from './components/ShopAiChatWidget.jsx'
-import AdminAiChatWidget from './components/AdminAiChatWidget.jsx'
 
 // Lazy-loaded pages for optimization
 const AuthPage = lazy(() => import('./pages/AuthPage.jsx'))
@@ -666,18 +663,6 @@ function AppContent() {
           }}
           duration={2000}
         />
-      )}
-      {loggedIn && accountType === 'User' && (
-        <AiChatWidget
-          onCartUpdate={fetchCart}
-          onAddToCart={() => setActiveAnimation('cart')}
-        />
-      )}
-      {loggedIn && accountType === 'Shop' && (
-        <ShopAiChatWidget />
-      )}
-      {loggedIn && accountType === 'Admin' && (
-        <AdminAiChatWidget />
       )}
     </>
   )

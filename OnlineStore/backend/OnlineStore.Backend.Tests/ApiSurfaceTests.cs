@@ -15,7 +15,6 @@ public class ApiSurfaceTests
         {
             typeof(AdminController),
             typeof(AdsController),
-            typeof(AiController),
             typeof(AuthController),
             typeof(CartController),
             typeof(CategoriesController),
@@ -41,7 +40,6 @@ public class ApiSurfaceTests
     {
         var hubTypes = new[]
         {
-            typeof(AiChatHub),
             typeof(NotificationHub),
             typeof(TrackingHub)
         };
@@ -55,19 +53,13 @@ public class ApiSurfaceTests
     [Fact]
     public void CoreServices_ImplementTheirPublicContracts()
     {
-        Assert.True(typeof(IAiOrchestratorService).IsAssignableFrom(typeof(AiOrchestratorService)));
         Assert.True(typeof(ICacheService).IsAssignableFrom(typeof(LocalCacheService)));
         Assert.True(typeof(ICartService).IsAssignableFrom(typeof(CartService)));
-        Assert.True(typeof(IChatHistoryService).IsAssignableFrom(typeof(ChatHistoryService)));
-        Assert.True(typeof(ICustomerSupportService).IsAssignableFrom(typeof(CustomerSupportService)));
         Assert.True(typeof(IEmailService).IsAssignableFrom(typeof(SmtpEmailService)));
         Assert.True(typeof(IFileStorageService).IsAssignableFrom(typeof(FileStorageService)));
-        Assert.True(typeof(IGroqAiService).IsAssignableFrom(typeof(GroqAiService)));
         Assert.True(typeof(IImageProcessingQueue).IsAssignableFrom(typeof(ImageProcessingQueue)));
         Assert.True(typeof(IJwtTokenService).IsAssignableFrom(typeof(JwtTokenService)));
         Assert.True(typeof(INotificationService).IsAssignableFrom(typeof(NotificationService)));
-        Assert.True(typeof(IProductSearchService).IsAssignableFrom(typeof(ProductSearchService)));
-        Assert.True(typeof(IRecommendationService).IsAssignableFrom(typeof(RecommendationService)));
         Assert.True(typeof(IStoreCacheService).IsAssignableFrom(typeof(StoreCacheService)));
         Assert.True(typeof(IStoreSelectionService).IsAssignableFrom(typeof(StoreSelectionService)));
         Assert.True(typeof(IVerificationCodeStore).IsAssignableFrom(typeof(InMemoryVerificationCodeStore)));

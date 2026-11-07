@@ -12,20 +12,6 @@ namespace OnlineStore.Backend.Tests;
 public class HelperAndServiceTests
 {
     [Fact]
-    public void OutputSanitizer_RemovesInternalToolXmlAndJsonLeaks()
-    {
-        var input = "Here is your answer function=search_products <tool>{\"productId\":123,\"stock\":5}</tool> Ready.";
-
-        var sanitized = OutputSanitizer.Sanitize(input);
-
-        Assert.DoesNotContain("function=", sanitized);
-        Assert.DoesNotContain("<tool>", sanitized);
-        Assert.DoesNotContain("productId", sanitized);
-        Assert.Contains("Here is your answer", sanitized);
-        Assert.Contains("Ready.", sanitized);
-    }
-
-    [Fact]
     public void AuthenticatedUserExtensions_PrefersNameIdentifierClaim()
     {
         var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
