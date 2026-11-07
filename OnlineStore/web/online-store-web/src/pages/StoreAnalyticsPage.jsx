@@ -706,7 +706,7 @@ export default function StoreAnalyticsPage({ onBack }) {
       {/* â•â•â• Section 10: AI Recommendations â•â•â• */}
       {aiRecommendations?.length > 0 && (
         <div className="analytics-section">
-          <h2 className="analytics-section-title"><LightbulbIcon /> {t('AI Recommendations')}</h2>
+          <h2 className="analytics-section-title"><LightbulbIcon /> {t('Store Recommendations')}</h2>
           <div className="ai-recs-grid">
             {aiRecommendations.map((rec, i) => (
               <div key={i} className="ai-rec-card" data-type={rec.type}>

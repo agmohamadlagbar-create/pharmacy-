@@ -1,5 +1,5 @@
 # Photo Storage Guide
-**Project:** Online Store — C# Backend / React Frontend / Flutter Mobile  
+**Project:** Online Store — C# Backend / React Frontend  
 **Purpose:** AI-readable instruction set for storing, organizing, serving, backing up, and restoring photos.
 
 ---

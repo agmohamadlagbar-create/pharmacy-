@@ -8,12 +8,11 @@ The application supports two primary payment methods:
 - **Cash on Delivery (COD)**: A manual payment method where the user pays upon receipt.
 
 ## 2. Stripe Integration Architecture
-The integration follows Stripe's recommended patterns for security and PCI compliance. Card data is tokenized on the client-side (Web/Mobile) and never stored on our servers.
+The integration follows Stripe's recommended patterns for security and PCI compliance. Card data is tokenized on the client-side (Web) and never stored on our servers.
 
 ### Technology Stack
 - **Backend**: ASP.NET Core with `Stripe.net`.
 - **Web Frontend**: React with `@stripe/stripe-js` and `@stripe/react-stripe-js`.
-- **Mobile Frontend**: Flutter with `flutter_stripe`.
 
 ---
 
@@ -61,19 +60,7 @@ await _userManager.UpdateAsync(user);
 
 ---
 
-## 5. Mobile Implementation (`mobile/online_store_mobile`)
-
-### Flow
-1.  **Setup**: Initialized in `main.dart` with the publishable key.
-2.  **Card Field**: Uses the `CardField` widget from `flutter_stripe` for secure input.
-3.  **Payment Processing**: 
-    - `Stripe.instance.createPaymentMethod(...)` is called to generate a token.
-    - The token is saved via `POST /api/payment/cards`.
-    - The order is placed via `POST /api/orders` using the selected payment method ID.
-
----
-
-## 6. Order & Transaction Metadata
+## 5. Order & Transaction Metadata
 To improve debugging and tracking in the **Stripe Dashboard**, every `PaymentIntent` is created with metadata:
 
 | Key | Description |
@@ -84,7 +71,7 @@ To improve debugging and tracking in the **Stripe Dashboard**, every `PaymentInt
 
 ---
 
-## 7. Security Best Practices
+## 6. Security Best Practices
 - **No Card Storage**: We only store Stripe's `PaymentMethodId` (e.g., `pm_123...`) and `CustomerId`. We **never** store card numbers, CVV, or expirations.
 - **SSL/HTTPS**: All communication between the frontend and backend is encrypted (via HTTPS / TLS).
 - **Server-Side Validation**: Final amounts and product prices are always recalculated on the backend to prevent client-side price manipulation.

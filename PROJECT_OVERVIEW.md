@@ -1,7 +1,7 @@
 # OnlineStore Project Overview
 
 ## 🏗 Architecture & Stack
-This is a modern, multi-platform e-commerce application divided into three main components:
+This is a modern e-commerce application divided into two main components:
 
 1. **Backend (API)**
    - **Framework:** ASP.NET Core Web API (.NET 8, C#)
