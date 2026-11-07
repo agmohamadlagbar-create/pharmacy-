@@ -2,14 +2,12 @@ import axios from 'axios'
 import { triggerGlobalError } from './context/ErrorContext'
 
 // Backend default driven by .env variable.
-// Fallback to empty string for relative paths (essential for the ngrok proxy setup)
 const baseURL = import.meta.env.VITE_API_BASE_URL || ''
 
 export const api = axios.create({
   baseURL,
   headers: { 
-    'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true'
+    'Content-Type': 'application/json'
   }
 })
 

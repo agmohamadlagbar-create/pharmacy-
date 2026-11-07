@@ -86,5 +86,5 @@ To improve debugging and tracking in the **Stripe Dashboard**, every `PaymentInt
 
 ## 7. Security Best Practices
 - **No Card Storage**: We only store Stripe's `PaymentMethodId` (e.g., `pm_123...`) and `CustomerId`. We **never** store card numbers, CVV, or expirations.
-- **SSL/HTTPS**: All communication between the frontends and backend is encrypted (via ngrok tunnels or production SSL).
+- **SSL/HTTPS**: All communication between the frontend and backend is encrypted (via HTTPS / TLS).
 - **Server-Side Validation**: Final amounts and product prices are always recalculated on the backend to prevent client-side price manipulation.

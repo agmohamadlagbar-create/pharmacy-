@@ -57,7 +57,7 @@ migration_result.txt
 prod_ecommerce_ai_log*.txt
 **/Logs/
 
-# Deployment artifacts
+# Archive files
 *.zip
 *.7z
 *.rar
@@ -79,8 +79,6 @@ OnlineStore/backend/scratch/
 appsettings.Development.json
 appsettings.Local.json
 secrets.json
-ngrok.yml
-ngrok_all.yml
 *.pubxml
 *.PublishSettings
 

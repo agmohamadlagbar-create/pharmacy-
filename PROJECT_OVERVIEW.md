@@ -50,7 +50,7 @@ This is a modern, multi-platform e-commerce application divided into three main 
 
 ### 7. Load Testing & Infrastructure
 - Dedicated `load_tests` scripts to ensure the backend and real-time hubs scale appropriately.
-- Support for local testing using tools like `ngrok` for webhooks or external access, and `LocalDB` for SQL Server.
+- Support for local testing using `LocalDB` or SQL Server.
 
 ---
 
