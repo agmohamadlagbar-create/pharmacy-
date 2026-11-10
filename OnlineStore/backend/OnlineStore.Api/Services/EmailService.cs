@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace OnlineStore.Api.Services;
 
@@ -13,10 +15,14 @@ public interface IEmailService
 public class SmtpEmailService : IEmailService
 {
     private readonly IConfiguration _config;
+    private readonly IHostEnvironment _env;
+    private readonly ILogger<SmtpEmailService> _logger;
 
-    public SmtpEmailService(IConfiguration config)
+    public SmtpEmailService(IConfiguration config, IHostEnvironment env, ILogger<SmtpEmailService> logger)
     {
         _config = config;
+        _env = env;
+        _logger = logger;
     }
 
     public Task SendVerificationEmailAsync(string toEmail, string code)
@@ -48,6 +54,11 @@ public class SmtpEmailService : IEmailService
         var password = smtp["Password"] ?? "";
         var fromEmail = smtp["FromEmail"] ?? user;
         var fromName = smtp["FromName"] ?? "Online Store";
+
+        if (_env.IsDevelopment())
+        {
+            _logger.LogInformation("📧 [DEV EMAIL] To: {Email} | {Subtitle} Code: {Code}", toEmail, subtitle, code);
+        }
 
         using var client = new SmtpClient(host, port)
         {
@@ -112,6 +123,13 @@ public class SmtpEmailService : IEmailService
         };
 
         message.To.Add(toEmail);
-        await client.SendMailAsync(message);
+        try
+        {
+            await client.SendMailAsync(message);
+        }
+        catch (Exception ex) when (_env.IsDevelopment())
+        {
+            _logger.LogWarning(ex, "⚠️ [DEV EMAIL] SMTP send failed for {Email}; use the console code logged above ({Code}).", toEmail, code);
+        }
     }
 }

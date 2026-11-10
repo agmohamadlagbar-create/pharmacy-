@@ -306,7 +306,8 @@ if (!isDesignTime)
         // Seed Admin account
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
         var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL") ?? "admin@lagbar.com";
-        var adminPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD");
+        var adminPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD")
+            ?? (app.Environment.IsDevelopment() ? "Admin1234!" : null);
 
         var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
         if (existingAdmin == null && !string.IsNullOrWhiteSpace(adminPassword))
@@ -321,16 +322,16 @@ if (!isDesignTime)
             };
 
             var result = await userManager.CreateAsync(admin, adminPassword);
-            adminPassword = string.Empty;
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(admin, "Admin");
-                Console.WriteLine($"✅ Admin account created: {adminEmail} / {adminPassword}");
+                Console.WriteLine($"✅ Admin account created: {adminEmail}");
             }
             else
             {
                 Console.WriteLine($"⚠️ Failed to create admin: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
+            adminPassword = string.Empty;
         }
         else if (existingAdmin == null)
         {

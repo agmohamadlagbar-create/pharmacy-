@@ -12,8 +12,8 @@ using OnlineStore.Infrastructure.Persistence;
 namespace OnlineStore.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261107201442_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20261107201442_InitialLagbarStoreSchema")]
+    partial class InitialLagbarStoreSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

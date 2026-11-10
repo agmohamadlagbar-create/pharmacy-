@@ -19,7 +19,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.7" />
     <PackageReference Include="QuestPDF" Version="2026.5.0" />
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="Sentry.AspNetCore" Version="6.6.0" />
